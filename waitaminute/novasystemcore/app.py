@@ -1,23 +1,83 @@
 """FastAPI application providing the NovaSystem logging API."""
 from __future__ import annotations
 
+import asyncio
+import json
+import logging
 from datetime import datetime
 from pathlib import Path
-from fastapi import Depends, FastAPI, HTTPException, Query
+from typing import Any
+
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+)
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import ValidationError
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .database import SessionLocal, init_db
-from .logging_service import DOCUMENT_DIR, append_to_log_file, create_document_file
+from .logging_service import DOCUMENT_DIR, LoggingService
 from .models import ActivityLog, DocumentArtifact
-from .schemas import DocumentCreate, DocumentResponse, LogCreate, LogListResponse, LogResponse
+from .schemas import (
+    DocumentCreate,
+    DocumentJobStatus,
+    DocumentResponse,
+    LogCreate,
+    LogListResponse,
+    LogResponse,
+)
+
+logger = logging.getLogger(__name__)
+
+logging_service = LoggingService(SessionLocal)
+
+
+class WebSocketManager:
+    """Tracks active WebSocket connections for broadcasting events."""
+
+    def __init__(self) -> None:
+        self._connections: set[WebSocket] = set()
+        self._lock = asyncio.Lock()
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        async with self._lock:
+            self._connections.add(websocket)
+
+    async def disconnect(self, websocket: WebSocket) -> None:
+        async with self._lock:
+            self._connections.discard(websocket)
+
+    async def broadcast(
+        self, message: dict[str, Any], *, exclude: WebSocket | None = None
+    ) -> None:
+        async with self._lock:
+            connections = list(self._connections)
+        stale: list[WebSocket] = []
+        for connection in connections:
+            if exclude is not None and connection is exclude:
+                continue
+            try:
+                await connection.send_json(message)
+            except RuntimeError:
+                stale.append(connection)
+        if stale:
+            async with self._lock:
+                for connection in stale:
+                    self._connections.discard(connection)
 
 
 def create_app() -> FastAPI:
-    app = FastAPI(title="NovaSystem Logging Service", version="1.0.0")
+    app = FastAPI(title="NovaSystem Logging Service", version="2.0.0")
 
     app.add_middleware(
         CORSMiddleware,
@@ -26,14 +86,30 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    manager = WebSocketManager()
+
     @app.on_event("startup")
-    def _startup() -> None:  # pragma: no cover - executed by runtime
+    async def _startup() -> None:  # pragma: no cover - executed by runtime
         init_db()
         DOCUMENT_DIR.mkdir(parents=True, exist_ok=True)
 
+        loop = asyncio.get_running_loop()
+
+        def _handle_job_event(job_snapshot: dict[str, Any]) -> None:
+            job_status = _format_job_status(job_snapshot)
+            message = {
+                "event": "document.job.updated",
+                "payload": jsonable_encoder(job_status),
+            }
+            asyncio.run_coroutine_threadsafe(
+                manager.broadcast(message), loop
+            )
+
+        logging_service.set_job_event_handler(_handle_job_event)
+
     app.mount("/documents", StaticFiles(directory=DOCUMENT_DIR), name="documents")
 
-    def get_session() -> Session:
+    async def get_session() -> Session:
         session = SessionLocal()
         try:
             yield session
@@ -65,8 +141,28 @@ def create_app() -> FastAPI:
             documents=documents,
         )
 
+    def _format_job_status(job_snapshot: dict[str, Any]) -> DocumentJobStatus:
+        document_payload = job_snapshot.get("document")
+        document_response: DocumentResponse | None = None
+        if document_payload:
+            document_response = DocumentResponse(
+                id=document_payload["id"],
+                log_id=document_payload["log_id"],
+                doc_type=document_payload["doc_type"],
+                title=document_payload["title"],
+                notes=document_payload.get("notes"),
+                created_at=document_payload["created_at"],
+                download_url=f"/documents/{Path(document_payload['path']).name}",
+            )
+        return DocumentJobStatus(
+            job_id=job_snapshot["job_id"],
+            status=job_snapshot["status"],
+            document=document_response,
+            error=job_snapshot.get("error"),
+        )
+
     @app.post("/api/logs", response_model=LogResponse, status_code=201)
-    def create_log(payload: LogCreate, session: Session = Depends(get_session)) -> LogResponse:
+    async def create_log(payload: LogCreate, session: Session = Depends(get_session)) -> LogResponse:
         record = ActivityLog(
             activity=payload.activity,
             details=payload.details,
@@ -77,21 +173,26 @@ def create_app() -> FastAPI:
         session.commit()
         session.refresh(record)
 
-        append_to_log_file(
-            {
-                "id": record.id,
-                "activity": record.activity,
-                "details": record.details,
-                "tags": record.tags,
-                "metadata": record.metadata,
-                "created_at": record.created_at.isoformat(),
-            }
-        )
+        log_data = {
+            "id": record.id,
+            "activity": record.activity,
+            "details": record.details,
+            "tags": record.tags,
+            "metadata": record.metadata,
+            "created_at": record.created_at.isoformat(),
+            "source": "rest",
+        }
+        recorded_entry = logging_service.record_log_entry(log_data)
+        await manager.broadcast({"event": "log.recorded", "payload": recorded_entry})
 
-        return serialise_log(record)
+        response_payload = serialise_log(record)
+        await manager.broadcast(
+            {"event": "log.created", "payload": jsonable_encoder(response_payload)}
+        )
+        return response_payload
 
     @app.get("/api/logs", response_model=LogListResponse)
-    def list_logs(
+    async def list_logs(
         session: Session = Depends(get_session),
         search: str | None = Query(None, description="Search across activity and details."),
         tag: str | None = Query(None, description="Filter logs by a tag value."),
@@ -124,15 +225,23 @@ def create_app() -> FastAPI:
         return LogListResponse(items=[serialise_log(log) for log in logs])
 
     @app.get("/api/logs/{log_id}", response_model=LogResponse)
-    def get_log(log_id: int, session: Session = Depends(get_session)) -> LogResponse:
+    async def get_log(log_id: int, session: Session = Depends(get_session)) -> LogResponse:
         log = session.get(ActivityLog, log_id)
         if not log:
             raise HTTPException(status_code=404, detail="Log entry not found")
         _ = log.documents
         return serialise_log(log)
 
-    @app.post("/api/logs/{log_id}/documents", response_model=DocumentResponse, status_code=201)
-    def create_document(log_id: int, payload: DocumentCreate, session: Session = Depends(get_session)) -> DocumentResponse:
+    @app.post(
+        "/api/logs/{log_id}/documents",
+        response_model=DocumentJobStatus,
+        status_code=202,
+    )
+    async def queue_document(
+        log_id: int,
+        payload: DocumentCreate,
+        session: Session = Depends(get_session),
+    ) -> DocumentJobStatus:
         log = session.get(ActivityLog, log_id)
         if not log:
             raise HTTPException(status_code=404, detail="Log entry not found")
@@ -144,36 +253,26 @@ def create_app() -> FastAPI:
             "details": log.details,
             "tags": log.tags or [],
             "metadata": log.metadata or {},
+            "source": "rest",
         }
-        document_path = create_document_file(payload.doc_type, log_data, payload.notes)
-        document = DocumentArtifact(
-            log_id=log.id,
-            doc_type=payload.doc_type,
-            title=f"{payload.doc_type.replace('_', ' ').title()} for log {log.id}",
-            notes=payload.notes,
-            path=str(document_path),
+        job_snapshot = logging_service.enqueue_document_generation(
+            log_data, payload.doc_type, payload.notes
         )
-        session.add(document)
-        session.commit()
-        session.refresh(document)
-
-        return DocumentResponse(
-            id=document.id,
-            log_id=log.id,
-            doc_type=document.doc_type,
-            title=document.title,
-            notes=document.notes,
-            created_at=document.created_at,
-            download_url=f"/documents/{document_path.name}",
+        job_status = _format_job_status(job_snapshot)
+        await manager.broadcast(
+            {"event": "document.job.queued", "payload": jsonable_encoder(job_status)}
         )
+        return job_status
 
     @app.get("/api/documents", response_model=list[DocumentResponse])
-    def list_documents(session: Session = Depends(get_session)) -> list[DocumentResponse]:
-        documents = session.scalars(select(DocumentArtifact).order_by(DocumentArtifact.created_at.desc())).all()
+    async def list_documents(session: Session = Depends(get_session)) -> list[DocumentResponse]:
+        documents = session.scalars(
+            select(DocumentArtifact).order_by(DocumentArtifact.created_at.desc())
+        ).all()
         return [serialise_document(document) for document in documents]
 
     @app.get("/api/documents/{document_id}")
-    def download_document(document_id: int, session: Session = Depends(get_session)) -> FileResponse:
+    async def download_document(document_id: int, session: Session = Depends(get_session)) -> FileResponse:
         document = session.get(DocumentArtifact, document_id)
         if not document:
             raise HTTPException(status_code=404, detail="Document not found")
@@ -181,6 +280,88 @@ def create_app() -> FastAPI:
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="Document file missing")
         return FileResponse(file_path, media_type="text/markdown", filename=file_path.name)
+
+    @app.get(
+        "/api/documents/jobs/{job_id}",
+        response_model=DocumentJobStatus,
+    )
+    async def get_document_job(job_id: str) -> DocumentJobStatus:
+        job_snapshot = logging_service.get_job_status(job_id)
+        if not job_snapshot:
+            raise HTTPException(status_code=404, detail="Job not found")
+        return _format_job_status(job_snapshot)
+
+    @app.websocket("/ws/logs")
+    async def websocket_logs(websocket: WebSocket) -> None:
+        await manager.connect(websocket)
+        try:
+            while True:
+                message = await websocket.receive_text()
+                try:
+                    payload = json.loads(message)
+                except json.JSONDecodeError:
+                    await websocket.send_json(
+                        {"event": "error", "detail": "Invalid JSON payload"}
+                    )
+                    continue
+
+                try:
+                    log_payload = LogCreate.model_validate(payload)
+                except ValidationError as exc:
+                    await websocket.send_json(
+                        {"event": "error", "detail": exc.errors()}
+                    )
+                    continue
+
+                session = SessionLocal()
+                try:
+                    record = ActivityLog(
+                        activity=log_payload.activity,
+                        details=log_payload.details,
+                        tags=log_payload.tags,
+                        metadata=log_payload.metadata,
+                    )
+                    session.add(record)
+                    session.commit()
+                    session.refresh(record)
+                except Exception as exc:  # pragma: no cover - runtime safety net
+                    session.rollback()
+                    logger.exception("Failed to persist log entry via WebSocket", exc_info=exc)
+                    await websocket.send_json(
+                        {"event": "error", "detail": "Failed to persist log entry"}
+                    )
+                    continue
+                finally:
+                    session.close()
+
+                log_data = {
+                    "id": record.id,
+                    "activity": record.activity,
+                    "details": record.details,
+                    "tags": record.tags,
+                    "metadata": record.metadata,
+                    "created_at": record.created_at.isoformat(),
+                    "source": "websocket",
+                }
+                recorded_entry = logging_service.record_log_entry(log_data)
+                await websocket.send_json({"event": "log.recorded", "payload": recorded_entry})
+                await manager.broadcast(
+                    {"event": "log.recorded", "payload": recorded_entry},
+                    exclude=websocket,
+                )
+
+                response_payload = serialise_log(record)
+                await websocket.send_json(
+                    {"event": "log.created", "payload": jsonable_encoder(response_payload)}
+                )
+                await manager.broadcast(
+                    {"event": "log.created", "payload": jsonable_encoder(response_payload)},
+                    exclude=websocket,
+                )
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await manager.disconnect(websocket)
 
     return app
 
