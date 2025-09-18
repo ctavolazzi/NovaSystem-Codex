@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,6 +20,15 @@ class DocumentResponse(BaseModel):
     notes: str | None
     created_at: datetime
     download_url: str
+
+
+class DocumentJobStatus(BaseModel):
+    job_id: str
+    status: Literal["queued", "processing", "completed", "failed"]
+    document: DocumentResponse | None = Field(
+        None, description="Document metadata when the job has completed successfully."
+    )
+    error: str | None = Field(None, description="Error information if the job failed.")
 
 
 class LogCreate(BaseModel):
@@ -52,6 +61,7 @@ class LogListResponse(BaseModel):
 __all__ = [
     "DocumentCreate",
     "DocumentResponse",
+    "DocumentJobStatus",
     "LogCreate",
     "LogResponse",
     "LogListResponse",
