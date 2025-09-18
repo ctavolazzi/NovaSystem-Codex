@@ -11,10 +11,10 @@ from datetime import datetime
 from pathlib import Path
 from queue import Queue
 from tempfile import NamedTemporaryFile
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable, Dict
 
+from . import crud
 from .database import DATA_DIR
-from .models import ActivityLog, DocumentArtifact
 
 LOG_FILE_PATH = Path(
     os.environ.get("NOVASYSTEM_LOG_FILE", DATA_DIR / "activity.log.jsonl")
@@ -176,20 +176,18 @@ class LoggingService:
         session = self._session_factory()
         try:
             log_id = job.log_data.get("id")
-            log: Optional[ActivityLog] = session.get(ActivityLog, log_id)
+            log = crud.get_activity_log(session, log_id, with_documents=False)
             if log is None:
                 raise RuntimeError(f"Log entry {log_id} no longer exists")
 
-            document = DocumentArtifact(
+            document = crud.create_document_artifact(
+                session,
                 log_id=log.id,
                 doc_type=job.doc_type,
                 title=self._format_document_title(job),
                 notes=job.notes,
                 path=str(file_path),
             )
-            session.add(document)
-            session.commit()
-            session.refresh(document)
 
             return {
                 "id": document.id,
