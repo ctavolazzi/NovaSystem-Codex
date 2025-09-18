@@ -1,3 +1,29 @@
+# NovaSystem Logging & Document Service
+
+This package now includes a FastAPI-based service that powers the activity logging UI. The service exposes endpoints for
+recording work, generating auxiliary documents, and querying historical entries with SQL-backed persistence.
+
+## Quick start
+
+```bash
+# Install dependencies
+pip install -r ../requirements.txt
+
+# Start the API (serves on http://localhost:8000 by default)
+uvicorn waitaminute.novasystemcore.app:app --reload
+```
+
+Key API routes:
+
+- `POST /api/logs` &mdash; add a new activity entry. The payload is stored in SQLite, appended to `data/activity.log.jsonl`, and
+  returned to the caller.
+- `GET /api/logs` &mdash; search the activity history using optional keyword, tag, and date filters.
+- `POST /api/logs/{id}/documents` &mdash; generate Markdown summaries tied to a log entry. Files are written under
+  `data/documents/` and are available via `/documents/<filename>` for direct download.
+- `GET /api/documents` &mdash; list every generated artifact.
+
+The service automatically creates the SQLite database and storage folders under `waitaminute/novasystemcore/data/`.
+
 # Welcome to the NovaSystem SDK
 
 Absolutely! Let's go through each component step by step and construct examples within the context of the NovaSystem code we've developed together. I'll take my time to ensure clarity and accuracy.
