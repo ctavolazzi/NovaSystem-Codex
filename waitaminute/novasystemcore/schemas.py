@@ -1,7 +1,7 @@
 """Pydantic schemas for the logging service API."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -58,6 +58,18 @@ class LogListResponse(BaseModel):
     items: list[LogResponse]
 
 
+class LogHistoryBucket(BaseModel):
+    day: date = Field(..., description="UTC date for the aggregated bucket")
+    count: int = Field(..., ge=0, description="Number of logs created on this day")
+
+
+class LogHistoryResponse(BaseModel):
+    buckets: list[LogHistoryBucket] = Field(
+        default_factory=list, description="Time ordered collection of activity counts"
+    )
+    total: int = Field(..., ge=0, description="Total count of logs covered by the query")
+
+
 __all__ = [
     "DocumentCreate",
     "DocumentResponse",
@@ -65,4 +77,6 @@ __all__ = [
     "LogCreate",
     "LogResponse",
     "LogListResponse",
+    "LogHistoryBucket",
+    "LogHistoryResponse",
 ]

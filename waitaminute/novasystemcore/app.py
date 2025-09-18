@@ -21,9 +21,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
-from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from . import crud
 from .database import SessionLocal, init_db
 from .logging_service import DOCUMENT_DIR, LoggingService
 from .models import ActivityLog, DocumentArtifact
@@ -32,6 +32,8 @@ from .schemas import (
     DocumentJobStatus,
     DocumentResponse,
     LogCreate,
+    LogHistoryBucket,
+    LogHistoryResponse,
     LogListResponse,
     LogResponse,
 )
@@ -163,15 +165,13 @@ def create_app() -> FastAPI:
 
     @app.post("/api/logs", response_model=LogResponse, status_code=201)
     async def create_log(payload: LogCreate, session: Session = Depends(get_session)) -> LogResponse:
-        record = ActivityLog(
+        record = crud.create_activity_log(
+            session,
             activity=payload.activity,
             details=payload.details,
             tags=payload.tags,
             metadata=payload.metadata,
         )
-        session.add(record)
-        session.commit()
-        session.refresh(record)
 
         log_data = {
             "id": record.id,
@@ -198,38 +198,33 @@ def create_app() -> FastAPI:
         tag: str | None = Query(None, description="Filter logs by a tag value."),
         start: datetime | None = Query(None, description="Earliest creation timestamp."),
         end: datetime | None = Query(None, description="Latest creation timestamp."),
+        doc_type: str | None = Query(
+            None,
+            description="Require that logs have documents of the specified type.",
+        ),
+        has_documents: bool | None = Query(
+            None,
+            description="Filter logs based on whether related documents exist.",
+        ),
         limit: int = Query(100, ge=1, le=500, description="Maximum number of records to return."),
     ) -> LogListResponse:
-        query = select(ActivityLog)
-
-        if search:
-            like_term = f"%{search.lower()}%"
-            query = query.where(
-                or_(
-                    ActivityLog.activity.ilike(like_term),
-                    ActivityLog.details.ilike(like_term),
-                )
-            )
-        if tag:
-            query = query.where(ActivityLog.tags.contains([tag]))
-        if start:
-            query = query.where(ActivityLog.created_at >= start)
-        if end:
-            query = query.where(ActivityLog.created_at <= end)
-
-        query = query.order_by(ActivityLog.created_at.desc()).limit(limit)
-
-        logs = session.scalars(query).all()
-        for log in logs:
-            _ = log.documents
+        logs = crud.list_activity_logs(
+            session,
+            search=search,
+            tag=tag,
+            start=start,
+            end=end,
+            doc_type=doc_type,
+            has_documents=has_documents,
+            limit=limit,
+        )
         return LogListResponse(items=[serialise_log(log) for log in logs])
 
     @app.get("/api/logs/{log_id}", response_model=LogResponse)
     async def get_log(log_id: int, session: Session = Depends(get_session)) -> LogResponse:
-        log = session.get(ActivityLog, log_id)
+        log = crud.get_activity_log(session, log_id)
         if not log:
             raise HTTPException(status_code=404, detail="Log entry not found")
-        _ = log.documents
         return serialise_log(log)
 
     @app.post(
@@ -242,7 +237,7 @@ def create_app() -> FastAPI:
         payload: DocumentCreate,
         session: Session = Depends(get_session),
     ) -> DocumentJobStatus:
-        log = session.get(ActivityLog, log_id)
+        log = crud.get_activity_log(session, log_id, with_documents=False)
         if not log:
             raise HTTPException(status_code=404, detail="Log entry not found")
 
@@ -265,11 +260,58 @@ def create_app() -> FastAPI:
         return job_status
 
     @app.get("/api/documents", response_model=list[DocumentResponse])
-    async def list_documents(session: Session = Depends(get_session)) -> list[DocumentResponse]:
-        documents = session.scalars(
-            select(DocumentArtifact).order_by(DocumentArtifact.created_at.desc())
-        ).all()
+    async def list_documents(
+        session: Session = Depends(get_session),
+        log_id: int | None = Query(
+            None,
+            ge=1,
+            description="Limit results to documents associated with a specific log entry.",
+        ),
+        doc_type: str | None = Query(None, description="Filter by the stored document type."),
+        start: datetime | None = Query(None, description="Earliest creation timestamp."),
+        end: datetime | None = Query(None, description="Latest creation timestamp."),
+        limit: int = Query(100, ge=1, le=500, description="Maximum number of records to return."),
+    ) -> list[DocumentResponse]:
+        documents = crud.list_documents(
+            session,
+            log_ids=[log_id] if log_id is not None else None,
+            doc_type=doc_type,
+            start=start,
+            end=end,
+            limit=limit,
+        )
         return [serialise_document(document) for document in documents]
+
+    @app.get("/api/logs/history", response_model=LogHistoryResponse)
+    async def logs_history(
+        session: Session = Depends(get_session),
+        search: str | None = Query(None, description="Search across activity and details."),
+        tag: str | None = Query(None, description="Filter logs by a tag value."),
+        start: datetime | None = Query(None, description="Earliest creation timestamp."),
+        end: datetime | None = Query(None, description="Latest creation timestamp."),
+        doc_type: str | None = Query(
+            None,
+            description="Restrict to logs that have documents of the given type.",
+        ),
+        has_documents: bool | None = Query(
+            None,
+            description="Filter logs based on whether related documents exist.",
+        ),
+    ) -> LogHistoryResponse:
+        history = crud.get_activity_history(
+            session,
+            search=search,
+            tag=tag,
+            start=start,
+            end=end,
+            doc_type=doc_type,
+            has_documents=has_documents,
+        )
+        buckets = [
+            LogHistoryBucket(day=entry.day, count=entry.count) for entry in history
+        ]
+        total = sum(bucket.count for bucket in buckets)
+        return LogHistoryResponse(buckets=buckets, total=total)
 
     @app.get("/api/documents/{document_id}")
     async def download_document(document_id: int, session: Session = Depends(get_session)) -> FileResponse:
