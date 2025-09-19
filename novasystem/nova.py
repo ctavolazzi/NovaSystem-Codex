@@ -151,8 +151,9 @@ class Nova:
                 self.docker_executor.create_image()
 
             # Start Docker container
+            should_mount_repo = not is_local or mount_local
             container_id = self.docker_executor.start_container(
-                repo_path if mount_local or is_local else None
+                repo_path if should_mount_repo else None
             )
             logger.info(f"Started Docker container: {container_id}")
 

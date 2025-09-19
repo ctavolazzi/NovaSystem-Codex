@@ -70,6 +70,11 @@ class CommandResult:
         status_str = "Success" if self.is_success() else f"Failed (exit code: {self.exit_code})"
         return f"Command '{self.command}': {status_str}"
 
+    @property
+    def successful(self) -> bool:
+        """Compatibility attribute mirroring :meth:`is_success`."""
+        return self.is_success()
+
 
 class DockerExecutor:
     """
@@ -105,6 +110,8 @@ class DockerExecutor:
         self.client = None
         self.container = None
         self.container_id = None
+        self.mounted_repo_dir: Optional[str] = None
+        self.container_working_dir: str = "/app"
 
         if not test_mode:
             try:
@@ -208,8 +215,21 @@ CMD ["/bin/bash"]
         Returns:
             Container ID if successful, None otherwise.
         """
+        container_working_dir = "/app"
+        self.mounted_repo_dir = None
+
+        if repo_dir:
+            repo_dir = os.path.abspath(repo_dir)
+            if os.path.isdir(repo_dir):
+                self.mounted_repo_dir = repo_dir
+                container_working_dir = "/app/repo"
+            else:
+                logger.warning("Repository directory does not exist: %s", repo_dir)
+                repo_dir = None
+
         if self.test_mode:
             self.container_id = "test-container-id"
+            self.container_working_dir = container_working_dir
             return self.container_id
 
         if not self.check_image_exists():
@@ -221,9 +241,9 @@ CMD ["/bin/bash"]
 
         # Prepare volumes to mount
         volumes = {}
-        if repo_dir and os.path.exists(repo_dir):
+        if self.mounted_repo_dir:
             # Mount the repository directory as read-only
-            volumes[repo_dir] = {"bind": "/app/repo", "mode": "ro"}
+            volumes[self.mounted_repo_dir] = {"bind": "/app/repo", "mode": "ro"}
 
         try:
             # Create and start the container
@@ -234,11 +254,12 @@ CMD ["/bin/bash"]
                 mem_limit=self.memory_limit,
                 cpu_quota=int(100000 * self.cpu_limit),
                 network_mode=self.network_mode,
-                working_dir="/app",
+                working_dir=container_working_dir,
                 command="tail -f /dev/null",  # Keep container running
                 remove=True,  # Automatically remove container when stopped
             )
             self.container_id = self.container.id
+            self.container_working_dir = container_working_dir
             logger.info(f"Started Docker container {self.container_id}")
             return self.container_id
         except DockerException as e:
