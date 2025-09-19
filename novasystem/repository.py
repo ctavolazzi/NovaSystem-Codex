@@ -8,7 +8,7 @@ finding documentation files, and extracting relevant information.
 import os
 import logging
 import tempfile
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union, Set
 from pathlib import Path
 import git
 import requests
@@ -131,6 +131,98 @@ class RepositoryHandler:
             logger.error(error_msg)
             raise ValueError(error_msg)
 
+    def find_documentation_files(self, repo_dir: Optional[str] = None) -> List[str]:
+        """Return a prioritized list of documentation files within a repository.
+
+        Args:
+            repo_dir: Repository directory. If ``None`` the most recently cloned
+                repository is inspected.
+
+        Returns:
+            A list of absolute paths to documentation files. The list is ordered
+            so that common entry-points such as ``README`` and ``INSTALL`` files
+            appear before any additional markdown or text files that are
+            discovered. When no documentation is present an empty list is
+            returned.
+
+        Raises:
+            ValueError: If ``repo_dir`` is not provided and no repository has
+                been cloned yet, or when the supplied directory does not exist.
+        """
+
+        if repo_dir is None:
+            if self.repo_dir is None:
+                raise ValueError(
+                    "No repository directory specified and no repository has been cloned"
+                )
+            repo_dir = self.repo_dir
+
+        repo_path = Path(repo_dir)
+        if not repo_path.is_dir():
+            raise ValueError(f"Repository directory does not exist: {repo_dir}")
+
+        repo_path = repo_path.resolve()
+
+        logger.debug("Scanning %s for documentation", repo_path)
+
+        # Collect potential documentation files with a case-insensitive lookup.
+        doc_extensions = {".md", ".rst", ".txt"}
+        candidate_map: Dict[str, Path] = {}
+        for path in repo_path.rglob("*"):
+            if not path.is_file():
+                continue
+
+            if path.suffix.lower() not in doc_extensions:
+                continue
+
+            relative_key = path.relative_to(repo_path).as_posix().lower()
+            candidate_map.setdefault(relative_key, path)
+
+        if not candidate_map:
+            logger.info("No documentation files found in %s", repo_path)
+            return []
+
+        priority_candidates = [
+            "readme.md",
+            "readme.rst",
+            "readme.txt",
+            "install.md",
+            "installation.md",
+            "setup.md",
+            "docs/readme.md",
+            "docs/readme.rst",
+            "docs/install.md",
+            "docs/installation.md",
+            "docs/setup.md",
+        ]
+
+        discovered: List[str] = []
+        seen: Set[str] = set()
+
+        def add_path(path: Path) -> None:
+            resolved = str(path.resolve())
+            if resolved not in seen:
+                discovered.append(resolved)
+                seen.add(resolved)
+
+        for key in priority_candidates:
+            candidate = candidate_map.get(key)
+            if candidate:
+                add_path(candidate)
+
+        # Include any remaining documentation files sorted by their relative
+        # paths to provide deterministic ordering.
+        remaining = sorted(
+            (path for key, path in candidate_map.items() if str(path.resolve()) not in seen),
+            key=lambda p: p.relative_to(repo_path).as_posix().lower(),
+        )
+
+        for path in remaining:
+            add_path(path)
+
+        logger.info("Found %d documentation file(s) in %s", len(discovered), repo_path)
+        return discovered
+
     def find_documentation_file(self, repo_dir: Optional[str] = None) -> str:
         """
         Find the primary documentation file in the repository.
@@ -149,27 +241,12 @@ class RepositoryHandler:
                 raise ValueError("No repository directory specified and no repository has been cloned")
             repo_dir = self.repo_dir
 
-        # Common documentation file names, in order of priority
-        doc_filenames = [
-            "README.md",
-            "INSTALL.md",
-            "INSTALLATION.md",
-            "SETUP.md",
-            "docs/README.md",
-            "docs/INSTALL.md",
-            "docs/installation.md",
-            "docs/setup.md",
-            "README.rst",
-            "README.txt",
-        ]
+        doc_files = self.find_documentation_files(repo_dir)
 
-        for filename in doc_filenames:
-            file_path = os.path.join(repo_dir, filename)
-            if os.path.isfile(file_path):
-                logger.info(f"Found documentation file: {file_path}")
-                return file_path
+        if doc_files:
+            logger.info("Selected primary documentation file: %s", doc_files[0])
+            return doc_files[0]
 
-        # If we reach here, no documentation file was found
         error_msg = f"No documentation file found in {repo_dir}"
         logger.error(error_msg)
         raise ValueError(error_msg)
@@ -224,6 +301,16 @@ class RepositoryHandler:
         # Filter out None values
         return {k: v for k, v in config_files.items() if v is not None}
 
+    def read_documentation_content(self, doc_file: Union[str, os.PathLike[str]]) -> str:
+        """Read and return the full contents of a documentation file."""
+        try:
+            with open(doc_file, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception as e:
+            error_msg = f"Failed to read documentation file {doc_file}: {str(e)}"
+            logger.error(error_msg)
+            raise ValueError(error_msg)
+
     def read_documentation(self, doc_file: str) -> str:
         """
         Read the content of a documentation file.
@@ -237,14 +324,7 @@ class RepositoryHandler:
         Raises:
             ValueError: If the file cannot be read.
         """
-        try:
-            with open(doc_file, 'r', encoding='utf-8') as f:
-                content = f.read()
-            return content
-        except Exception as e:
-            error_msg = f"Failed to read documentation file {doc_file}: {str(e)}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+        return self.read_documentation_content(doc_file)
 
     def cleanup(self):
         """

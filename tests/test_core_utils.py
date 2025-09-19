@@ -4,11 +4,13 @@ Tests for NovaSystem Core Utils Package
 """
 
 import os
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from novasystem.core_utils import generate_doc_map
 
 class TestDocMap:
@@ -95,9 +97,14 @@ class TestDocMap:
         # Should still include other files
         assert "test.md" in doc_map
 
-        # Unreadable file should have error info
-        if "unreadable.md" in doc_map:
-            assert "error" in doc_map["unreadable.md"]
+        # Unreadable file should have error info unless the environment still
+        # allows reading it (e.g., running as root in CI).
+        entry = doc_map.get("unreadable.md")
+        if entry is not None:
+            if os.access(unreadable_file, os.R_OK):
+                assert "content" in entry
+            else:
+                assert "error" in entry
 
         # Cleanup
         os.chmod(unreadable_file, 0o666)  # Restore permissions
