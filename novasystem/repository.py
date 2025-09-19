@@ -7,6 +7,7 @@ finding documentation files, and extracting relevant information.
 
 import os
 import logging
+import shutil
 import tempfile
 from typing import List, Optional, Dict, Any, Union, Set
 from pathlib import Path
@@ -28,6 +29,7 @@ class RepositoryHandler:
         Args:
             work_dir: Directory to clone repositories into. If None, a temporary directory is used.
         """
+        self._owns_work_dir = work_dir is None
         self.work_dir = work_dir or tempfile.mkdtemp(prefix="novasystem-")
         self.repo_dir: Optional[str] = None
         self.repo_url: Optional[str] = None
@@ -326,17 +328,87 @@ class RepositoryHandler:
         """
         return self.read_documentation_content(doc_file)
 
-    def cleanup(self):
+    def cleanup(self, path: Optional[str] = None) -> None:
+        """Clean up directories created by the repository handler.
+
+        Args:
+            path: Optional explicit directory to remove. When omitted the handler
+                will prefer the most recent cloned repository directory and fall
+                back to the handler's work directory.
         """
-        Clean up temporary directories created by the repository handler.
-        """
-        # Only clean up if we created a temporary directory
-        if self.work_dir.startswith(tempfile.gettempdir()) and os.path.exists(self.work_dir):
-            logger.info(f"Cleaning up repository handler work directory: {self.work_dir}")
+
+        target = path or self.repo_dir
+
+        if not target:
+            if self._owns_work_dir:
+                target = self.work_dir
+            else:
+                logger.debug("No repository directory specified for cleanup")
+                return
+
+        target_path = Path(target)
+
+        if not target_path.exists():
+            logger.debug("Cleanup target does not exist: %s", target_path)
+            return
+
+        try:
+            resolved_target = target_path.resolve()
+        except FileNotFoundError:
+            logger.debug("Cleanup target already removed: %s", target_path)
+            return
+
+        repo_resolved: Optional[Path] = None
+        if self.repo_dir:
             try:
-                # This is a bit dangerous, so we add some checks
-                if self.work_dir.startswith(tempfile.gettempdir()) and "novasystem" in self.work_dir:
-                    import shutil
-                    shutil.rmtree(self.work_dir)
-            except Exception as e:
-                logger.warning(f"Failed to clean up work directory: {str(e)}")
+                repo_resolved = Path(self.repo_dir).resolve()
+            except FileNotFoundError:
+                repo_resolved = Path(self.repo_dir)
+
+        work_resolved: Optional[Path] = None
+        if self.work_dir:
+            try:
+                work_resolved = Path(self.work_dir).resolve()
+            except FileNotFoundError:
+                work_resolved = Path(self.work_dir)
+
+        if work_resolved and resolved_target != work_resolved and work_resolved not in resolved_target.parents:
+            logger.warning(
+                "Refusing to clean up path outside the repository handler work directory: %s",
+                resolved_target,
+            )
+            return
+
+        try:
+            shutil.rmtree(resolved_target)
+            logger.info("Cleaned up repository handler directory: %s", resolved_target)
+        except Exception as exc:
+            logger.warning(
+                "Failed to clean up repository handler directory %s: %s",
+                resolved_target,
+                exc,
+            )
+            return
+
+        if repo_resolved and resolved_target == repo_resolved:
+            self.repo_dir = None
+            self.repo_url = None
+
+        if work_resolved and resolved_target == work_resolved:
+            if self._owns_work_dir and self.work_dir.startswith(tempfile.gettempdir()):
+                try:
+                    self.work_dir = tempfile.mkdtemp(prefix="novasystem-")
+                    logger.debug(
+                        "Recreated repository handler work directory after cleanup: %s",
+                        self.work_dir,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Failed to recreate repository handler work directory: %s",
+                        exc,
+                    )
+            else:
+                logger.debug(
+                    "Work directory managed externally; skipping recreation: %s",
+                    self.work_dir,
+                )
