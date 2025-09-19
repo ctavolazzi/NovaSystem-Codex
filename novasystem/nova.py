@@ -267,8 +267,8 @@ class Nova:
 
         finally:
             # Clean up temporary directory if created
-            if temp_dir and os.path.exists(temp_dir):
-                self.repo_handler.cleanup(temp_dir)
+            if temp_dir:
+                self.repo_handler.cleanup()
 
     def _detect_repository_type(self, repo_path: str) -> Optional[str]:
         """
