@@ -359,7 +359,7 @@ class DatabaseManager:
             rows = cursor.fetchall()
 
             docs = []
-            for row in dict(row):
+            for row in rows:
                 doc_data = dict(row)
 
                 # Parse metadata JSON
