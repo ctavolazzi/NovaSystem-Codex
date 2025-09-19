@@ -134,7 +134,7 @@ class DocumentationParser:
             commands.extend(llm_commands)
 
         # Deduplicate commands
-        unique_commands = self._deduplicate_commands(commands)
+        unique_commands = self.deduplicate_commands(commands)
 
         return unique_commands
 
@@ -480,6 +480,10 @@ class DocumentationParser:
 
         # Ensure priority is in range [1, 100]
         return max(1, min(100, priority))
+
+    def deduplicate_commands(self, commands: List[Command]) -> List[Command]:
+        """Public wrapper for command deduplication."""
+        return self._deduplicate_commands(commands)
 
     def _deduplicate_commands(self, commands: List[Command]) -> List[Command]:
         """
