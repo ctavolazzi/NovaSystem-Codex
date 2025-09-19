@@ -143,6 +143,7 @@ class DatabaseManager:
 
     def update_run(self, run_id: int, status: Optional[str] = None,
                   success: Optional[bool] = None, summary: Optional[str] = None,
+                  metadata: Optional[Dict[str, Any]] = None,
                   end_time: bool = False) -> bool:
         """
         Update a run record.
@@ -152,6 +153,7 @@ class DatabaseManager:
             status: New status (e.g., 'completed', 'failed').
             success: Whether the run was successful.
             summary: Summary of the run results.
+            metadata: Additional metadata to store (will be serialized as JSON).
             end_time: Whether to update the end_time to now.
 
         Returns:
@@ -175,6 +177,16 @@ class DatabaseManager:
             if summary is not None:
                 query_parts.append("summary = ?")
                 params.append(summary)
+
+            if metadata is not None:
+                try:
+                    metadata_json = json.dumps(metadata) if metadata else None
+                except (TypeError, ValueError) as e:
+                    logger.error(f"Invalid metadata for run update: {str(e)}")
+                    return False
+
+                query_parts.append("metadata = ?")
+                params.append(metadata_json)
 
             if end_time:
                 query_parts.append("end_time = ?")
