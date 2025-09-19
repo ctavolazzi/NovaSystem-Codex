@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 
 # Import core modules directly to avoid Docker initialization
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from novasystem.repository import RepositoryHandler
 from novasystem.parser import DocumentationParser, CommandSource, CommandType
 
@@ -31,14 +32,16 @@ def test_repository_handler():
 
     # Test finding documentation file
     print(f"Testing with local repository: {test_repo_path}")
-    doc_file = repo_handler.find_documentation_file(str(test_repo_path))
-    print(f"Documentation file found: {doc_file}")
+    doc_files = repo_handler.find_documentation_files(str(test_repo_path))
+    if doc_files:
+        print(f"Documentation files found: {doc_files}")
 
-    # Test reading documentation
-    if doc_file:
+        # Test reading documentation
         print("\nReading documentation:")
-        doc_content = repo_handler.read_documentation(doc_file)
+        doc_content = repo_handler.read_documentation_content(doc_files[0])
         print(doc_content)
+    else:
+        print("No documentation files discovered.")
 
     # Test finding configuration files
     print("\nFinding configuration files:")
