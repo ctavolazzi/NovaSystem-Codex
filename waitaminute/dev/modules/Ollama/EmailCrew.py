@@ -1,17 +1,18 @@
 import os
-import asyncio
 import base64
 import pickle
 import json
-from datetime import datetime
+import logging
+from typing import Any, Dict, Optional
+
 from dotenv import load_dotenv
 from crewai import Agent, Crew, Task, Process
 from crewai_tools import BaseTool
 from langchain_community.llms import Ollama  # Ensure this import is correct based on your environment
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
-import logging
 
 # Load environment variables
 load_dotenv()
@@ -45,64 +46,47 @@ class FetchLatestEmailTool(BaseTool):
     name: str = "Fetch Latest Email"
     description: str = "Fetches the latest unread email from the inbox."
 
-    async def _run(self) -> dict:
+    def _run(self, query: str = "is:unread") -> Dict[str, str]:
+        """Return the latest unread email matching the optional Gmail search query."""
         service = get_gmail_service()
-        result = await service.users().messages().list(userId='me', q='is:unread').execute()
-        messages = result.get('messages', [])
-        if not messages:
-            return {"error": "No new unread emails found."}
-
-        message_id = messages[0]['id']
-        message = await service.users().messages().get(userId='me', id=message_id).execute()
-        payload = message['payload']
-        headers = payload['headers']
-        subject = next((header['value'] for header in headers if header['name'] == 'Subject'), 'No Subject')
-        sender = next((header['value'] for header in headers if header['name'] == 'From'), 'Unknown Sender')
-        body_data = None
-        if 'parts' in payload:
-            for part in payload['parts']:
-                if part['mimeType'] == 'text/plain':
-                    body_data = part['body']['data']
-                    break
-        if not body_data:
-            body_data = payload['body']['data']
-        text = base64.urlsafe_b64decode(body_data).decode('utf-8')
-        await service.users().messages().modify(userId='me', id=message_id, body={'removeLabelIds': ['UNREAD']}).execute()
-
-        return {"subject": subject, "sender": sender, "text": text}
+        try:
+            email_details = fetch_latest_unread_email(service, query=query)
+            if not email_details:
+                return {"error": "No new unread emails found."}
+            return email_details
+        except HttpError as error:
+            logging.error("Failed to fetch the latest email: %s", error)
+            return {"error": f"Failed to fetch email: {error}"}
 
 class LLMRecommendationTool(BaseTool):
     name: str = "LLM Recommendation"
     description: str = "Analyzes email content and generates recommendations."
 
-    async def _run(self, email_content: dict) -> str:
-        # Assuming `local_llm` is a previously instantiated Ollama object with async support
-        processed_content = f"Please analyze this email content and suggest actions:\n\n{email_content['text']}"
-        recommendation = await local_llm.generate(processed_content, max_tokens=100)  # This is a placeholder
-        return recommendation
+    def _run(self, email_content: Optional[Dict[str, str]] = None) -> str:
+        """Generate a recommendation for the provided email content."""
+        if not email_content:
+            return "No email content provided for analysis."
+
+        email_text = email_content.get("text") or email_content.get("body") or ""
+        processed_content = (
+            "Please analyze this email content and suggest actions:\n\n"
+            f"{email_text}"
+        )
+
+        recommendation = local_llm.invoke(processed_content)
+        if isinstance(recommendation, str):
+            return recommendation
+        try:
+            return json.dumps(recommendation)
+        except TypeError:
+            return str(recommendation)
 
 
-
-# Load or refresh credentials
-def get_credentials():
-    creds = None
-    if os.path.exists('token.pickle'):
-        with open('token.pickle', 'rb') as token:
-            creds = pickle.load(token)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', ['https://www.googleapis.com/auth/gmail.readonly'])
-            creds = flow.run_local_server(port=0)
-        with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
-    return creds
 
 # Fetch the latest unread email
-def fetch_latest_unread_email(service):
+def fetch_latest_unread_email(service, query: str = "is:unread"):
     try:
-        results = service.users().messages().list(userId='me', q='is:unread', maxResults=1).execute()
+        results = service.users().messages().list(userId='me', q=query, maxResults=1).execute()
         messages = results.get('messages', [])
         if not messages:
             print('No unread messages found.')
@@ -112,15 +96,14 @@ def fetch_latest_unread_email(service):
         msg = service.users().messages().get(userId='me', id=message_id, format='full').execute()
 
         payload = msg['payload']
-        headers = payload.get('headers')
-        parts = payload.get('parts')[0]
-        data = parts['body']['data']
-        body = base64.urlsafe_b64decode(data).decode('utf-8')
+        headers = payload.get('headers', [])
+        body = _extract_plain_text_body(payload)
 
         email_details = {
             "id": message_id,
             "snippet": msg.get('snippet', ''),
-            "body": body
+            "body": body,
+            "text": body,
         }
 
         for header in headers:
@@ -129,11 +112,46 @@ def fetch_latest_unread_email(service):
             elif header['name'] == 'From':
                 email_details['from'] = header['value']
 
+        clear_unread_label(service, message_id)
+
         return email_details
 
     except HttpError as error:
         print(f'An error occurred: {error}')
         return None
+
+
+def _extract_plain_text_body(payload: Dict[str, Any]) -> str:
+    """Extract the plain text portion of a Gmail message payload."""
+    body_data: Optional[str] = None
+
+    if 'parts' in payload:
+        for part in payload['parts']:
+            mime_type = part.get('mimeType', '')
+            if mime_type == 'text/plain':
+                body_data = part.get('body', {}).get('data')
+                if body_data:
+                    break
+    if not body_data:
+        body_data = payload.get('body', {}).get('data', '')
+
+    if not body_data:
+        return ""
+
+    decoded_bytes = base64.urlsafe_b64decode(body_data)
+    return decoded_bytes.decode('utf-8', errors='replace')
+
+
+def clear_unread_label(service, message_id: str) -> None:
+    """Remove the UNREAD label from the specified Gmail message."""
+    try:
+        service.users().messages().modify(
+            userId='me',
+            id=message_id,
+            body={'removeLabelIds': ['UNREAD']},
+        ).execute()
+    except HttpError as error:
+        logging.error("Failed to clear UNREAD label: %s", error)
 
 # Simulate processing and making a recommendation
 def process_email_and_recommend(email_details):
@@ -149,12 +167,15 @@ def process_email_and_recommend(email_details):
     return recommendation
 
 # Define your agents
+fetch_latest_email_tool = FetchLatestEmailTool()
+llm_recommendation_tool = LLMRecommendationTool()
+
 email_agent = Agent(
     role="Email Agent",
     goal="Process emails and generate actionable insights.",
     backstory="A sophisticated AI agent capable of understanding and categorizing emails.",
     llm=local_llm,
-    # tools=[FetchLatestEmailTool(), LLMRecommendationTool(), SaveEmailAsJSONTool()],
+    tools=[fetch_latest_email_tool, llm_recommendation_tool],
     verbose=True
 )
 
@@ -163,14 +184,14 @@ fetch_email_task = Task(
     description="Fetch the latest unread email.",
     expected_output="Email content as a dictionary.",
     agent=email_agent,
-    # tools=[FetchLatestEmailTool()]
+    tools=[fetch_latest_email_tool]
 )
 
 analyze_email_task = Task(
     description="Analyze email content and generate a recommendation.",
     expected_output="A recommendation string.",
     agent=email_agent,
-    # tools=[LLMRecommendationTool()],
+    tools=[llm_recommendation_tool],
     context=[fetch_email_task]
 )
 
@@ -196,8 +217,7 @@ email_crew = Crew(
 #     asyncio.run(main())
 
 def main():
-    creds = get_credentials()
-    service = build('gmail', 'v1', credentials=creds)
+    service = get_gmail_service()
     email_details = fetch_latest_unread_email(service)
     if email_details:
         print(json.dumps(email_details, indent=2))
