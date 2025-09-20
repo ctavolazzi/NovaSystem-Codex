@@ -4,6 +4,27 @@
   const { input, handleSubmit, messages } = useChat();
 </script>
 
+<div class="chat-container">
+  <h1>AI Chat</h1>
+
+  <div class="chat-messages">
+    {#each $messages as message}
+      <div
+        class="chat-bubble"
+        class:user-bubble={message.role === 'user'}
+        class:assistant-bubble={message.role === 'assistant'}
+      >
+        {message.content}
+      </div>
+    {/each}
+  </div>
+
+  <form class="chat-form" on:submit|preventDefault={handleSubmit}>
+    <input class="chat-input" type="text" bind:value={$input} placeholder="Type your message..." />
+    <button class="chat-button" type="submit">Send</button>
+  </form>
+</div>
+
 <style>
   .chat-container {
     max-width: 600px;
@@ -54,53 +75,5 @@
     border: none;
     border-radius: 5px;
     cursor: pointer;
-  }
-</style>
-
-<div class="chat-container">
-  <h1>AI Chat</h1>
-
-  <div class="chat-messages">
-    {#each $messages as message}
-      <div class="chat-bubble" class:user-bubble={message.role === 'user'} class:assistant-bubble={message.role === 'assistant'}>
-        {message.content}
-      </div>
-    {/each}
-  </div>
-
-  <form class="chat-form" on:submit|preventDefault={handleSubmit}>
-    <input class="chat-input" type="text" bind:value={$input} placeholder="Type your message..." />
-    <button class="chat-button" type="submit">Send</button>
-  </form>
-</div>
-
-
-<!-- App.svelte -->
-<script>
-  import Navbar from './components/Navbar.svelte';
-  import Viewport from './components/Viewport.svelte';
-  import Terminal from './components/Terminal.svelte';
-  import Sidebar from './components/Sidebar.svelte';
-</script>
-
-<div class="app-container">
-  <Navbar />
-  <div class="main-content">
-    <Viewport />
-    <Terminal />
-  </div>
-  <Sidebar />
-</div>
-
-<style>
-  .app-container {
-    display: flex;
-    height: 100vh;
-  }
-
-  .main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
   }
 </style>
