@@ -1,3 +1,5 @@
+import logging
+import re
 import uuid
 import random
 from abc import ABC, abstractmethod
@@ -49,10 +51,14 @@ class Bot(ABC):
             self.name = config['name']
         self.model = config.get('model', 'default_model')
         self.log_level = config.get('log_level', 'INFO')
+        self.logger = logging.getLogger(self.name)
+        self.logger.setLevel(getattr(logging, self.log_level.upper(), logging.INFO))
         self.log("Bot initialized with configuration.")
 
-    def log(self, message):
-        print(f"[{self.name} - {self.log_level}] {message}")
+    def log(self, message, level=None):
+        level_name = (level or self.log_level).upper()
+        level_value = getattr(logging, level_name, logging.INFO)
+        self.logger.log(level_value, message)
 
     @abstractmethod
     def execute(self, input_text):
@@ -71,6 +77,10 @@ class Bot(ABC):
 ###############
 ### BOT END ###
 ###############
+class CustomBot(Bot):
+    def execute(self, input_text=None):
+        self.log("Executing custom bot functionality.", level='INFO')
+
 ### TESTING ###
 class TestBotInitialization(unittest.TestCase):
     def test_custom_bot_initialization(self):
@@ -83,7 +93,10 @@ class TestBotInitialization(unittest.TestCase):
     def test_random_name_initialization(self):
         """Tests that CustomBot initializes with a generated name when no name is provided."""
         bot = CustomBot({'model': 'default_model', 'log_level': 'INFO'})
-        self.assertIn('DefaultBot-', bot.name)  # Ensures a generated name is used
+        self.assertRegex(
+            bot.name,
+            r'^[A-Z][a-z]+-[0-9a-f]{4}$'
+        )  # Ensures a generated name with UUID suffix is used
 
     def test_logging(self):
         """Tests that CustomBot logs correctly at the DEBUG level."""
