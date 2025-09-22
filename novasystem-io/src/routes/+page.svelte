@@ -3,7 +3,7 @@
 
   const API_BASE = 'http://localhost:8000';
 
-  type LogDocument = {
+  type DocumentResponse = {
     id: number;
     log_id: number;
     doc_type: string;
@@ -13,6 +13,13 @@
     download_url: string;
   };
 
+  type DocumentJobStatus = {
+    job_id: string;
+    status: 'queued' | 'processing' | 'completed' | 'failed';
+    document?: DocumentResponse | null;
+    error?: string | null;
+  };
+
   type LogEntry = {
     id: number;
     created_at: string;
@@ -20,7 +27,7 @@
     details: string | null;
     tags: string[];
     metadata: Record<string, unknown>;
-    documents: LogDocument[];
+    documents: DocumentResponse[];
   };
 
   let activity = '';
@@ -39,8 +46,12 @@
   let filterEnd = '';
   let filterLimit = 50;
 
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+  const DOCUMENT_POLL_INTERVAL = 2000;
+
   let documentNotes: Record<number, string> = {};
   let documentStatus: Record<number, string> = {};
+  let pendingDocumentJobs: Record<number, string[]> = {};
 
   onMount(() => {
     fetchLogs();
@@ -141,10 +152,94 @@
     documentNotes = { ...documentNotes, [logId]: value };
   };
 
+  const addPendingJobId = (logId: number, jobId: string) => {
+    pendingDocumentJobs = {
+      ...pendingDocumentJobs,
+      [logId]: [...(pendingDocumentJobs[logId] ?? []), jobId]
+    };
+  };
+
+  const removePendingJobId = (logId: number, jobId: string) => {
+    const remaining = (pendingDocumentJobs[logId] ?? []).filter((id) => id !== jobId);
+    const updatedJobs = { ...pendingDocumentJobs };
+    if (remaining.length) {
+      updatedJobs[logId] = remaining;
+    } else {
+      delete updatedJobs[logId];
+    }
+    pendingDocumentJobs = updatedJobs;
+  };
+
+  const appendDocumentToLog = (logId: number, document: DocumentResponse) => {
+    logs = logs.map((entry) => {
+      if (entry.id !== logId) return entry;
+      const alreadyExists = entry.documents.some((item) => item.id === document.id);
+      if (alreadyExists) return entry;
+      return { ...entry, documents: [...entry.documents, document] };
+    });
+    documentNotes = { ...documentNotes, [logId]: '' };
+    documentStatus = { ...documentStatus, [logId]: 'Document ready.' };
+    successMessage = `Document generated: ${document.title}`;
+  };
+
+  const updateDocumentStatusMessage = (logId: number, status: DocumentJobStatus['status']) => {
+    let message = '';
+    if (status === 'queued') {
+      message = 'Document queued…';
+    } else if (status === 'processing') {
+      message = 'Document processing…';
+    }
+    if (message) {
+      documentStatus = { ...documentStatus, [logId]: message };
+    }
+  };
+
+  const monitorDocumentJob = async (logId: number, initialStatus: DocumentJobStatus) => {
+    if (!initialStatus?.job_id) {
+      throw new Error('Document job response was missing an identifier.');
+    }
+
+    const jobId = initialStatus.job_id;
+    addPendingJobId(logId, jobId);
+
+    try {
+      let currentStatus: DocumentJobStatus = initialStatus;
+
+      while (true) {
+        if (currentStatus.status === 'completed') {
+          if (currentStatus.document) {
+            appendDocumentToLog(logId, currentStatus.document);
+            return;
+          }
+          throw new Error('Document metadata was not provided for the completed job.');
+        }
+
+        if (currentStatus.status === 'failed') {
+          const message = currentStatus.error || 'Document generation failed.';
+          throw new Error(message);
+        }
+
+        updateDocumentStatusMessage(logId, currentStatus.status);
+
+        await wait(DOCUMENT_POLL_INTERVAL);
+
+        const response = await fetch(`${API_BASE}/api/documents/jobs/${jobId}`);
+        if (!response.ok) {
+          const message = await response.text();
+          throw new Error(message || 'Unable to check document job status.');
+        }
+        const nextStatus: DocumentJobStatus = await response.json();
+        currentStatus = nextStatus;
+      }
+    } finally {
+      removePendingJobId(logId, jobId);
+    }
+  };
+
   const generateDocument = async (log: LogEntry, docType: string) => {
     errorMessage = '';
     successMessage = '';
-    documentStatus = { ...documentStatus, [log.id]: 'Generating document…' };
+    documentStatus = { ...documentStatus, [log.id]: 'Submitting document request…' };
     try {
       const response = await fetch(`${API_BASE}/api/logs/${log.id}/documents`, {
         method: 'POST',
@@ -158,14 +253,8 @@
         const message = await response.text();
         throw new Error(message || 'Failed to generate document.');
       }
-      const document: LogDocument = await response.json();
-      const updatedLogs = logs.map((entry) =>
-        entry.id === log.id ? { ...entry, documents: [...entry.documents, document] } : entry
-      );
-      logs = updatedLogs;
-      documentNotes = { ...documentNotes, [log.id]: '' };
-      documentStatus = { ...documentStatus, [log.id]: 'Document ready.' };
-      successMessage = `Document generated: ${document.title}`;
+      const jobStatus: DocumentJobStatus = await response.json();
+      await monitorDocumentJob(log.id, jobStatus);
     } catch (error) {
       documentStatus = { ...documentStatus, [log.id]: '' };
       errorMessage = error instanceof Error ? error.message : 'Unexpected error while generating document.';
