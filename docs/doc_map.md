@@ -11,13 +11,19 @@ This document provides a navigational map of the NovaSystem documentation.
 ├── **NovaSystem Development Guides - - [Python Style Guide](standards**
 │   ├── **Documentation**
 │   │   └── [Using the NovaSystem Documentation Structure](guides/documentation/structure.md)
-│   ├── **Getting Started**
-│   ├── **Workflows**
 ├── **NovaSystem Implementation Plan - ### Core Infrastructure**
 │   ├── **01 Foundation**
 │   │   └── [Base Agent Implementation](implementation/01-foundation/05-base-agent-implementation.md)
-├── **Processes**
-├── **References**
+│   ├── [NovaSystem Codebase Context](implementation/CODEBASE_CONTEXT.md)
+│   ├── [NovaSystem: Comprehensive Implementation Plan](implementation/IMPLEMENTATION_PLAN.md)
+├── **Scripts**
+│   └── [NovaSystem Scripts Analysis & Execution Plan](scripts/script_analysis_and_execution_plan.md)
+├── [NovaSystem Documentation Guide](DOCUMENTATION_GUIDE.md)
+├── [NovaSystem Documentation Map](doc_map.md)
+├── [Index](index.html)
+├── [NovaSystem Project Standardization Guide](standardization.md)
+├── [NovaSystem Project Standardization Summary](standardization_summary.md)
+└── [NovaSystem Testing Guide](testing_guide.md)
 
 ## Documentation by Category
 
@@ -38,12 +44,12 @@ This document provides a navigational map of the NovaSystem documentation.
 ### NovaSystem Implementation Plan - ### Core Infrastructure
 
 - [Base Agent Implementation](implementation/01-foundation/05-base-agent-implementation.md)
+- [NovaSystem Codebase Context](implementation/CODEBASE_CONTEXT.md)
+- [NovaSystem: Comprehensive Implementation Plan](implementation/IMPLEMENTATION_PLAN.md)
 
-### Processes
+### Scripts
 
-
-### References
-
+- [NovaSystem Scripts Analysis & Execution Plan](scripts/script_analysis_and_execution_plan.md)
 
 ## Alphabetical Index
 
@@ -53,6 +59,14 @@ This document provides a navigational map of the NovaSystem documentation.
 
 ### N
 
+- [NovaSystem Codebase Context](implementation/CODEBASE_CONTEXT.md)
+- [NovaSystem Documentation Guide](DOCUMENTATION_GUIDE.md)
+- [NovaSystem Documentation Map](doc_map.md)
+- [NovaSystem Project Standardization Guide](standardization.md)
+- [NovaSystem Project Standardization Summary](standardization_summary.md)
+- [NovaSystem Scripts Analysis & Execution Plan](scripts/script_analysis_and_execution_plan.md)
+- [NovaSystem Testing Guide](testing_guide.md)
+- [NovaSystem: Comprehensive Implementation Plan](implementation/IMPLEMENTATION_PLAN.md)
 - [NovaSystem: System Overview](architecture/01-system-overview.md)
 
 ### U
