@@ -1,0 +1,64 @@
+{
+  "metadata": {
+    "session_id": "b4665a4f-9b92-438c-a089-5326706b48f6",
+    "title": "Test Session",
+    "description": "Testing the session management system",
+    "tags": [
+      "test",
+      "session",
+      "management"
+    ],
+    "model_used": "ollama:phi3",
+    "total_tokens": 46,
+    "total_messages": 4,
+    "created_at": "2025-09-26T13:47:27.131687",
+    "updated_at": "2025-09-26T13:47:37.304409",
+    "custom_metadata": {}
+  },
+  "messages": [
+    {
+      "role": "user",
+      "content": "Hello! Please respond with a brief greeting and tell me you're working.",
+      "timestamp": "2025-09-26T13:47:35.661310",
+      "metadata": {
+        "model": "ollama:phi3",
+        "temperature": 0.7
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "Hello there! I’m currently operating at full capacity, processing requests efficiently to the best of my ability. How can I assist you today?",
+      "timestamp": "2025-09-26T13:47:35.661797",
+      "metadata": {
+        "model": "ollama:phi3",
+        "temperature": 0.7,
+        "max_tokens": 100,
+        "response_time": 8.454266786575317,
+        "tokens_input": 12,
+        "tokens_generated": 23
+      }
+    },
+    {
+      "role": "user",
+      "content": "What is 5 + 3? Answer with just the number.",
+      "timestamp": "2025-09-26T13:47:37.302850",
+      "metadata": {
+        "model": "ollama:phi3",
+        "temperature": 0.1
+      }
+    },
+    {
+      "role": "assistant",
+      "content": "8",
+      "timestamp": "2025-09-26T13:47:37.304402",
+      "metadata": {
+        "model": "ollama:phi3",
+        "temperature": 0.1,
+        "max_tokens": 10,
+        "response_time": 1.5619981288909912,
+        "tokens_input": 10,
+        "tokens_generated": 1
+      }
+    }
+  ]
+}
