@@ -1,5 +1,3 @@
-![NovaGPT_Banner_Official]([https://github.com/ctavolazzi/NovaSystem/assets/61925030/d8229897-b748-448a-8c3f-d70c08a505f4](https://github.com/user-attachments/assets/f6f81113-c00d-451e-ac01-3c698342bd4c))
-
 <img width="1344" height="768" alt="Gemini_Generated_Image_iup822iup822iup8" src="https://github.com/user-attachments/assets/f6f81113-c00d-451e-ac01-3c698342bd4c" />
 
 # NovaSystem: A Next-Generation Problem-Solving Framework for GPT-4 or Comparable LLM
