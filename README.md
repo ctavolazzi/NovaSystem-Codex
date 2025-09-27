@@ -1,6 +1,6 @@
 <img width="1344" height="768" alt="Gemini_Generated_Image_iup822iup822iup8" src="https://github.com/user-attachments/assets/f6f81113-c00d-451e-ac01-3c698342bd4c" />
 
-# NovaSystem: A Next-Generation Problem-Solving Framework for GPT-4 or Comparable LLM
+# NovaSystem: A Next-Generation Problem-Solving Framework for GPT-5 or Comparable LLM
 
 Welcome to the NovaSystem, a pioneering problem-solving method that harnesses the power of a team of virtual experts to tackle complex problems. This open-source project provides an implementation of the Nova Process utilizing multiple AI models working together locally and in the cloud.
 
