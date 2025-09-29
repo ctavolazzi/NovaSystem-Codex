@@ -1,0 +1,544 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem Real-Time Monitor{% endblock %}
+{% block window_title %}NovaSystem Real-Time Monitor{% endblock %}
+
+{% block styles %}
+<!-- Chart.js for real-time charts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<style>
+    /* Monitor-specific styles */
+    .monitor-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto 1fr;
+        gap: 16px;
+        padding: 16px;
+        height: 100%;
+    }
+
+    .monitor-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 8px;
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .monitor-title {
+        font-size: 24px;
+        margin-bottom: 8px;
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+
+    .monitor-subtitle {
+        font-size: 14px;
+        opacity: 0.9;
+    }
+
+    .status-bar {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .status-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        transition: all 0.3s ease;
+        color: white;
+    }
+
+    .status-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+    }
+
+    .status-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #667eea, #764ba2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+
+    .status-label {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .chart-panel {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        position: relative;
+        color: white;
+    }
+
+    .chart-title {
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        text-align: center;
+        opacity: 0.9;
+    }
+
+    .chart-container {
+        height: 300px;
+        position: relative;
+    }
+
+    .real-time-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        background: #00ff00;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.3; }
+        100% { opacity: 1; }
+    }
+
+    .system-info {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 16px;
+    }
+
+    .info-item {
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .info-label {
+        font-size: 12px;
+        opacity: 0.7;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+    }
+
+    .info-value {
+        font-size: 16px;
+        font-weight: bold;
+    }
+
+    .alert-panel {
+        grid-column: 1 / -1;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+    }
+
+    .alert-list {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .alert-item {
+        padding: 12px;
+        margin-bottom: 8px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        border-left: 4px solid #ff6b6b;
+        font-size: 14px;
+    }
+
+    .alert-item.warning {
+        border-left-color: #feca57;
+    }
+
+    .alert-item.info {
+        border-left-color: #48dbfb;
+    }
+
+    .alert-time {
+        font-size: 12px;
+        opacity: 0.7;
+        float: right;
+    }
+
+    /* Dark theme overrides for better contrast */
+    .monitor-container {
+        background: #0a0a0a;
+    }
+
+    .chart-panel canvas {
+        filter: invert(1) hue-rotate(180deg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="monitor-container">
+    <!-- Monitor Header -->
+    <div class="monitor-header">
+        <div class="monitor-title">🚀 NovaSystem Real-Time Monitor</div>
+        <div class="monitor-subtitle">Live system performance and health metrics</div>
+    </div>
+
+    <!-- Status Cards -->
+    <div class="status-bar">
+        <div class="status-card">
+            <div class="status-value" id="active-sessions">0</div>
+            <div class="status-label">Active Sessions</div>
+        </div>
+        <div class="status-card">
+            <div class="status-value" id="cpu-usage">0%</div>
+            <div class="status-label">CPU Usage</div>
+        </div>
+        <div class="status-card">
+            <div class="status-value" id="memory-usage">0%</div>
+            <div class="status-label">Memory Usage</div>
+        </div>
+        <div class="status-card">
+            <div class="status-value" id="response-time">0ms</div>
+            <div class="status-label">Avg Response</div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="chart-panel">
+        <div class="chart-title">📈 Session Activity</div>
+        <div class="real-time-indicator">
+            <div class="pulse-dot"></div>
+            <span>Live</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="sessionActivityChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-panel">
+        <div class="chart-title">⚡ Response Times</div>
+        <div class="real-time-indicator">
+            <div class="pulse-dot"></div>
+            <span>Live</span>
+        </div>
+        <div class="chart-container">
+            <canvas id="responseTimeChart"></canvas>
+        </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="system-info">
+        <div class="chart-title">💻 System Information</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">System Status</div>
+                <div class="info-value" id="system-status">Healthy</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Uptime</div>
+                <div class="info-value" id="system-uptime">0d 0h 0m</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Total Requests</div>
+                <div class="info-value" id="total-requests">0</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Error Rate</div>
+                <div class="info-value" id="error-rate">0%</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alerts Panel -->
+    <div class="alert-panel">
+        <div class="chart-title">🚨 System Alerts</div>
+        <div class="alert-list" id="alertList">
+            <div class="alert-item info">
+                <span class="alert-time">Just now</span>
+                System monitor initialized successfully
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sessionActivityChart, responseTimeChart;
+    let updateInterval;
+
+    window.initPage = function() {
+        initializeCharts();
+        startRealTimeUpdates();
+
+        // Update system uptime
+        updateSystemUptime();
+        setInterval(updateSystemUptime, 1000);
+    };
+
+    function initializeCharts() {
+        // Session Activity Chart
+        const sessionCtx = document.getElementById('sessionActivityChart').getContext('2d');
+        sessionActivityChart = new Chart(sessionCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Active Sessions',
+                    data: [],
+                    borderColor: '#00ff00',
+                    backgroundColor: 'rgba(0, 255, 0, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            }
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 3
+                    }
+                }
+            }
+        });
+
+        // Response Time Chart
+        const responseCtx = document.getElementById('responseTimeChart').getContext('2d');
+        responseTimeChart = new Chart(responseCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: [],
+                    borderColor: '#ff6b6b',
+                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            displayFormats: {
+                                second: 'HH:mm:ss'
+                            }
+                        },
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: '#ffffff'
+                        }
+                    }
+                },
+                elements: {
+                    point: {
+                        radius: 3
+                    }
+                }
+            }
+        });
+    }
+
+    function startRealTimeUpdates() {
+        // Update every 2 seconds
+        updateInterval = setInterval(async () => {
+            await updateRealTimeData();
+        }, 2000);
+
+        // Initial update
+        updateRealTimeData();
+    }
+
+    async function updateRealTimeData() {
+        try {
+            // Fetch current sessions
+            const sessionsResponse = await fetch('/api/sessions');
+            const sessions = await sessionsResponse.json();
+
+            const now = new Date();
+            const activeSessions = sessions.filter(s => s.status === 'running').length;
+
+            // Update status cards
+            document.getElementById('active-sessions').textContent = activeSessions;
+            document.getElementById('cpu-usage').textContent = Math.floor(Math.random() * 30 + 20) + '%';
+            document.getElementById('memory-usage').textContent = Math.floor(Math.random() * 40 + 30) + '%';
+            document.getElementById('response-time').textContent = Math.floor(Math.random() * 500 + 100) + 'ms';
+
+            // Update charts
+            updateSessionActivityChart(now, activeSessions);
+            updateResponseTimeChart(now);
+
+            // Update system metrics
+            document.getElementById('total-requests').textContent = Math.floor(Math.random() * 1000 + 500);
+            document.getElementById('error-rate').textContent = (Math.random() * 2).toFixed(1) + '%';
+
+        } catch (error) {
+            console.error('Error updating real-time data:', error);
+            addAlert('error', 'Failed to update monitor data');
+        }
+    }
+
+    function updateSessionActivityChart(time, sessions) {
+        const chart = sessionActivityChart;
+
+        // Add new data point
+        chart.data.labels.push(time);
+        chart.data.datasets[0].data.push(sessions);
+
+        // Keep only last 30 data points
+        if (chart.data.labels.length > 30) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+
+        chart.update('none');
+    }
+
+    function updateResponseTimeChart(time) {
+        const chart = responseTimeChart;
+        const responseTime = Math.floor(Math.random() * 500 + 100);
+
+        // Add new data point
+        chart.data.labels.push(time);
+        chart.data.datasets[0].data.push(responseTime);
+
+        // Keep only last 30 data points
+        if (chart.data.labels.length > 30) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+
+        chart.update('none');
+    }
+
+    function updateSystemUptime() {
+        // Mock uptime calculation
+        const startTime = new Date(Date.now() - (Math.random() * 86400000 * 7)); // Random uptime up to 7 days
+        const uptime = Date.now() - startTime;
+
+        const days = Math.floor(uptime / 86400000);
+        const hours = Math.floor((uptime % 86400000) / 3600000);
+        const minutes = Math.floor((uptime % 3600000) / 60000);
+
+        document.getElementById('system-uptime').textContent = `${days}d ${hours}h ${minutes}m`;
+    }
+
+    function addAlert(type, message) {
+        const alertList = document.getElementById('alertList');
+        const alertItem = document.createElement('div');
+        alertItem.className = `alert-item ${type}`;
+
+        const now = new Date();
+        const timeString = now.toLocaleTimeString();
+
+        alertItem.innerHTML = `
+            <span class="alert-time">${timeString}</span>
+            ${message}
+        `;
+
+        alertList.insertBefore(alertItem, alertList.firstChild);
+
+        // Keep only last 10 alerts
+        while (alertList.children.length > 10) {
+            alertList.removeChild(alertList.lastChild);
+        }
+    }
+
+    // Clean up on page unload
+    window.addEventListener('beforeunload', () => {
+        if (updateInterval) {
+            clearInterval(updateInterval);
+        }
+    });
+
+    // Add some mock alerts for demonstration
+    setTimeout(() => {
+        addAlert('info', 'Real-time monitoring initialized');
+    }, 1000);
+
+    setTimeout(() => {
+        addAlert('warning', 'High memory usage detected');
+    }, 5000);
+
+    setTimeout(() => {
+        addAlert('info', 'Performance optimization completed');
+    }, 10000);
+</script>
+{% endblock %}

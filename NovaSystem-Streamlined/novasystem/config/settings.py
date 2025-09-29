@@ -39,14 +39,14 @@ class SessionConfig:
 class LLMConfig:
     """Configuration for LLM services."""
     # Default model
-    default_model: str = "claude-3-5-sonnet-20241022"
+    default_model: str = "claude-3-5-haiku-20241022"
 
     # Model priority order
     model_priority: list = field(default_factory=lambda: [
-        "claude-3-5-sonnet-20241022",
         "claude-3-5-haiku-20241022",
-        "claude-sonnet-4-20250514",
-        "claude-opus-4-1-20250805"
+        "claude-3-5-sonnet-20241022",
+        "claude-3-haiku-20240307",
+        "claude-3-sonnet-20240229"
     ])
 
     # Fallback models (Ollama)

@@ -1,0 +1,307 @@
+/* ========================================
+   NOVASYSTEM WORKFLOW UI - DESIGN TOKENS
+   Single Source of Truth for All Styling
+   ======================================== */
+
+:root {
+  /* ========================================
+     COLOR SYSTEM - Primary Brand Colors
+     ======================================== */
+
+  /* Primary Blue Palette */
+  --primary-blue: #4A90E2;
+  --primary-blue-light: #6BA3E8;
+  --primary-blue-dark: #3A7BC8;
+  --primary-blue-hover: #5BA0F2;
+  --primary-blue-active: #2A6BB8;
+
+  /* Secondary Blue Palette */
+  --secondary-blue: #5BA0F2;
+  --secondary-blue-light: #7BB0F4;
+  --secondary-blue-dark: #4B90D2;
+
+  /* Status Colors */
+  --success-green: #7ED321;
+  --success-green-light: #9EE341;
+  --success-green-dark: #5EC301;
+  --warning-orange: #F5A623;
+  --warning-orange-light: #F7B643;
+  --warning-orange-dark: #E59603;
+  --error-red: #D0021B;
+  --error-red-light: #E0222B;
+  --error-red-dark: #B0021B;
+  --info-blue: #4A90E2;
+  --info-blue-light: #6BA3E8;
+  --info-blue-dark: #3A7BC8;
+
+  /* Agent Type Colors */
+  --agent-problem-solver: #4A90E2;
+  --agent-research: #7ED321;
+  --agent-analysis: #F5A623;
+  --agent-synthesizer: #9013FE;
+  --agent-data: #FF6B6B;
+  --agent-optimization: #4ECDC4;
+
+  /* Neutral Colors */
+  --white: #FFFFFF;
+  --gray-50: #FAFAFA;
+  --gray-100: #F5F5F5;
+  --gray-200: #EEEEEE;
+  --gray-300: #E0E0E0;
+  --gray-400: #BDBDBD;
+  --gray-500: #9E9E9E;
+  --gray-600: #757575;
+  --gray-700: #616161;
+  --gray-800: #424242;
+  --gray-900: #212121;
+  --black: #000000;
+
+  /* Background Colors */
+  --bg-primary: #FFFFFF;
+  --bg-secondary: #F8F9FA;
+  --bg-tertiary: #F1F3F4;
+  --bg-canvas: #FFFFFF;
+  --bg-sidebar: #F8F9FA;
+  --bg-card: #FFFFFF;
+  --bg-hover: #F5F5F5;
+  --bg-active: #E3F2FD;
+  --bg-disabled: #F5F5F5;
+
+  /* Text Colors */
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --text-tertiary: #9E9E9E;
+  --text-inverse: #FFFFFF;
+  --text-disabled: #BDBDBD;
+  --text-link: #4A90E2;
+  --text-link-hover: #3A7BC8;
+
+  /* Border Colors */
+  --border-light: #E0E0E0;
+  --border-medium: #BDBDBD;
+  --border-dark: #9E9E9E;
+  --border-focus: #4A90E2;
+  --border-error: #D0021B;
+  --border-success: #7ED321;
+
+  /* ========================================
+     SPACING SYSTEM - Consistent Scale
+     ======================================== */
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+  --space-3xl: 64px;
+  --space-4xl: 96px;
+
+  /* Component Specific Spacing */
+  --padding-xs: var(--space-xs);
+  --padding-sm: var(--space-sm);
+  --padding-md: var(--space-md);
+  --padding-lg: var(--space-lg);
+  --padding-xl: var(--space-xl);
+
+  --margin-xs: var(--space-xs);
+  --margin-sm: var(--space-sm);
+  --margin-md: var(--space-md);
+  --margin-lg: var(--space-lg);
+  --margin-xl: var(--space-xl);
+
+  /* ========================================
+     TYPOGRAPHY SYSTEM
+     ======================================== */
+
+  /* Font Families */
+  --font-family-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --font-family-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  --font-family-display: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Font Sizes */
+  --font-size-xs: 10px;
+  --font-size-sm: 12px;
+  --font-size-md: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 18px;
+  --font-size-2xl: 20px;
+  --font-size-3xl: 24px;
+  --font-size-4xl: 32px;
+  --font-size-5xl: 40px;
+
+  /* Font Weights */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+  --line-height-loose: 1.8;
+
+  /* Letter Spacing */
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+
+  /* ========================================
+     LAYOUT DIMENSIONS
+     ======================================== */
+
+  /* Component Sizes */
+  --size-xs: 16px;
+  --size-sm: 24px;
+  --size-md: 32px;
+  --size-lg: 40px;
+  --size-xl: 48px;
+  --size-2xl: 64px;
+  --size-3xl: 80px;
+  --size-4xl: 96px;
+
+  /* Agent Card Dimensions */
+  --agent-card-width: 200px;
+  --agent-card-height: 120px;
+  --agent-card-min-width: 160px;
+  --agent-card-min-height: 100px;
+
+  /* Workflow Node Dimensions */
+  --node-width: 180px;
+  --node-height: 80px;
+  --node-min-width: 140px;
+  --node-min-height: 60px;
+  --node-port-size: 12px;
+  --node-port-spacing: 8px;
+
+  /* Sidebar Dimensions */
+  --sidebar-width: 280px;
+  --sidebar-width-collapsed: 60px;
+  --sidebar-header-height: 60px;
+
+  /* Canvas Dimensions */
+  --canvas-min-width: 600px;
+  --canvas-min-height: 400px;
+  --canvas-grid-size: 20px;
+
+  /* ========================================
+     BORDERS AND RADIUS
+     ======================================== */
+
+  /* Border Radius */
+  --radius-none: 0;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 24px;
+  --radius-full: 9999px;
+
+  /* Border Widths */
+  --border-width-none: 0;
+  --border-width-thin: 1px;
+  --border-width-medium: 2px;
+  --border-width-thick: 4px;
+
+  /* ========================================
+     SHADOWS AND EFFECTS
+     ======================================== */
+
+  /* Box Shadows */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Drop Shadows */
+  --drop-shadow-sm: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+  --drop-shadow-md: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
+  --drop-shadow-lg: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
+
+  /* ========================================
+     TRANSITIONS AND ANIMATIONS
+     ======================================== */
+
+  /* Transition Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+  --duration-slower: 500ms;
+
+  /* Transition Timing Functions */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Animation Properties */
+  --transition-fast: all var(--duration-fast) var(--ease-out);
+  --transition-normal: all var(--duration-normal) var(--ease-out);
+  --transition-slow: all var(--duration-slow) var(--ease-out);
+
+  /* ========================================
+     Z-INDEX LAYERS
+     ======================================== */
+
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+  --z-index-toast: 1080;
+
+  /* Component Specific Z-Index */
+  --z-index-sidebar: 100;
+  --z-index-canvas: 10;
+  --z-index-node: 20;
+  --z-index-connection: 15;
+  --z-index-port: 25;
+  --z-index-drag: 1000;
+
+  /* ========================================
+     BREAKPOINTS (for reference)
+     ======================================== */
+
+  --breakpoint-xs: 320px;
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+
+  /* ========================================
+     WORKFLOW SPECIFIC TOKENS
+     ======================================== */
+
+  /* Connection Line Styles */
+  --connection-width: 2px;
+  --connection-color: var(--border-medium);
+  --connection-color-active: var(--primary-blue);
+  --connection-color-success: var(--success-green);
+  --connection-color-error: var(--error-red);
+
+  /* Status Indicators */
+  --status-indicator-size: 8px;
+  --status-indicator-gap: var(--space-xs);
+
+  /* Drag and Drop */
+  --drag-opacity: 0.8;
+  --drag-scale: 1.05;
+  --drop-zone-color: var(--primary-blue);
+  --drop-zone-opacity: 0.1;
+
+  /* Canvas Grid */
+  --grid-color: var(--gray-200);
+  --grid-opacity: 0.5;
+  --grid-size: var(--canvas-grid-size);
+}

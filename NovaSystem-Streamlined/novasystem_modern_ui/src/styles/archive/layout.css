@@ -1,0 +1,824 @@
+/* ========================================
+   NOVASYSTEM WORKFLOW UI - LAYOUT UTILITIES
+   Grid, Flexbox, and Layout Systems
+   ======================================== */
+
+@import './variables.css';
+
+/* ========================================
+   CONTAINER SYSTEM
+   ======================================== */
+
+.container {
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: var(--padding-md);
+  padding-right: var(--padding-md);
+}
+
+.container-fluid {
+  width: 100%;
+  padding-left: var(--padding-md);
+  padding-right: var(--padding-md);
+}
+
+/* Container Breakpoints */
+@media (min-width: 640px) {
+  .container {
+    max-width: 640px;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    max-width: 768px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1024px;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    max-width: 1280px;
+  }
+}
+
+@media (min-width: 1536px) {
+  .container {
+    max-width: 1536px;
+  }
+}
+
+/* ========================================
+   FLEXBOX UTILITIES
+   ======================================== */
+
+.flex {
+  display: flex;
+}
+
+.flex-inline {
+  display: inline-flex;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-col-reverse {
+  flex-direction: column-reverse;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.flex-wrap-reverse {
+  flex-wrap: wrap-reverse;
+}
+
+.flex-nowrap {
+  flex-wrap: nowrap;
+}
+
+/* Flex Grow/Shrink */
+.flex-1 {
+  flex: 1 1 0%;
+}
+
+.flex-auto {
+  flex: 1 1 auto;
+}
+
+.flex-initial {
+  flex: 0 1 auto;
+}
+
+.flex-none {
+  flex: none;
+}
+
+.flex-grow {
+  flex-grow: 1;
+}
+
+.flex-grow-0 {
+  flex-grow: 0;
+}
+
+.flex-shrink {
+  flex-shrink: 1;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+/* Justify Content */
+.justify-start {
+  justify-content: flex-start;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-around {
+  justify-content: space-around;
+}
+
+.justify-evenly {
+  justify-content: space-evenly;
+}
+
+/* Align Items */
+.items-start {
+  align-items: flex-start;
+}
+
+.items-end {
+  align-items: flex-end;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.items-baseline {
+  align-items: baseline;
+}
+
+.items-stretch {
+  align-items: stretch;
+}
+
+/* Align Content */
+.content-start {
+  align-content: flex-start;
+}
+
+.content-end {
+  align-content: flex-end;
+}
+
+.content-center {
+  align-content: center;
+}
+
+.content-between {
+  align-content: space-between;
+}
+
+.content-around {
+  align-content: space-around;
+}
+
+.content-evenly {
+  align-content: space-evenly;
+}
+
+/* Align Self */
+.self-auto {
+  align-self: auto;
+}
+
+.self-start {
+  align-self: flex-start;
+}
+
+.self-end {
+  align-self: flex-end;
+}
+
+.self-center {
+  align-self: center;
+}
+
+.self-stretch {
+  align-self: stretch;
+}
+
+.self-baseline {
+  align-self: baseline;
+}
+
+/* ========================================
+   GRID UTILITIES
+   ======================================== */
+
+.grid {
+  display: grid;
+}
+
+.grid-inline {
+  display: inline-grid;
+}
+
+/* Grid Template Columns */
+.grid-cols-1 {
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+}
+
+.grid-cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.grid-cols-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grid-cols-5 {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.grid-cols-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.grid-cols-none {
+  grid-template-columns: none;
+}
+
+/* Grid Column Span */
+.col-span-1 {
+  grid-column: span 1 / span 1;
+}
+
+.col-span-2 {
+  grid-column: span 2 / span 2;
+}
+
+.col-span-3 {
+  grid-column: span 3 / span 3;
+}
+
+.col-span-4 {
+  grid-column: span 4 / span 4;
+}
+
+.col-span-5 {
+  grid-column: span 5 / span 5;
+}
+
+.col-span-6 {
+  grid-column: span 6 / span 6;
+}
+
+.col-span-full {
+  grid-column: 1 / -1;
+}
+
+/* Grid Template Rows */
+.grid-rows-1 {
+  grid-template-rows: repeat(1, minmax(0, 1fr));
+}
+
+.grid-rows-2 {
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+.grid-rows-3 {
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+}
+
+.grid-rows-4 {
+  grid-template-rows: repeat(4, minmax(0, 1fr));
+}
+
+.grid-rows-5 {
+  grid-template-rows: repeat(5, minmax(0, 1fr));
+}
+
+.grid-rows-6 {
+  grid-template-rows: repeat(6, minmax(0, 1fr));
+}
+
+.grid-rows-none {
+  grid-template-rows: none;
+}
+
+/* Grid Row Span */
+.row-span-1 {
+  grid-row: span 1 / span 1;
+}
+
+.row-span-2 {
+  grid-row: span 2 / span 2;
+}
+
+.row-span-3 {
+  grid-row: span 3 / span 3;
+}
+
+.row-span-4 {
+  grid-row: span 4 / span 4;
+}
+
+.row-span-5 {
+  grid-row: span 5 / span 5;
+}
+
+.row-span-6 {
+  grid-row: span 6 / span 6;
+}
+
+.row-span-full {
+  grid-row: 1 / -1;
+}
+
+/* Grid Gap */
+.gap-0 {
+  gap: 0;
+}
+
+.gap-1 {
+  gap: var(--space-xs);
+}
+
+.gap-2 {
+  gap: var(--space-sm);
+}
+
+.gap-3 {
+  gap: var(--space-md);
+}
+
+.gap-4 {
+  gap: var(--space-lg);
+}
+
+.gap-5 {
+  gap: var(--space-xl);
+}
+
+.gap-6 {
+  gap: var(--space-2xl);
+}
+
+/* Grid Column Gap */
+.gap-x-0 {
+  column-gap: 0;
+}
+
+.gap-x-1 {
+  column-gap: var(--space-xs);
+}
+
+.gap-x-2 {
+  column-gap: var(--space-sm);
+}
+
+.gap-x-3 {
+  column-gap: var(--space-md);
+}
+
+.gap-x-4 {
+  column-gap: var(--space-lg);
+}
+
+.gap-x-5 {
+  column-gap: var(--space-xl);
+}
+
+.gap-x-6 {
+  column-gap: var(--space-2xl);
+}
+
+/* Grid Row Gap */
+.gap-y-0 {
+  row-gap: 0;
+}
+
+.gap-y-1 {
+  row-gap: var(--space-xs);
+}
+
+.gap-y-2 {
+  row-gap: var(--space-sm);
+}
+
+.gap-y-3 {
+  row-gap: var(--space-md);
+}
+
+.gap-y-4 {
+  row-gap: var(--space-lg);
+}
+
+.gap-y-5 {
+  row-gap: var(--space-xl);
+}
+
+.gap-y-6 {
+  row-gap: var(--space-2xl);
+}
+
+/* ========================================
+   POSITION UTILITIES
+   ======================================== */
+
+.static {
+  position: static;
+}
+
+.fixed {
+  position: fixed;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.relative {
+  position: relative;
+}
+
+.sticky {
+  position: sticky;
+}
+
+/* Position Values */
+.inset-0 {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+.inset-auto {
+  top: auto;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.top-0 {
+  top: 0;
+}
+
+.right-0 {
+  right: 0;
+}
+
+.bottom-0 {
+  bottom: 0;
+}
+
+.left-0 {
+  left: 0;
+}
+
+.top-auto {
+  top: auto;
+}
+
+.right-auto {
+  right: auto;
+}
+
+.bottom-auto {
+  bottom: auto;
+}
+
+.left-auto {
+  left: auto;
+}
+
+/* Z-Index */
+.z-0 {
+  z-index: 0;
+}
+
+.z-10 {
+  z-index: 10;
+}
+
+.z-20 {
+  z-index: 20;
+}
+
+.z-30 {
+  z-index: 30;
+}
+
+.z-40 {
+  z-index: 40;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+/* ========================================
+   DISPLAY UTILITIES
+   ======================================== */
+
+.block {
+  display: block;
+}
+
+.inline-block {
+  display: inline-block;
+}
+
+.inline {
+  display: inline;
+}
+
+.hidden {
+  display: none;
+}
+
+/* ========================================
+   OVERFLOW UTILITIES
+   ======================================== */
+
+.overflow-auto {
+  overflow: auto;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-visible {
+  overflow: visible;
+}
+
+.overflow-scroll {
+  overflow: scroll;
+}
+
+.overflow-x-auto {
+  overflow-x: auto;
+}
+
+.overflow-x-hidden {
+  overflow-x: hidden;
+}
+
+.overflow-x-visible {
+  overflow-x: visible;
+}
+
+.overflow-x-scroll {
+  overflow-x: scroll;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+.overflow-y-hidden {
+  overflow-y: hidden;
+}
+
+.overflow-y-visible {
+  overflow-y: visible;
+}
+
+.overflow-y-scroll {
+  overflow-y: scroll;
+}
+
+/* ========================================
+   WORKFLOW LAYOUT SPECIFIC
+   ======================================== */
+
+/* Main Workflow Layout */
+.workflow-layout {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: 1fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.workflow-layout.sidebar-collapsed {
+  grid-template-columns: var(--sidebar-width-collapsed) 1fr;
+}
+
+/* Canvas Layout */
+.canvas-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.canvas-header {
+  flex-shrink: 0;
+  height: var(--sidebar-header-height);
+}
+
+.canvas-content {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Agent Grid Layout */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--agent-card-min-width), 1fr));
+  gap: var(--space-md);
+  padding: var(--padding-md);
+}
+
+/* Node Grid Layout */
+.node-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--node-min-width), 1fr));
+  gap: var(--space-lg);
+  padding: var(--padding-lg);
+}
+
+/* Connection Layer */
+.connection-layer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: var(--z-index-connection);
+}
+
+/* ========================================
+   RESPONSIVE LAYOUT UTILITIES
+   ======================================== */
+
+/* Mobile First Responsive Grid */
+@media (min-width: 640px) {
+  .sm\:grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .sm\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sm\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .md\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-1 {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .lg\:grid-cols-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+/* Responsive Workflow Layout */
+@media (max-width: 1024px) {
+  .workflow-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+
+  .workflow-layout .sidebar {
+    grid-row: 1;
+    height: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .workflow-layout .canvas-content {
+    grid-row: 2;
+  }
+}
+
+/* ========================================
+   SPACING UTILITIES
+   ======================================== */
+
+/* Margin Utilities */
+.m-0 { margin: 0; }
+.m-1 { margin: var(--space-xs); }
+.m-2 { margin: var(--space-sm); }
+.m-3 { margin: var(--space-md); }
+.m-4 { margin: var(--space-lg); }
+.m-5 { margin: var(--space-xl); }
+.m-6 { margin: var(--space-2xl); }
+
+.mx-auto { margin-left: auto; margin-right: auto; }
+
+.mt-0 { margin-top: 0; }
+.mt-1 { margin-top: var(--space-xs); }
+.mt-2 { margin-top: var(--space-sm); }
+.mt-3 { margin-top: var(--space-md); }
+.mt-4 { margin-top: var(--space-lg); }
+.mt-5 { margin-top: var(--space-xl); }
+.mt-6 { margin-top: var(--space-2xl); }
+
+.mr-0 { margin-right: 0; }
+.mr-1 { margin-right: var(--space-xs); }
+.mr-2 { margin-right: var(--space-sm); }
+.mr-3 { margin-right: var(--space-md); }
+.mr-4 { margin-right: var(--space-lg); }
+.mr-5 { margin-right: var(--space-xl); }
+.mr-6 { margin-right: var(--space-2xl); }
+
+.mb-0 { margin-bottom: 0; }
+.mb-1 { margin-bottom: var(--space-xs); }
+.mb-2 { margin-bottom: var(--space-sm); }
+.mb-3 { margin-bottom: var(--space-md); }
+.mb-4 { margin-bottom: var(--space-lg); }
+.mb-5 { margin-bottom: var(--space-xl); }
+.mb-6 { margin-bottom: var(--space-2xl); }
+
+.ml-0 { margin-left: 0; }
+.ml-1 { margin-left: var(--space-xs); }
+.ml-2 { margin-left: var(--space-sm); }
+.ml-3 { margin-left: var(--space-md); }
+.ml-4 { margin-left: var(--space-lg); }
+.ml-5 { margin-left: var(--space-xl); }
+.ml-6 { margin-left: var(--space-2xl); }
+
+/* Padding Utilities */
+.p-0 { padding: 0; }
+.p-1 { padding: var(--space-xs); }
+.p-2 { padding: var(--space-sm); }
+.p-3 { padding: var(--space-md); }
+.p-4 { padding: var(--space-lg); }
+.p-5 { padding: var(--space-xl); }
+.p-6 { padding: var(--space-2xl); }
+
+.px-0 { padding-left: 0; padding-right: 0; }
+.px-1 { padding-left: var(--space-xs); padding-right: var(--space-xs); }
+.px-2 { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+.px-3 { padding-left: var(--space-md); padding-right: var(--space-md); }
+.px-4 { padding-left: var(--space-lg); padding-right: var(--space-lg); }
+.px-5 { padding-left: var(--space-xl); padding-right: var(--space-xl); }
+.px-6 { padding-left: var(--space-2xl); padding-right: var(--space-2xl); }
+
+.py-0 { padding-top: 0; padding-bottom: 0; }
+.py-1 { padding-top: var(--space-xs); padding-bottom: var(--space-xs); }
+.py-2 { padding-top: var(--space-sm); padding-bottom: var(--space-sm); }
+.py-3 { padding-top: var(--space-md); padding-bottom: var(--space-md); }
+.py-4 { padding-top: var(--space-lg); padding-bottom: var(--space-lg); }
+.py-5 { padding-top: var(--space-xl); padding-bottom: var(--space-xl); }
+.py-6 { padding-top: var(--space-2xl); padding-bottom: var(--space-2xl); }

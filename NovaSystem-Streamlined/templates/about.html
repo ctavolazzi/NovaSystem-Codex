@@ -1,0 +1,528 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - About{% endblock %}
+{% block window_title %}NovaSystem v3.0 - About{% endblock %}
+
+{% block styles %}
+<style>
+    /* About page specific styles */
+    .about-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .about-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+    }
+
+    .about-logo {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+        border-radius: 8px;
+        margin: 0 auto 16px auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        color: white;
+        font-weight: bold;
+    }
+
+    .about-title {
+        font-size: 24px;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
+
+    .about-version {
+        font-size: 14px;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+    }
+
+    .about-tagline {
+        font-size: 12px;
+        color: #666;
+        font-style: italic;
+    }
+
+    .about-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .about-section {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 16px;
+    }
+
+    .about-section-title {
+        font-size: 14px;
+        color: var(--primary-color);
+        margin-bottom: 12px;
+        font-weight: bold;
+        border-bottom: 1px solid #c0c0c0;
+        padding-bottom: 4px;
+    }
+
+    .about-text {
+        font-size: 11px;
+        color: var(--text-primary);
+        line-height: 1.5;
+        margin-bottom: 8px;
+    }
+
+    .about-list {
+        margin: 8px 0;
+        padding-left: 16px;
+    }
+
+    .about-list li {
+        font-size: 11px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .about-features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .about-feature {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .about-feature-icon {
+        font-size: 20px;
+        margin-bottom: 4px;
+    }
+
+    .about-feature-title {
+        font-size: 10px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+    }
+
+    .about-feature-desc {
+        font-size: 9px;
+        color: #666;
+    }
+
+    .about-tech-stack {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 8px;
+        margin-top: 12px;
+    }
+
+    .about-tech-item {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 6px;
+        text-align: center;
+        font-size: 10px;
+        color: var(--text-primary);
+    }
+
+    .about-team {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .about-team-member {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .about-team-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(45deg, var(--accent-color), var(--secondary-color));
+        border-radius: 50%;
+        margin: 0 auto 8px auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+    }
+
+    .about-team-name {
+        font-size: 11px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 2px;
+    }
+
+    .about-team-role {
+        font-size: 9px;
+        color: #666;
+        margin-bottom: 4px;
+    }
+
+    .about-team-bio {
+        font-size: 9px;
+        color: var(--text-primary);
+        line-height: 1.3;
+    }
+
+    .about-footer {
+        margin-top: auto;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        text-align: center;
+    }
+
+    .about-footer-text {
+        font-size: 10px;
+        color: #666;
+        margin-bottom: 8px;
+    }
+
+    .about-footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .about-footer-link {
+        color: var(--primary-color);
+        text-decoration: none;
+        font-size: 10px;
+        padding: 4px 8px;
+        border: 1px solid var(--primary-color);
+        border-radius: 3px;
+        transition: all 0.2s ease;
+    }
+
+    .about-footer-link:hover {
+        background: var(--primary-color);
+        color: white;
+    }
+
+    .about-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .about-stat {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        text-align: center;
+    }
+
+    .about-stat-number {
+        font-size: 16px;
+        font-weight: bold;
+        color: var(--primary-color);
+        display: block;
+    }
+
+    .about-stat-label {
+        font-size: 9px;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    .about-license {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        margin-top: 12px;
+        font-size: 9px;
+        color: #666;
+        text-align: center;
+    }
+
+    .about-changelog {
+        max-height: 200px;
+        overflow-y: auto;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        margin-top: 12px;
+    }
+
+    .about-changelog-item {
+        font-size: 9px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        padding-bottom: 4px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .about-changelog-version {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .about-changelog-date {
+        color: #666;
+        margin-left: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="about-container">
+    <!-- About Header -->
+    <div class="about-header">
+        <div class="about-logo">N</div>
+        <div class="about-title">NovaSystem</div>
+        <div class="about-version">Version 3.0.0</div>
+        <div class="about-tagline">Advanced AI-Powered Problem-Solving Framework</div>
+    </div>
+
+    <!-- About Content -->
+    <div class="about-content">
+        <!-- Overview -->
+        <div class="about-section">
+            <div class="about-section-title">Overview</div>
+            <div class="about-text">
+                NovaSystem is a cutting-edge AI platform that orchestrates multiple specialized AI agents to solve complex problems collaboratively. Built with modern web technologies and designed for both individual users and enterprise teams.
+            </div>
+            <div class="about-text">
+                Our mission is to democratize access to advanced AI capabilities while maintaining the highest standards of security, performance, and user experience.
+            </div>
+        </div>
+
+        <!-- Key Features -->
+        <div class="about-section">
+            <div class="about-section-title">Key Features</div>
+            <div class="about-features">
+                <div class="about-feature">
+                    <div class="about-feature-icon">🤖</div>
+                    <div class="about-feature-title">Multi-Agent AI</div>
+                    <div class="about-feature-desc">Specialized AI agents working together</div>
+                </div>
+                <div class="about-feature">
+                    <div class="about-feature-icon">⚡</div>
+                    <div class="about-feature-title">Workflow Builder</div>
+                    <div class="about-feature-desc">Visual workflow creation and management</div>
+                </div>
+                <div class="about-feature">
+                    <div class="about-feature-icon">📊</div>
+                    <div class="about-feature-title">Analytics</div>
+                    <div class="about-feature-desc">Comprehensive performance insights</div>
+                </div>
+                <div class="about-feature">
+                    <div class="about-feature-icon">🔒</div>
+                    <div class="about-feature-title">Security</div>
+                    <div class="about-feature-desc">Enterprise-grade data protection</div>
+                </div>
+                <div class="about-feature">
+                    <div class="about-feature-icon">📱</div>
+                    <div class="about-feature-title">Responsive</div>
+                    <div class="about-feature-desc">Works on all devices and screen sizes</div>
+                </div>
+                <div class="about-feature">
+                    <div class="about-feature-icon">🎨</div>
+                    <div class="about-feature-title">Customizable</div>
+                    <div class="about-feature-desc">Extensive theming and configuration</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technology Stack -->
+        <div class="about-section">
+            <div class="about-section-title">Technology Stack</div>
+            <div class="about-text">
+                NovaSystem is built using modern, proven technologies for reliability and performance:
+            </div>
+            <div class="about-tech-stack">
+                <div class="about-tech-item">Python 3.9+</div>
+                <div class="about-tech-item">Flask Web Framework</div>
+                <div class="about-tech-item">SQLite Database</div>
+                <div class="about-tech-item">HTML5 & CSS3</div>
+                <div class="about-tech-item">JavaScript ES6+</div>
+                <div class="about-tech-item">Chart.js</div>
+                <div class="about-tech-item">WebSocket API</div>
+                <div class="about-tech-item">RESTful APIs</div>
+            </div>
+        </div>
+
+        <!-- AI Models -->
+        <div class="about-section">
+            <div class="about-section-title">Supported AI Models</div>
+            <div class="about-text">
+                NovaSystem integrates with leading AI providers:
+            </div>
+            <ul class="about-list">
+                <li><strong>Claude 3.5 Sonnet</strong> - Anthropic's most capable model</li>
+                <li><strong>GPT-4</strong> - OpenAI's flagship language model</li>
+                <li><strong>Claude 3 Haiku</strong> - Fast and efficient for simple tasks</li>
+                <li><strong>GPT-3.5 Turbo</strong> - Cost-effective for high-volume usage</li>
+                <li><strong>Custom Models</strong> - Support for custom OpenAI-compatible APIs</li>
+            </ul>
+        </div>
+
+        <!-- Statistics -->
+        <div class="about-section">
+            <div class="about-section-title">Project Statistics</div>
+            <div class="about-stats">
+                <div class="about-stat">
+                    <span class="about-stat-number">10K+</span>
+                    <div class="about-stat-label">Lines of Code</div>
+                </div>
+                <div class="about-stat">
+                    <span class="about-stat-number">50+</span>
+                    <div class="about-stat-label">Features</div>
+                </div>
+                <div class="about-stat">
+                    <span class="about-stat-number">5</span>
+                    <div class="about-stat-label">AI Agents</div>
+                </div>
+                <div class="about-stat">
+                    <span class="about-stat-number">99.9%</span>
+                    <div class="about-stat-label">Uptime</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team -->
+        <div class="about-section">
+            <div class="about-section-title">Development Team</div>
+            <div class="about-team">
+                <div class="about-team-member">
+                    <div class="about-team-avatar">CT</div>
+                    <div class="about-team-name">Chris Tavolazzi</div>
+                    <div class="about-team-role">Lead Developer</div>
+                    <div class="about-team-bio">Full-stack developer with expertise in AI integration and system architecture.</div>
+                </div>
+                <div class="about-team-member">
+                    <div class="about-team-avatar">AI</div>
+                    <div class="about-team-name">AI Assistant</div>
+                    <div class="about-team-role">Code Generation</div>
+                    <div class="about-team-bio">Advanced AI assistant helping with code generation, testing, and optimization.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Changelog -->
+    <div class="about-section">
+        <div class="about-section-title">Recent Updates</div>
+        <div class="about-changelog">
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v3.0.0</span>
+                <span class="about-changelog-date">2025-09-27</span>
+                <div>Complete UI redesign with unified navigation system, responsive design, and Windows XP theme</div>
+            </div>
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v2.5.1</span>
+                <span class="about-changelog-date">2025-09-26</span>
+                <div>Enhanced analytics dashboard with real-time metrics and improved chart visualizations</div>
+            </div>
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v2.5.0</span>
+                <span class="about-changelog-date">2025-09-25</span>
+                <div>Added workflow builder with visual node editor and multi-agent orchestration</div>
+            </div>
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v2.4.2</span>
+                <span class="about-changelog-date">2025-09-24</span>
+                <div>Improved session management and added real-time monitoring capabilities</div>
+            </div>
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v2.4.1</span>
+                <span class="about-changelog-date">2025-09-23</span>
+                <div>Bug fixes and performance optimizations for chat interface</div>
+            </div>
+            <div class="about-changelog-item">
+                <span class="about-changelog-version">v2.4.0</span>
+                <span class="about-changelog-date">2025-09-22</span>
+                <div>Added support for multiple AI models and improved error handling</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- License & Footer -->
+    <div class="about-footer">
+        <div class="about-footer-text">
+            © 2025 NovaSystem. Built with ❤️ for the AI community.
+        </div>
+        <div class="about-footer-links">
+            <a href="#" class="about-footer-link">GitHub</a>
+            <a href="#" class="about-footer-link">Documentation</a>
+            <a href="#" class="about-footer-link">Support</a>
+            <a href="#" class="about-footer-link">Privacy Policy</a>
+            <a href="#" class="about-footer-link">Terms of Service</a>
+        </div>
+        <div class="about-license">
+            This software is licensed under the MIT License. See LICENSE file for details.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.initPage = function() {
+        // Add any interactive functionality here
+        console.log('NovaSystem v3.0 - About page loaded');
+
+        // Animate stats on load
+        const statNumbers = document.querySelectorAll('.about-stat-number');
+        statNumbers.forEach(stat => {
+            const finalValue = stat.textContent;
+            const numericValue = parseFloat(finalValue.replace(/[^\d.]/g, ''));
+
+            if (!isNaN(numericValue)) {
+                let currentValue = 0;
+                const increment = numericValue / 50;
+                const timer = setInterval(() => {
+                    currentValue += increment;
+                    if (currentValue >= numericValue) {
+                        stat.textContent = finalValue;
+                        clearInterval(timer);
+                    } else {
+                        if (finalValue.includes('K')) {
+                            stat.textContent = Math.floor(currentValue) + 'K+';
+                        } else if (finalValue.includes('%')) {
+                            stat.textContent = currentValue.toFixed(1) + '%';
+                        } else {
+                            stat.textContent = Math.floor(currentValue);
+                        }
+                    }
+                }, 30);
+            }
+        });
+    };
+</script>
+{% endblock %}

@@ -1,0 +1,456 @@
+/* ========================================
+   WORKFLOW NODE COMPONENT STYLES
+   Self-contained, modular component styles
+   ======================================== */
+
+@import '../../../styles/variables.css';
+
+/* ========================================
+   WORKFLOW NODE BASE STYLES
+   ======================================== */
+
+.workflowNode {
+  position: absolute;
+  width: var(--node-width);
+  min-width: var(--node-min-width);
+  height: var(--node-height);
+  min-height: var(--node-min-height);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  cursor: move;
+  transition: var(--transition-normal);
+  user-select: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-index-node);
+}
+
+.workflowNode:hover {
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.workflowNode.selected {
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  background: var(--bg-active);
+}
+
+.workflowNode.dragging {
+  opacity: var(--drag-opacity);
+  transform: scale(var(--drag-scale));
+  z-index: var(--z-index-drag);
+  box-shadow: var(--shadow-xl);
+  border-color: var(--primary-blue);
+  cursor: grabbing;
+}
+
+/* ========================================
+   NODE HEADER
+   ======================================== */
+
+.nodeHeader {
+  display: flex;
+  align-items: center;
+  padding: var(--padding-sm) var(--padding-md);
+  background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+  border-bottom: var(--border-width-thin) solid var(--border-light);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.nodeIcon {
+  width: var(--size-sm);
+  height: var(--size-sm);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  margin-right: var(--space-sm);
+  flex-shrink: 0;
+  background: var(--primary-blue);
+  color: var(--white);
+}
+
+.nodeTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  line-height: var(--line-height-tight);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nodeStatus {
+  width: var(--status-indicator-size);
+  height: var(--status-indicator-size);
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  margin-left: var(--space-sm);
+}
+
+.nodeStatus.idle {
+  background-color: var(--gray-400);
+}
+
+.nodeStatus.processing {
+  background-color: var(--warning-orange);
+  animation: pulse 2s infinite;
+}
+
+.nodeStatus.complete {
+  background-color: var(--success-green);
+}
+
+.nodeStatus.error {
+  background-color: var(--error-red);
+}
+
+/* ========================================
+   NODE CONTENT
+   ======================================== */
+
+.nodeContent {
+  flex: 1;
+  padding: var(--padding-sm) var(--padding-md);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+
+.nodeDescription {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-height-normal);
+  text-align: center;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* ========================================
+   CONNECTION PORTS
+   ======================================== */
+
+.nodePorts {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.connectionPort {
+  position: absolute;
+  width: var(--node-port-size);
+  height: var(--node-port-size);
+  border-radius: var(--radius-full);
+  background-color: var(--bg-card);
+  border: var(--border-width-medium) solid var(--border-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  z-index: var(--z-index-port);
+  pointer-events: all;
+}
+
+.connectionPort:hover {
+  border-color: var(--primary-blue);
+  transform: scale(1.2);
+  background-color: var(--bg-hover);
+}
+
+.connectionPort.connected {
+  background-color: var(--success-green);
+  border-color: var(--success-green);
+}
+
+.connectionPort.input {
+  left: calc(-1 * var(--node-port-size) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.connectionPort.output {
+  right: calc(-1 * var(--node-port-size) / 2);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.connectionPort.input:hover {
+  left: calc(-1 * var(--node-port-size) / 2);
+  top: 50%;
+  transform: translateY(-50%) scale(1.2);
+}
+
+.connectionPort.output:hover {
+  right: calc(-1 * var(--node-port-size) / 2);
+  top: 50%;
+  transform: translateY(-50%) scale(1.2);
+}
+
+/* Multiple input/output ports */
+.connectionPort.input:nth-of-type(2) {
+  top: 30%;
+}
+
+.connectionPort.input:nth-of-type(3) {
+  top: 70%;
+}
+
+.connectionPort.output:nth-of-type(2) {
+  top: 30%;
+}
+
+.connectionPort.output:nth-of-type(3) {
+  top: 70%;
+}
+
+/* ========================================
+   NODE STATES
+   ======================================== */
+
+.workflowNode.processing {
+  border-color: var(--warning-orange);
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.05) 0%, rgba(245, 166, 35, 0.1) 100%);
+}
+
+.workflowNode.processing .nodeHeader {
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.1) 0%, rgba(245, 166, 35, 0.2) 100%);
+}
+
+.workflowNode.complete {
+  border-color: var(--success-green);
+  background: linear-gradient(135deg, rgba(126, 211, 33, 0.05) 0%, rgba(126, 211, 33, 0.1) 100%);
+}
+
+.workflowNode.complete .nodeHeader {
+  background: linear-gradient(135deg, rgba(126, 211, 33, 0.1) 0%, rgba(126, 211, 33, 0.2) 100%);
+}
+
+.workflowNode.error {
+  border-color: var(--error-red);
+  background: linear-gradient(135deg, rgba(208, 2, 27, 0.05) 0%, rgba(208, 2, 27, 0.1) 100%);
+}
+
+.workflowNode.error .nodeHeader {
+  background: linear-gradient(135deg, rgba(208, 2, 27, 0.1) 0%, rgba(208, 2, 27, 0.2) 100%);
+}
+
+/* ========================================
+   NODE VARIANTS
+   ======================================== */
+
+.workflowNode.compact {
+  width: var(--node-min-width);
+  height: var(--node-min-height);
+}
+
+.workflowNode.compact .nodeHeader {
+  padding: var(--padding-xs) var(--padding-sm);
+}
+
+.workflowNode.compact .nodeIcon {
+  width: var(--size-xs);
+  height: var(--size-xs);
+  font-size: var(--font-size-xs);
+  margin-right: var(--space-xs);
+}
+
+.workflowNode.compact .nodeTitle {
+  font-size: var(--font-size-xs);
+}
+
+.workflowNode.compact .nodeContent {
+  padding: var(--padding-xs) var(--padding-sm);
+}
+
+.workflowNode.compact .nodeDescription {
+  font-size: 10px;
+  -webkit-line-clamp: 1;
+}
+
+.workflowNode.large {
+  width: 220px;
+  height: 100px;
+}
+
+.workflowNode.large .nodeHeader {
+  padding: var(--padding-md) var(--padding-lg);
+}
+
+.workflowNode.large .nodeIcon {
+  width: var(--size-md);
+  height: var(--size-md);
+  font-size: var(--font-size-md);
+  margin-right: var(--space-md);
+}
+
+.workflowNode.large .nodeTitle {
+  font-size: var(--font-size-md);
+}
+
+.workflowNode.large .nodeContent {
+  padding: var(--padding-md) var(--padding-lg);
+}
+
+.workflowNode.large .nodeDescription {
+  font-size: var(--font-size-sm);
+  -webkit-line-clamp: 3;
+}
+
+/* ========================================
+   NODE INTERACTIONS
+   ======================================== */
+
+.workflowNode:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+.workflowNode:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+.workflowNode.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.workflowNode.disabled:hover {
+  transform: none;
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ========================================
+   NODE ANIMATIONS
+   ======================================== */
+
+.workflowNode.entering {
+  animation: scaleIn var(--duration-normal) var(--ease-out);
+}
+
+.workflowNode.exiting {
+  animation: scaleOut var(--duration-normal) var(--ease-in);
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ========================================
+   NODE RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .workflowNode {
+    width: 100%;
+    max-width: var(--node-width);
+    height: auto;
+    min-height: var(--node-min-height);
+  }
+
+  .workflowNode .nodeContent {
+    padding: var(--padding-sm);
+  }
+
+  .workflowNode .nodeDescription {
+    -webkit-line-clamp: 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .workflowNode {
+    min-width: 120px;
+  }
+
+  .workflowNode .nodeHeader {
+    padding: var(--padding-xs) var(--padding-sm);
+  }
+
+  .workflowNode .nodeIcon {
+    width: var(--size-xs);
+    height: var(--size-xs);
+    font-size: var(--font-size-xs);
+  }
+
+  .workflowNode .nodeTitle {
+    font-size: var(--font-size-xs);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .workflowNode {
+    transition: none;
+  }
+
+  .workflowNode:hover {
+    transform: none;
+  }
+
+  .workflowNode.dragging {
+    transform: none;
+  }
+
+  .nodeStatus.processing {
+    animation: none;
+    background-color: var(--warning-orange);
+  }
+
+  .workflowNode.entering,
+  .workflowNode.exiting {
+    animation: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .workflowNode {
+    border-width: var(--border-width-medium);
+  }
+
+  .workflowNode:hover,
+  .workflowNode.selected {
+    border-width: var(--border-width-thick);
+  }
+
+  .connectionPort {
+    border-width: var(--border-width-medium);
+  }
+}

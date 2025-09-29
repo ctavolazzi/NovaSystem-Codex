@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NovaSystem - Multi-Agent Problem Solver</title>
+    <title>NovaSystem v2.0</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wDR0dH/VVVVf1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/0dHR/////wD///8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVVf9HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/////////////////////x8fH/39/f/9VVVX/VVVX39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVX/1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVX/1VVVf9VVVX/VVVV39HR0f////8A////AP///wDR0dH/VVVV31VVVf9VVVX/VVVX/1VVVf9VVVX/VVVX/VVVX/1VVVf90dHR/////wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A//8AAP//AAD//wAA//8AAIABAACAAQAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAA==">
     <style>
         :root {
             /* Authentic Windows XP Blue Theme Colors */
@@ -14,142 +15,100 @@
             --warning-color: #FF8000;
             --error-color: #FF0000;
             --text-primary: #000000;
-            --text-secondary: #000000;
             --text-white: #ffffff;
             --bg-primary: #ECE9D8;
-            --bg-secondary: #F5F5DC;
+            --bg-secondary: #F1F1F1;
             --bg-tertiary: #FFFFFF;
             --bg-window: #ECE9D8;
-            --bg-taskbar: #ECE9D8;
+            --bg-sidebar: #D6D3CE;
             --border-light: #ffffff;
             --border-dark: #7A96DF;
-            --border-inset: #A0A0A0;
+            --border-inset: #c0c0c0;
             --shadow: 1px 1px 2px rgba(0,0,0,0.3);
-            --shadow-inset: inset 1px 1px 2px rgba(0,0,0,0.3);
-            --border-radius: 4px;
-            --transition: all 0.1s ease;
             --windows-font: 'Tahoma', 'MS Sans Serif', sans-serif;
         }
 
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
             font-family: var(--windows-font);
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.3;
-            min-height: 100vh;
+            background: linear-gradient(180deg, #5A98D8 0%, #86C5F5 50%, #7BB8E8 100%);
+            height: 100vh;
+            overflow: hidden;
             position: relative;
         }
 
         /* Windows XP Desktop Background */
         body::before {
             content: '';
-            position: fixed;
+            position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: var(--bg-primary);
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="85" cy="15" r="8" fill="rgba(255,255,255,0.1)"/><circle cx="15" cy="85" r="12" fill="rgba(255,255,255,0.05)"/></svg>');
             pointer-events: none;
-            z-index: -1;
         }
 
-        /* Windows Taskbar */
-        .windows-taskbar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 30px;
-            background: var(--bg-taskbar);
-            border-top: 1px solid #ffffff;
-            border-bottom: 1px solid #8d8a85;
-            display: flex;
-            align-items: center;
-            padding: 0 8px;
-            z-index: 1000;
-            font-family: var(--windows-font);
-            font-size: 8pt;
-            color: var(--text-primary);
-        }
-
-        .start-button {
-            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
-            border: 1px outset #ffffff;
-            border-bottom-color: #808080;
-            border-right-color: #808080;
-            padding: 4px 12px;
-            margin-right: 8px;
-            cursor: pointer;
-            font-family: var(--windows-font);
-            font-size: 8pt;
-            color: var(--text-primary);
-            border-radius: 3px;
-            min-height: 23px;
-        }
-
-        .start-button:hover {
-            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
-        }
-
-        .start-button:active {
-            border: 1px inset #808080;
-            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
-        }
-
-        .taskbar-time {
-            margin-left: auto;
-            font-size: 8pt;
-        }
-        .header {
-            margin-bottom: 16px;
+        /* Main Application Window */
+        .main-window {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 40px;
             background: var(--bg-window);
-            border: 1px solid var(--border-dark);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            position: relative;
+            border: 1px solid #0054E3;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
         }
 
+        /* Window Title Bar */
         .window-titlebar {
             background: linear-gradient(180deg, #0054E3, #3B8CFF);
             color: var(--text-white);
             padding: 4px 8px;
-            font-size: 8pt;
+            font-size: 11px;
             font-weight: bold;
-            border-bottom: 1px solid #0054E3;
-            border-top: 1px solid #3B8CFF;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-radius: 4px 4px 0 0;
-            font-family: var(--windows-font);
+            border-bottom: 1px solid #0054E3;
+        }
+
+        .window-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .window-icon {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border-radius: 2px;
         }
 
         .window-controls {
             display: flex;
-            gap: 2px;
+            gap: 1px;
         }
 
         .window-control {
-            width: 16px;
-            height: 14px;
+            width: 17px;
+            height: 15px;
             background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
             border: 1px outset #ffffff;
-            border-bottom-color: #808080;
-            border-right-color: #808080;
-            font-size: 8px;
+            font-size: 9px;
             text-align: center;
-            line-height: 12px;
+            line-height: 13px;
             cursor: pointer;
-            border-radius: 3px;
             color: var(--text-primary);
-            font-family: var(--windows-font);
         }
 
         .window-control:hover {
@@ -158,151 +117,207 @@
 
         .window-control:active {
             border: 1px inset #808080;
-            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
         }
 
-        .window-content {
-            padding: 16px;
-            text-align: center;
+        /* Menu Bar */
+        .menu-bar {
+            background: var(--bg-window);
+            border-bottom: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            display: flex;
+            gap: 16px;
         }
 
-        .header h1 {
-            font-size: 14pt;
-            margin: 0;
+        .menu-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .menu-item:hover {
+            background: #316ac5;
+            color: white;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            background: var(--bg-window);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 200px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid #c0c0c0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 8px;
+            border-bottom: 1px solid #b8b5b2;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
             font-weight: bold;
             color: var(--text-primary);
-            letter-spacing: 0px;
-            font-family: var(--windows-font);
+            margin-bottom: 8px;
+            padding: 4px;
         }
 
-        .header p {
-            font-size: 8pt;
+        .sidebar-item {
+            padding: 6px 8px;
+            font-size: 11px;
             color: var(--text-primary);
-            margin: 8px 0;
+            cursor: pointer;
+            border-radius: 2px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sidebar-item:hover {
+            background: #e8e5e0;
+        }
+
+        .sidebar-item.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .sidebar-icon {
+            width: 16px;
+            height: 16px;
+            background: #4a90e2;
+            border-radius: 1px;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-tertiary);
+        }
+
+        .chat-header {
+            text-align: center;
+            padding: 20px;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid #c0c0c0;
+        }
+
+        .chat-title {
+            font-size: 18px;
+            color: #316ac5;
+            margin-bottom: 4px;
             font-weight: normal;
-            font-family: var(--windows-font);
         }
 
-        .header .subtitle {
-            font-size: 7pt;
-            color: var(--text-primary);
-            margin-top: 4px;
-            font-family: var(--windows-font);
-            font-style: italic;
+        .chat-subtitle {
+            font-size: 11px;
+            color: #666;
         }
-        .form-container {
-            background: var(--bg-window);
-            margin-bottom: 16px;
-            border: 1px solid var(--border-dark);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
+
+        /* Chat Messages Area */
+        .chat-messages {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+            border-bottom: 1px solid #c0c0c0;
+        }
+
+        .message {
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            border-radius: 0px; /* XP style - no rounded corners */
+            max-width: 80%;
+            line-height: 1.4;
+            font-size: 11px;
+            border: 1px solid #c0c0c0;
+        }
+
+        .message.user {
+            background: #E1E1E1;
+            border: 1px inset #c0c0c0;
+            margin-left: auto;
+            margin-right: 0;
+        }
+
+        .message.bot {
+            background: #DAEEFF;
+            border: 1px inset #a0c0e0;
+            margin-left: 0;
+            margin-right: auto;
             position: relative;
         }
 
-        .form-titlebar {
-            background: linear-gradient(180deg, #0054E3, #3B8CFF);
-            color: var(--text-white);
-            padding: 4px 8px;
-            font-size: 8pt;
-            font-weight: bold;
-            border-bottom: 1px solid #0054E3;
-            border-top: 1px solid #3B8CFF;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 4px 4px 0 0;
-            font-family: var(--windows-font);
+        .message:hover .copy-btn {
+            opacity: 1;
         }
 
-        .form-content {
-            padding: 16px;
+        .copy-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 20px;
+            height: 20px;
+            background: #f0f0f0;
+            border: 1px outset #ffffff;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-size: 10px;
+            line-height: 18px;
+            text-align: center;
         }
 
-        .status-bar {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border-dark);
-            padding: 4px 8px;
-            font-size: 8pt;
-            color: var(--text-primary);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: var(--windows-font);
+        .copy-btn:active {
+            border-style: inset;
         }
-        .form-group {
-            margin-bottom: 25px;
-        }
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 25px;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: normal;
-            color: var(--text-primary);
-            font-size: 8pt;
-            font-family: var(--windows-font);
-        }
-        .form-help {
-            font-size: 7pt;
-            color: var(--text-primary);
-            margin-top: 4px;
+
+        .message.system {
+            background: #FFF8DC;
+            border: 1px inset #e0e0a0;
+            margin: 0 auto;
+            max-width: 60%;
+            text-align: center;
             font-style: italic;
-            font-family: var(--windows-font);
+            color: #666;
         }
 
-        /* FIXED FORM INPUTS - No more black backgrounds! */
-        input, textarea, select {
-            width: 100%;
+        /* Chat Input Form */
+        .chat-input-form {
+            padding: 12px;
+            background: var(--bg-window);
+            border-top: 1px solid #c0c0c0;
+        }
+
+        .chat-input-form form {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .chat-input-form input {
+            flex: 1;
             padding: 4px 6px;
             border: 2px inset #c0c0c0;
-            font-size: 8pt;
-            transition: var(--transition);
-            box-sizing: border-box;
-            background: #ffffff !important; /* Force white background */
-            color: #000000 !important; /* Force black text */
+            font-size: 11px;
+            background: #ffffff !important;
+            color: #000000 !important;
             font-family: var(--windows-font);
-            border-radius: 0px; /* XP inputs had sharp corners */
         }
 
-        input:focus, textarea:focus, select:focus {
+        .chat-input-form input:focus {
             outline: none;
             border: 2px inset #316ac5;
-            background: #ffffff !important;
-            color: #000000 !important;
-        }
-
-        input:hover, textarea:hover, select:hover {
-            background: #ffffff !important;
-            color: #000000 !important;
-        }
-
-        /* Specific fixes for select dropdowns */
-        select {
-            background: #ffffff !important;
-            color: #000000 !important;
-            border: 2px inset #c0c0c0;
-            padding: 3px 4px;
-        }
-
-        select option {
-            background: #ffffff !important;
-            color: #000000 !important;
-        }
-
-        textarea {
-            min-height: 120px;
-            resize: vertical;
-            background: #ffffff !important;
-            color: #000000 !important;
-        }
-
-        /* Placeholder text */
-        input::placeholder, textarea::placeholder {
-            color: #999999 !important;
         }
 
         .btn {
@@ -311,494 +326,569 @@
             border: 1px outset #ffffff;
             border-bottom-color: #808080;
             border-right-color: #808080;
-            padding: 6px 12px;
-            font-size: 8pt;
-            font-weight: normal;
+            padding: 6px 16px;
+            font-size: 11px;
             cursor: pointer;
-            transition: var(--transition);
-            position: relative;
             font-family: var(--windows-font);
-            border-radius: 3px;
             min-height: 23px;
         }
+
         .btn:hover {
             background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
         }
+
         .btn:active {
             border: 1px inset #808080;
             background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
         }
+
         .btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            border: 2px inset var(--border-dark);
         }
-        .btn-secondary {
-            background: var(--bg-secondary);
-            color: var(--text-secondary);
-            border: 2px solid var(--border-dark);
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--bg-window);
+            border-top: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .btn-secondary:hover {
-            background: var(--border-color);
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            border: 1px solid #808080;
         }
-        .results {
-            background: var(--bg-primary);
-            padding: 40px;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            margin-top: 30px;
-            display: none;
-            border: 1px solid var(--border-color);
-            position: relative;
-            overflow: hidden;
+        .status-indicator.ready { background: #6BBF44; }
+        .status-indicator.processing {
+            background: #3B8CFF;
+            animation: pulse 1.5s infinite;
         }
-        .results::before {
-            content: '';
+        .status-indicator.error { background: #FF0000; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Windows Taskbar */
+        .windows-taskbar {
             position: absolute;
-            top: 0;
+            bottom: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--success-color), var(--primary-color));
-        }
-        .loading {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-secondary);
-        }
-        .spinner-container {
+            height: 30px;
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border-top: 1px solid #ffffff;
             display: flex;
-            flex-direction: column;
             align-items: center;
-            gap: 20px;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 4px solid var(--border-color);
-            border-top: 4px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        .loading-text {
-            font-size: 1.1em;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-        .loading-subtext {
-            font-size: 0.9em;
-            color: var(--text-secondary);
-            margin-top: 5px;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        .error {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
-            color: var(--error-color);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid var(--error-color);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-        .success {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
-            color: var(--success-color);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid var(--success-color);
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-        .warning {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
-            color: var(--warning-color);
-            padding: 20px;
-            border-radius: 8px;
-            margin: 15px 0;
-            border-left: 4px solid var(--warning-color);
-            border: 1px solid rgba(245, 158, 11, 0.2);
+            padding: 0 4px;
+            font-size: 11px;
+            color: white;
         }
 
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            .header h1 {
-                font-size: 2.5em;
-            }
-            .header p {
-                font-size: 1.1em;
-            }
-            .form-container {
-                padding: 25px;
-            }
-            .form-row {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            .btn {
-                width: 100%;
-                margin-top: 10px;
-            }
-            .results {
-                padding: 25px;
-            }
+        .start-button {
+            background: linear-gradient(180deg, #44bb44, #2d7d2d);
+            border: 1px outset #44bb44;
+            padding: 4px 12px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            color: white;
+            font-weight: bold;
+            border-radius: 2px;
         }
 
-        @media (max-width: 480px) {
-            .header {
-                padding: 25px 15px;
-            }
-            .header h1 {
-                font-size: 2em;
-            }
-            .form-container {
-                padding: 20px;
-            }
-            .results {
-                padding: 20px;
-            }
+        .start-button:hover {
+            background: linear-gradient(180deg, #54cc54, #3d8d3d);
         }
 
-        /* Accessibility improvements */
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
+        .taskbar-app {
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border: 1px solid #ffffff;
+            padding: 4px 8px;
+            margin-right: 4px;
+            font-size: 11px;
+            color: white;
+            border-radius: 2px;
         }
 
-        /* REMOVED DARK MODE - Windows XP doesn't support dark mode! */
+        .taskbar-time {
+            margin-left: auto;
+            font-size: 11px;
+            color: white;
+        }
 
-        .model-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-size: 0.9em;
+        /* Typing indicator */
+        .typing-indicator {
+            padding: 8px 12px;
+            background: #f0f0f0;
+            border: 1px inset #c0c0c0;
+            margin: 8px 0;
+            font-style: italic;
             color: #666;
+            font-size: 11px;
+        }
+
+        .typing-dots {
+            display: inline-block;
+            animation: typing 1.5s infinite;
+        }
+
+        @keyframes typing {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        /* Scrollbar styling for XP */
+        .chat-messages::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border: 1px inset #c0c0c0;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #d0d0d0, #a0a0a0);
+            border: 1px outset #d0d0d0;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #e0e0e0, #b0b0b0);
         }
     </style>
 </head>
 <body>
-    <div class="header">
+    <!-- Main Application Window -->
+    <div class="main-window">
+        <!-- Window Title Bar -->
         <div class="window-titlebar">
-            <span>NovaSystem v2.0</span>
+            <div class="window-title">
+                <div class="window-icon"></div>
+                <span>NovaSystem v2.0</span>
+            </div>
             <div class="window-controls">
                 <div class="window-control">_</div>
                 <div class="window-control">□</div>
                 <div class="window-control">×</div>
             </div>
         </div>
-        <div class="window-content">
-            <h1>NovaSystem</h1>
-            <p>Multi-Agent Problem-Solving Framework</p>
-            <div class="subtitle">Welcome to the early internet experience!</div>
+
+        <!-- Menu Bar -->
+        <div class="menu-bar">
+            <div class="menu-item">File</div>
+            <div class="menu-item">Edit</div>
+            <div class="menu-item">View</div>
+            <div class="menu-item">Tools</div>
+            <div class="menu-item">Help</div>
         </div>
-    </div>
 
-    <div class="form-container">
-        <div class="form-titlebar">
-            <span>Problem Solver</span>
-            <div class="window-controls">
-                <div class="window-control">_</div>
-                <div class="window-control">□</div>
-                <div class="window-control">×</div>
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item active">
+                        <div class="sidebar-icon"></div>
+                        <span>Chat</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Problem Solver</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Agent Manager</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Recent Chats</div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Marketing Strategy</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Code Help</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Data Analysis</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" style="margin-top: auto;">
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="chat-container">
+                <div class="chat-header">
+                    <div class="chat-title">What can I help with?</div>
+                    <div class="chat-subtitle">Multi-Agent Problem-Solving Framework</div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages">
+                    <div class="message system">Welcome to NovaSystem! How can I assist you today?</div>
+                </div>
+
+                <div class="chat-input-form">
+                    <form id="messageForm">
+                        <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off">
+                        <button type="submit" class="btn">Send</button>
+                    </form>
+                </div>
             </div>
         </div>
-        <div class="form-content">
-            <form id="novaForm">
-            <div class="form-group">
-                <label for="problem">Problem Statement *</label>
-                <textarea id="problem" name="problem" placeholder="Describe the problem you'd like to solve in detail. Be specific about context, constraints, and desired outcomes..." required></textarea>
-                <div class="form-help">The more specific and detailed your problem description, the better our AI experts can help you solve it.</div>
-            </div>
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="domains">Expertise Domains</label>
-                    <input type="text" id="domains" name="domains" placeholder="Technology, Business, Science, etc." value="General,Technology,Business">
-                    <div class="form-help">Comma-separated list of expertise areas</div>
-                </div>
-
-                <div class="form-group">
-                    <label for="max_iterations">Max Iterations</label>
-                    <select id="max_iterations" name="max_iterations">
-                        <option value="1">1 iteration (quick)</option>
-                        <option value="3" selected>3 iterations (balanced)</option>
-                        <option value="5">5 iterations (thorough)</option>
-                        <option value="7">7 iterations (comprehensive)</option>
-                        <option value="10">10 iterations (deep analysis)</option>
-                    </select>
-                    <div class="form-help">More iterations = deeper analysis</div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="model">AI Model</label>
-                <select id="model" name="model">
-                    <option value="auto">Auto-select (recommended)</option>
-                    <option value="gpt-4">GPT-4 (OpenAI)</option>
-                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo (OpenAI)</option>
-                    <option value="claude-3">Claude-3 (Anthropic)</option>
-                    <option value="ollama:phi3">Phi3 (Local - Fast)</option>
-                    <option value="ollama:llama2">Llama2 (Local - Balanced)</option>
-                    <option value="ollama:gpt-oss:20b">GPT-OSS 20B (Local - Large)</option>
-                </select>
-                <div class="model-info">
-                    <strong>💡 Model Selection:</strong> Auto-select intelligently chooses the best available model based on your system capabilities and task requirements. For complex problems, GPT-4 or Claude-3 are recommended.
-                </div>
-            </div>
-
-                <div style="display: flex; gap: 15px; margin-top: 30px;">
-                    <button type="submit" class="btn" id="submitBtn">
-                        <span id="btnText">Solve Problem</span>
-                    </button>
-                    <button type="button" class="btn btn-secondary" id="clearBtn">Clear Form</button>
-                </div>
-            </form>
-        </div>
+        <!-- Status Bar -->
         <div class="status-bar">
-            <span>Ready</span>
-            <span>NovaSystem v2.0</span>
-        </div>
-    </div>
-
-    <div id="results" class="results">
-        <div id="loading" class="loading" style="display: none;">
-            <div class="spinner-container">
-                <div class="spinner"></div>
-                <div class="loading-text">Processing...</div>
-                <div class="loading-subtext">NovaSystem is working on your problem...</div>
-                <div class="loading-subtext pulse">Please wait while our AI experts collaborate</div>
+            <div>
+                <span id="status-indicator" class="status-indicator ready"></span>
+                <span id="status">Ready</span>
             </div>
+            <span>NovaSystem v2.0 | Connected</span>
         </div>
-        <div id="error" class="error" style="display: none;"></div>
-        <div id="warning" class="warning" style="display: none;"></div>
-        <div id="success" class="success" style="display: none;"></div>
-        <div id="output"></div>
     </div>
 
     <!-- Windows Taskbar -->
     <div class="windows-taskbar">
         <button class="start-button">Start</button>
+        <div class="taskbar-app">NovaSystem v2.0</div>
         <span class="taskbar-time" id="taskbar-time"></span>
     </div>
 
     <script>
-        // Windows 95 style functionality
-        function updateTaskbarTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-US', {
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            document.getElementById('taskbar-time').textContent = timeString;
-        }
-
-        // Enhanced form handling with better UX
         document.addEventListener('DOMContentLoaded', function() {
-            // Initialize taskbar time
-            updateTaskbarTime();
-            setInterval(updateTaskbarTime, 1000);
-            const form = document.getElementById('novaForm');
-            const submitBtn = document.getElementById('submitBtn');
-            const btnText = document.getElementById('btnText');
-            const clearBtn = document.getElementById('clearBtn');
-            const problemTextarea = document.getElementById('problem');
+    // Windows XP functionality
+    function updateTaskbarTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString('en-US', {
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        document.getElementById('taskbar-time').textContent = timeString;
+    }
 
-            // Clear form functionality
-            clearBtn.addEventListener('click', function() {
-                form.reset();
-                document.getElementById('results').style.display = 'none';
-                problemTextarea.focus();
-            });
+    updateTaskbarTime();
+    setInterval(updateTaskbarTime, 1000);
 
-            // Auto-resize textarea
-            problemTextarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.max(120, this.scrollHeight) + 'px';
-            });
+    const messageForm = document.getElementById('messageForm');
+    const messageInput = document.getElementById('messageInput');
+    const chatMessages = document.getElementById('chat-messages');
+    const statusSpan = document.getElementById('status');
+    const statusIndicator = document.getElementById('status-indicator');
 
-            // Form validation
-            function validateForm() {
-                const problem = document.getElementById('problem').value.trim();
-                if (!problem) {
-                    showError('Please enter a problem statement before submitting.');
-                    return false;
+    // Status update helper
+    function updateStatus(state, text) {
+        statusIndicator.className = 'status-indicator'; // Reset classes
+        statusIndicator.classList.add(state); // 'ready', 'processing', or 'error'
+        statusSpan.textContent = text;
+    }
+
+    // Focus on input when page loads
+    messageInput.focus();
+
+    // Form submission handler
+    messageForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const messageText = messageInput.value.trim();
+
+        if (messageText) {
+            addMessage(messageText, 'user');
+            messageInput.value = '';
+            updateStatus('processing', 'Processing...');
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                // Format the data the way your backend expects
+                let problemText = messageText;
+
+                // Pad short messages to meet 10 character minimum
+                if (problemText.length < 10) {
+                    problemText = `Please help me with: ${messageText}`;
                 }
-                if (problem.length < 10) {
-                    showWarning('Consider providing more detail about your problem for better results.');
-                }
-                return true;
-            }
 
-            // Enhanced error handling
-            function showError(message) {
-                hideAllMessages();
-                const errorDiv = document.getElementById('error');
-                errorDiv.innerHTML = `<strong>❌ Error:</strong> ${message}`;
-                errorDiv.style.display = 'block';
-                document.getElementById('results').style.display = 'block';
-            }
-
-            function showWarning(message) {
-                hideAllMessages();
-                const warningDiv = document.getElementById('warning');
-                warningDiv.innerHTML = `<strong>⚠️ Warning:</strong> ${message}`;
-                warningDiv.style.display = 'block';
-                document.getElementById('results').style.display = 'block';
-            }
-
-            function showSuccess(message) {
-                hideAllMessages();
-                const successDiv = document.getElementById('success');
-                successDiv.innerHTML = `<strong>✅ Success:</strong> ${message}`;
-                successDiv.style.display = 'block';
-                document.getElementById('results').style.display = 'block';
-            }
-
-            function hideAllMessages() {
-                document.getElementById('error').style.display = 'none';
-                document.getElementById('warning').style.display = 'none';
-                document.getElementById('success').style.display = 'none';
-            }
-
-            // Enhanced form submission
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
-
-                if (!validateForm()) return;
-
-                const formData = new FormData(e.target);
-                const data = {
-                    problem: formData.get('problem'),
-                    domains: formData.get('domains').split(',').map(d => d.trim()).filter(d => d),
-                    max_iterations: parseInt(formData.get('max_iterations')),
-                    model: formData.get('model') === 'auto' ? 'gpt-4' : formData.get('model')
+                const requestData = {
+                    problem: problemText,
+                    domains: ["General", "Technology", "Business"],
+                    max_iterations: 3,
+                    model: "auto"
                 };
 
-                // Enhanced loading state
-                document.getElementById('results').style.display = 'block';
-                document.getElementById('loading').style.display = 'block';
-                hideAllMessages();
-                document.getElementById('output').innerHTML = '';
+                console.log('Sending request:', requestData);
 
-                submitBtn.disabled = true;
-                btnText.textContent = 'Processing...';
+                const response = await fetch('/api/solve', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestData)
+                });
 
-                try {
-                    const response = await fetch('/api/solve', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(data)
-                    });
+                console.log('Response status:', response.status);
 
-                    const result = await response.json();
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error:', errorText);
+                    throw new Error(`Server error: ${response.status}`);
+                }
 
-                    if (!response.ok) {
-                        throw new Error(result.error || 'An error occurred while processing your request');
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                // Check if this is a session start response
+                if (data.status === 'started' && data.session_id) {
+                    // Show session started message
+                    addMessage(`Session started! Processing your request...`, 'bot');
+                    updateStatus('processing', 'Processing in background...');
+
+                    // Start polling for results
+                    pollForResults(data.session_id);
+                } else {
+                    // Fallback response
+                    hideTypingIndicator();
+                    const botResponse = data.message || data.response || 'Processing started, but no immediate response available.';
+                    addMessage(botResponse, 'bot');
+                    updateStatus('ready', 'Ready');
+                }
+
+            } catch (error) {
+                console.error('Error details:', error);
+                hideTypingIndicator();
+                addErrorMessage(`Sorry, there was an error: ${error.message}`);
+                updateStatus('error', 'Error');
+            }
+
+            messageInput.focus();
+        }
+    });
+
+    // Polling function to check for results
+    async function pollForResults(sessionId) {
+        const maxAttempts = 60; // Poll for up to 5 minutes
+        let attempts = 0;
+
+        const poll = async () => {
+            try {
+                attempts++;
+                console.log(`Polling attempt ${attempts} for session ${sessionId}`);
+
+                const response = await fetch(`/api/sessions/${sessionId}/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    let errorText = `Status endpoint failed with status ${response.status}`;
+                    try {
+                        const errorJson = await response.json();
+                        errorText = errorJson.detail || errorText;
+                    } catch (e) {
+                        // Not a json error, stick with the status code
                     }
 
-                    // Show success with enhanced formatting
-                    document.getElementById('loading').style.display = 'none';
-                    showSuccess(`Problem solved successfully! Session ID: ${result.session_id}`);
-
-                    // Enhanced results display
-                    const outputDiv = document.getElementById('output');
-                    outputDiv.innerHTML = `
-                        <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid var(--success-color);">
-                            <strong>🎯 Solution Summary</strong><br>
-                            <small>Model Used: ${result.model_used || 'Auto-selected'} | Session: ${result.session_id}</small>
-                        </div>
-                        <div style="white-space: pre-wrap; line-height: 1.8; font-size: 1.05em; color: var(--text-primary);">
-                            ${result.result || 'No result available'}
-                        </div>
-                    `;
-
-                } catch (error) {
-                    document.getElementById('loading').style.display = 'none';
-                    showError(error.message);
-                    console.error('Error:', error);
-                } finally {
-                    submitBtn.disabled = false;
-                    btnText.textContent = 'Solve Problem';
+                     // If status is not found, it might be complete, try getting result.
+                    if (response.status === 404 && attempts > 1) { // 404 might mean it's done and removed from active.
+                        console.log("Session status not found, attempting to fetch result directly.");
+                        const resultResponse = await fetch(`/api/sessions/${sessionId}/result`);
+                        if(resultResponse.ok) {
+                            const data = await resultResponse.json();
+                             if (data.result) {
+                                const solution = data.result.final_synthesis || JSON.stringify(data.result, null, 2);
+                                addMessage(solution, 'bot');
+                                updateStatus('ready', 'Ready');
+                                hideTypingIndicator();
+                                return;
+                            }
+                        }
+                    }
+                    throw new Error(errorText);
                 }
+
+                const data = await response.json();
+                console.log('Polling response:', data);
+
+                if (data.status === 'completed' || data.status === 'error') {
+                     hideTypingIndicator();
+
+                    if (data.status === 'error') {
+                        addErrorMessage(`Session failed: ${data.error || 'Unknown error'}`);
+                        updateStatus('error', 'Error');
+                        return;
+                    }
+
+                    const resultResponse = await fetch(`/api/sessions/${sessionId}/result`);
+                    const finalResult = await resultResponse.json();
+
+                    if (!resultResponse.ok) {
+                        throw new Error(finalResult.error || 'Failed to get final result.');
+                    }
+
+                    const solution = finalResult.result && finalResult.result.final_synthesis
+                        ? finalResult.result.final_synthesis
+                        : JSON.stringify(finalResult.result, null, 2);
+
+                    addMessage(solution, 'bot');
+                    updateStatus('ready', 'Ready');
+                    return;
+
+                } else if (data.status === 'running') {
+                    // Still processing, continue polling
+                    if (attempts < maxAttempts) {
+                        const elapsed = attempts * 3;
+                        updateStatus('processing', `Processing... (${elapsed}s elapsed)`);
+                        updateProcessingMessage(attempts, data.current_iteration, data.total_iterations);
+                        setTimeout(poll, 3000); // Check again in 3 seconds
+                    } else {
+                        addErrorMessage('Processing is taking longer than expected. The system may still be working in the background.');
+                        updateStatus('ready', 'Ready');
+                        hideTypingIndicator();
+                    }
+                    return;
+                }
+
+                // If we get here, no valid response was received for status
+                if (attempts < maxAttempts) {
+                    const elapsed = attempts * 3;
+                    updateStatus('processing', `Processing... (${elapsed}s elapsed)`);
+                    setTimeout(poll, 3000);
+                } else {
+                    addErrorMessage('Unable to get results. The processing may have completed but the results endpoint is not available.');
+                    updateStatus('ready', 'Ready');
+                    hideTypingIndicator();
+                }
+
+            } catch (error) {
+                console.error('Polling error:', error);
+                if (attempts < maxAttempts) {
+                    setTimeout(poll, 5000); // Try again after a longer delay on error
+                } else {
+                    addErrorMessage('Error checking for results. Please try again.');
+                    updateStatus('ready', 'Ready');
+                    hideTypingIndicator();
+                }
+            }
+        };
+
+        // Start polling after a short delay
+        setTimeout(poll, 3000);
+    }
+
+    // Update the processing message to show progress
+    function updateProcessingMessage(attempts, current_iteration, total_iterations) {
+        const processingMsg = document.querySelector('.message.bot:last-child');
+        if (processingMsg && processingMsg.textContent.includes('Processing your request')) {
+            const elapsed = attempts * 3;
+            let percentage = 0;
+            if(total_iterations > 0) {
+                percentage = Math.min(Math.round((current_iteration / total_iterations) * 100), 95); // Cap at 95%
+            } else {
+                percentage = Math.min(Math.round((elapsed / 120) * 100), 95); // Fallback to time-based
+            }
+            processingMsg.textContent = `Processing your request... (${elapsed}s elapsed, ~${percentage}% complete)`;
+        }
+    }
+
+    // Helper functions
+    function addMessage(text, type) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', type);
+        messageElement.textContent = text;
+
+        if (type === 'bot') {
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = '📋';
+            copyBtn.title = 'Copy to clipboard';
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(text).then(() => {
+                    copyBtn.textContent = '✅';
+                    setTimeout(() => {
+                        copyBtn.textContent = '📋';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                });
             });
+            messageElement.appendChild(copyBtn);
+        }
 
-            // Add keyboard shortcuts
-            document.addEventListener('keydown', function(e) {
-                if (e.ctrlKey && e.key === 'Enter') {
-                    form.dispatchEvent(new Event('submit'));
-                }
-                if (e.key === 'Escape') {
-                    clearBtn.click();
-                }
-            });
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
-            // Add helpful tooltips and hints
-            const hints = {
-                problem: '💡 Tip: Be specific about context, constraints, and desired outcomes',
-                domains: '💡 Tip: Choose 2-4 relevant expertise areas for best results',
-                max_iterations: '💡 Tip: More iterations = deeper analysis but longer processing time',
-                model: '💡 Tip: Auto-select is recommended for optimal performance'
-            };
+    function addErrorMessage(text) {
+        const messageElement = document.createElement('div');
+        messageElement.classList.add('message', 'system'); // Use 'system' style for errors
+        messageElement.textContent = text;
+        messageElement.style.color = 'var(--error-color)';
+        messageElement.style.fontWeight = 'bold';
+        chatMessages.appendChild(messageElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
-            // Add hint functionality
-            Object.keys(hints).forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.addEventListener('focus', function() {
-                        showHint(hints[id]);
-                    });
-                }
-            });
+    function showTypingIndicator() {
+        // Don't show if it's already there
+        if (document.getElementById('typing-indicator')) return;
+        const typingElement = document.createElement('div');
+        typingElement.classList.add('typing-indicator');
+        typingElement.id = 'typing-indicator';
+        typingElement.innerHTML = 'NovaSystem is thinking<span class="typing-dots">...</span>';
+        chatMessages.appendChild(typingElement);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 
-            function showHint(message) {
-                // Create or update hint element
-                let hintElement = document.getElementById('hint');
-                if (!hintElement) {
-                    hintElement = document.createElement('div');
-                    hintElement.id = 'hint';
-                    hintElement.style.cssText = `
-                        position: fixed;
-                        top: 20px;
-                        right: 20px;
-                        background: var(--primary-color);
-                        color: white;
-                        padding: 12px 16px;
-                        border-radius: 8px;
-                        font-size: 0.9em;
-                        z-index: 1000;
-                        max-width: 300px;
-                        box-shadow: var(--shadow);
-                        transition: var(--transition);
-                    `;
-                    document.body.appendChild(hintElement);
-                }
-                hintElement.textContent = message;
-                hintElement.style.opacity = '1';
+    function hideTypingIndicator() {
+        const typingElement = document.getElementById('typing-indicator');
+        if (typingElement) {
+            typingElement.parentElement.removeChild(typingElement);
+        }
+    }
 
-                setTimeout(() => {
-                    hintElement.style.opacity = '0';
-                }, 3000);
+    // Sidebar navigation
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.addEventListener('click', function() {
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+        });
+    });
+
+    // Window control buttons
+    document.querySelectorAll('.window-control').forEach((control, index) => {
+        control.addEventListener('click', function() {
+            if (index === 0) { // Minimize
+                console.log('Minimize clicked');
+            } else if (index === 1) { // Maximize
+                console.log('Maximize clicked');
+            } else if (index === 2) { // Close
+                console.log('Close clicked');
             }
         });
+    });
+});
     </script>
 </body>
 </html>

@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Workflow Edition{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Workflow Edition{% endblock %}
+
+{% block styles %}
+<style>
+    /* Workflow-specific styles */
+    .workflow-sidebar {
+        width: 250px;
+    }
+
+    /* Agent Toolbar */
+    .agent-toolbar {
+        background: var(--bg-secondary);
+        border-bottom: 1px solid #c0c0c0;
+        padding: 8px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .agent-button {
+        background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+        border: 1px outset #ffffff;
+        border-radius: 3px;
+        padding: 8px 12px;
+        font-size: 11px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        min-width: 80px;
+        transition: all 0.1s ease;
+    }
+
+    .agent-button:hover {
+        background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+    }
+
+    .agent-button:active {
+        border: 1px inset #808080;
+    }
+
+    .agent-icon {
+        width: 24px;
+        height: 24px;
+        border-radius: 3px;
+    }
+
+    .agent-button.problem-solver .agent-icon { background: #4A90E2; }
+    .agent-button.data-analyst .agent-icon { background: #7ED321; }
+    .agent-button.research-bot .agent-icon { background: #F5A623; }
+    .agent-button.code-helper .agent-icon { background: #D0021B; }
+    .agent-button.marketing-bot .agent-icon { background: #9013FE; }
+
+    .add-agents-label {
+        font-size: 11px;
+        color: var(--text-primary);
+        margin-right: 8px;
+        font-weight: bold;
+    }
+
+    /* Workflow Canvas */
+    .workflow-canvas {
+        flex: 1;
+        background: var(--bg-tertiary);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .canvas-svg {
+        width: 100%;
+        height: 100%;
+        background:
+            radial-gradient(circle at 20px 20px, #ddd 2px, transparent 2px),
+            radial-gradient(circle at 0px 0px, #ddd 1px, transparent 1px);
+        background-size: 20px 20px, 20px 20px;
+        background-position: 0 0, 10px 10px;
+    }
+
+    /* Node Styles */
+    .workflow-node {
+        cursor: move;
+        user-select: none;
+    }
+
+    .node-rect {
+        fill: #f0f0f0;
+        stroke: #999;
+        stroke-width: 1;
+        rx: 8;
+        ry: 8;
+    }
+
+    .node-rect.problem-solver { fill: #E3F2FD; stroke: #1976D2; }
+    .node-rect.data-analyst { fill: #E8F5E8; stroke: #388E3C; }
+    .node-rect.research-bot { fill: #FFF3E0; stroke: #F57C00; }
+    .node-rect.code-helper { fill: #FFEBEE; stroke: #D32F2F; }
+    .node-rect.marketing-bot { fill: #F3E5F5; stroke: #7B1FA2; }
+
+    .node-text {
+        fill: #333;
+        font-family: var(--windows-font);
+        font-size: 12px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+    }
+
+    .node-status {
+        fill: #666;
+        font-family: var(--windows-font);
+        font-size: 10px;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        pointer-events: none;
+    }
+
+    .node-output {
+        font-family: 'Courier New', monospace;
+        font-size: 9px;
+        fill: #333;
+        text-anchor: middle;
+        dominant-baseline: middle;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .connection-line {
+        stroke: #666;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead);
+    }
+
+    .connection-port {
+        fill: #4CAF50;
+        stroke: #2E7D32;
+        stroke-width: 1;
+        cursor: crosshair;
+    }
+
+    /* Workflow Controls */
+    .workflow-controls {
+        padding: 12px 8px;
+    }
+
+    .control-group {
+        margin-bottom: 12px;
+    }
+
+    .control-label {
+        font-size: 10px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .btn.start { background: linear-gradient(180deg, #90EE90, #7ED321); }
+    .btn.pause { background: linear-gradient(180deg, #FFD700, #F5A623); }
+    .btn.reset { background: linear-gradient(180deg, #FFB6C1, #FF69B4); }
+
+    /* Drag placeholder */
+    .drag-preview {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+
+    /* Final Result Textarea */
+    #finalResult {
+        width: 100%;
+        height: 150px;
+        font-family: var(--windows-font);
+        font-size: 11px;
+        border: 1px inset #c0c0c0;
+        padding: 4px;
+        margin-top: 8px;
+        background-color: var(--bg-tertiary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Agent Toolbar -->
+<div class="agent-toolbar">
+    <span class="add-agents-label">Add New Agents</span>
+    <div class="agent-button problem-solver" data-agent-type="problem-solver">
+        <div class="agent-icon"></div>
+        <span>Problem Solver</span>
+    </div>
+    <div class="agent-button data-analyst" data-agent-type="data-analyst">
+        <div class="agent-icon"></div>
+        <span>Data Analyst</span>
+    </div>
+    <div class="agent-button research-bot" data-agent-type="research-bot">
+        <div class="agent-icon"></div>
+        <span>Research Bot</span>
+    </div>
+    <div class="agent-button code-helper" data-agent-type="code-helper">
+        <div class="agent-icon"></div>
+        <span>Code Helper</span>
+    </div>
+    <div class="agent-button marketing-bot" data-agent-type="marketing-bot">
+        <div class="agent-icon"></div>
+        <span>Marketing Bot</span>
+    </div>
+</div>
+
+<!-- Main Content with Workflow Canvas -->
+<div class="main-content">
+    <!-- Sidebar with Workflow-specific content -->
+    <div class="sidebar workflow-sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">My Workflows</div>
+            <div class="sidebar-item active">
+                <div class="sidebar-icon"></div>
+                <span>Weather Update</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Weather Update</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Water Bottle Description</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Quantum Computing Explained</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Best Roman Emperors</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Vacation Balancing Ideas</span>
+            </div>
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Bonsai Watering Tips</span>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Final Result</div>
+            <textarea id="finalResult" readonly>Workflow results will appear here...</textarea>
+        </div>
+
+        <div class="sidebar-section">
+            <div class="sidebar-title">Workflow Controls</div>
+            <div class="workflow-controls">
+                <div class="control-group">
+                    <label class="control-label">Start Controls</label>
+                    <button class="btn start" id="startBtn">Start</button>
+                    <button class="btn pause" id="pauseBtn">Pause</button>
+                </div>
+                <div class="control-group">
+                    <button class="btn reset" id="resetBtn">Reset</button>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Emergency Controls</label>
+                    <button class="btn kill" id="killAllBtn" style="background-color: #dc3545; color: white;">Kill All Workflows</button>
+                    <button class="btn kill" id="killCurrentBtn" style="background-color: #fd7e14; color: white;">Kill Current</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section" style="margin-top: auto;">
+            <div class="sidebar-item">
+                <div class="sidebar-icon"></div>
+                <span>Upgrade plan</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Workflow Canvas -->
+    <div class="workflow-canvas">
+        <svg class="canvas-svg" id="workflowCanvas">
+            <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                        refX="9" refY="3.5" orient="auto">
+                    <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+                </marker>
+            </defs>
+            <!-- Workflow nodes and connections will be dynamically created here -->
+        </svg>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Workflow Engine - NovaSystem v3.0
+    class WorkflowEngine {
+        constructor() {
+            this.nodes = [];
+            this.connections = [];
+            this.canvas = document.getElementById('workflowCanvas');
+            this.isDragging = false;
+            this.dragNode = null;
+            this.dragOffset = { x: 0, y: 0 };
+            this.nodeCounter = 0;
+
+            this.init();
+        }
+
+        init() {
+            this.setupEventListeners();
+            this.updateTaskbarTime();
+            setInterval(() => this.updateTaskbarTime(), 1000);
+
+            // Create sample workflow
+            this.createSampleWorkflow();
+        }
+
+        setupEventListeners() {
+            // Agent toolbar buttons
+            document.querySelectorAll('.agent-button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const agentType = btn.getAttribute('data-agent-type');
+                    this.addNode(agentType, 300 + Math.random() * 200, 150 + Math.random() * 100);
+                });
+            });
+
+            // Workflow controls
+            document.getElementById('startBtn').addEventListener('click', () => this.startWorkflow());
+            document.getElementById('pauseBtn').addEventListener('click', () => this.pauseWorkflow());
+            document.getElementById('resetBtn').addEventListener('click', () => this.resetWorkflow());
+
+            // Kill controls
+            document.getElementById('killAllBtn').addEventListener('click', () => this.killAllWorkflows());
+            document.getElementById('killCurrentBtn').addEventListener('click', () => this.killCurrentWorkflow());
+
+            // Canvas mouse events
+            this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+            this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+            this.canvas.addEventListener('mouseup', (e) => this.onMouseUp(e));
+        }
+
+        createSampleWorkflow() {
+            // Create sample nodes like in the target image
+            const research = this.addNode('research-bot', 600, 200);
+            const data = this.addNode('data-analyst', 800, 300);
+            const code = this.addNode('code-helper', 600, 400);
+            const marketing = this.addNode('marketing-bot', 950, 400);
+            const solver = this.addNode('problem-solver', 750, 500);
+
+            // Add connections
+            setTimeout(() => {
+                this.addConnection(research.id, data.id);
+                this.addConnection(research.id, code.id);
+                this.addConnection(data.id, marketing.id);
+                this.addConnection(code.id, solver.id);
+                this.addConnection(marketing.id, solver.id);
+            }, 100);
+        }
+
+        addNode(type, x, y) {
+            const node = {
+                id: `node_${++this.nodeCounter}`,
+                type: type,
+                x: x,
+                y: y,
+                width: 120,
+                height: 60,
+                status: 'idle',
+                title: this.getNodeTitle(type)
+            };
+
+            this.nodes.push(node);
+            this.renderNode(node);
+            return node;
+        }
+
+        getNodeTitle(type) {
+            const titles = {
+                'problem-solver': 'Problem Solver',
+                'data-analyst': 'Data Analyst',
+                'research-bot': 'Research Bot',
+                'code-helper': 'Code Helper',
+                'marketing-bot': 'Marketing Bot'
+            };
+            return titles[type] || 'Unknown';
+        }
+
+        renderNode(node) {
+            const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            group.classList.add('workflow-node');
+            group.setAttribute('data-node-id', node.id);
+            group.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+
+            // Node rectangle
+            const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            rect.classList.add('node-rect', node.type);
+            rect.setAttribute('width', node.width);
+            rect.setAttribute('height', node.height);
+            rect.setAttribute('x', -node.width/2);
+            rect.setAttribute('y', -node.height/2);
+
+            // Node title
+            const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            title.classList.add('node-text');
+            title.setAttribute('y', -5);
+            title.textContent = node.title;
+
+            // Node status
+            const status = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            status.classList.add('node-status');
+            status.setAttribute('y', 10);
+            status.textContent = node.status;
+
+            // Node output text (initially hidden)
+            const outputText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            outputText.classList.add('node-output');
+            outputText.setAttribute('y', 25);
+            outputText.textContent = '...';
+
+            // Connection ports
+            const portSize = 6;
+            const ports = [
+                { x: -node.width/2, y: 0, class: 'input' },
+                { x: node.width/2, y: 0, class: 'output' }
+            ];
+
+            ports.forEach(port => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.classList.add('connection-port', port.class);
+                circle.setAttribute('cx', port.x);
+                circle.setAttribute('cy', port.y);
+                circle.setAttribute('r', portSize);
+                group.appendChild(circle);
+            });
+
+            group.appendChild(rect);
+            group.appendChild(title);
+            group.appendChild(status);
+            group.appendChild(outputText);
+
+            this.canvas.appendChild(group);
+            return group;
+        }
+
+        addConnection(fromNodeId, toNodeId) {
+            const connection = {
+                id: `conn_${fromNodeId}_${toNodeId}`,
+                from: fromNodeId,
+                to: toNodeId
+            };
+
+            this.connections.push(connection);
+            this.renderConnection(connection);
+        }
+
+        renderConnection(connection) {
+            const fromNode = this.nodes.find(n => n.id === connection.from);
+            const toNode = this.nodes.find(n => n.id === connection.to);
+
+            if (!fromNode || !toNode) return;
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.classList.add('connection-line');
+            path.setAttribute('data-connection-id', connection.id);
+
+            this.updateConnectionPath(path, fromNode, toNode);
+            this.canvas.appendChild(path);
+        }
+
+        updateConnectionPath(path, fromNode, toNode) {
+            const startX = fromNode.x + fromNode.width/2;
+            const startY = fromNode.y;
+            const endX = toNode.x - toNode.width/2;
+            const endY = toNode.y;
+
+            const midX = (startX + endX) / 2;
+            const pathData = `M ${startX} ${startY} Q ${midX} ${startY} ${midX} ${(startY + endY)/2} Q ${midX} ${endY} ${endX} ${endY}`;
+
+            path.setAttribute('d', pathData);
+        }
+
+        onMouseDown(e) {
+            const target = e.target.closest('.workflow-node');
+            if (target) {
+                this.isDragging = true;
+                this.dragNode = target;
+
+                const rect = this.canvas.getBoundingClientRect();
+                const nodeId = target.getAttribute('data-node-id');
+                const node = this.nodes.find(n => n.id === nodeId);
+
+                this.dragOffset.x = e.clientX - rect.left - node.x;
+                this.dragOffset.y = e.clientY - rect.top - node.y;
+
+                target.style.cursor = 'grabbing';
+            }
+        }
+
+        onMouseMove(e) {
+            if (this.isDragging && this.dragNode) {
+                const rect = this.canvas.getBoundingClientRect();
+                const nodeId = this.dragNode.getAttribute('data-node-id');
+                const node = this.nodes.find(n => n.id === nodeId);
+
+                node.x = e.clientX - rect.left - this.dragOffset.x;
+                node.y = e.clientY - rect.top - this.dragOffset.y;
+
+                this.dragNode.setAttribute('transform', `translate(${node.x}, ${node.y})`);
+                this.updateConnections(nodeId);
+            }
+        }
+
+        onMouseUp(e) {
+            if (this.isDragging) {
+                this.isDragging = false;
+                if (this.dragNode) {
+                    this.dragNode.style.cursor = 'move';
+                    this.dragNode = null;
+                }
+            }
+        }
+
+        updateConnections(nodeId) {
+            this.connections.forEach(conn => {
+                if (conn.from === nodeId || conn.to === nodeId) {
+                    const fromNode = this.nodes.find(n => n.id === conn.from);
+                    const toNode = this.nodes.find(n => n.id === conn.to);
+                    const path = this.canvas.querySelector(`[data-connection-id="${conn.id}"]`);
+
+                    if (path && fromNode && toNode) {
+                        this.updateConnectionPath(path, fromNode, toNode);
+                    }
+                }
+            });
+        }
+
+        pollForWorkflowStatus(sessionId) {
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(`/api/sessions/${sessionId}/status`);
+                    if (!response.ok) {
+                        throw new Error(`Status check failed: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Workflow status:', data);
+
+                    if (data.node_states) {
+                        Object.entries(data.node_states).forEach(([nodeId, status]) => {
+                            const node = this.nodes.find(n => n.id === nodeId);
+                            if (node && node.status !== status) {
+                                node.status = status;
+                                this.updateNodeStatus(node, data.node_outputs ? data.node_outputs[nodeId] : null);
+                            }
+                        });
+                    }
+
+                    // Check if all nodes are completed or errored to stop polling
+                    const isDone = Object.values(data.node_states).every(s => s === 'completed' || s === 'error');
+                    if (isDone) {
+                        document.getElementById('status').textContent = 'Workflow finished.';
+                        // Find the last node in the execution order to display its result as final
+                        if (data.execution_order && data.execution_order.length > 0) {
+                            const lastNodeId = data.execution_order[data.execution_order.length - 1];
+                            if (data.node_outputs && data.node_outputs[lastNodeId]) {
+                                document.getElementById('finalResult').value = data.node_outputs[lastNodeId];
+                            }
+                        }
+                        clearInterval(interval);
+                    }
+
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    document.getElementById('status').textContent = 'Error polling status.';
+                    clearInterval(interval);
+                }
+            }, 2000); // Poll every 2 seconds
+        }
+
+        startWorkflow() {
+            // This method is now async to use await for the fetch call
+            (async () => {
+                document.getElementById('status').textContent = 'Starting workflow...';
+                console.log('Serializing and starting workflow...');
+
+                const workflowData = {
+                    nodes: this.nodes.map(n => ({ id: n.id, type: n.type, title: n.title })),
+                    connections: this.connections.map(c => ({ from: c.from, to: c.to }))
+                };
+
+                try {
+                    const response = await fetch('/api/workflow/execute', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(workflowData)
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to start workflow: ${errorText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Workflow session started:', data);
+                    document.getElementById('status').textContent = `Workflow session ${data.session_id} started.`;
+
+                    // Start polling for status updates
+                    this.pollForWorkflowStatus(data.session_id);
+
+                } catch (error) {
+                    console.error('Error starting workflow:', error);
+                    document.getElementById('status').textContent = `Error: ${error.message}`;
+                }
+            })();
+        }
+
+        pauseWorkflow() {
+            document.getElementById('status').textContent = 'Workflow paused';
+            console.log('Pausing workflow...');
+        }
+
+        resetWorkflow() {
+            document.getElementById('status').textContent = 'Ready';
+            this.nodes.forEach(node => {
+                node.status = 'idle';
+                this.updateNodeStatus(node);
+            });
+            console.log('Resetting workflow...');
+        }
+
+        async killAllWorkflows() {
+            if (confirm('Are you sure you want to kill ALL active workflows? This action cannot be undone.')) {
+                try {
+                    const response = await fetch('/api/sessions/kill-all', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert(`Successfully killed ${result.killed_count} workflows`);
+                        document.getElementById('status').textContent = 'All workflows killed';
+
+                        // Reset current workflow display
+                        this.nodes.forEach(node => {
+                            node.status = 'idle';
+                            this.updateNodeStatus(node);
+                        });
+                    } else {
+                        const error = await response.json();
+                        alert(`Failed to kill workflows: ${error.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error killing workflows:', error);
+                    alert('Failed to kill workflows. Check console for details.');
+                }
+            }
+        }
+
+        async killCurrentWorkflow() {
+            if (this.currentSessionId) {
+                if (confirm('Are you sure you want to kill the current workflow?')) {
+                    try {
+                        const response = await fetch(`/api/sessions/${this.currentSessionId}/kill`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (response.ok) {
+                            const result = await response.json();
+                            alert(`Successfully killed workflow: ${result.session_id}`);
+                            document.getElementById('status').textContent = 'Current workflow killed';
+
+                            // Reset current workflow display
+                            this.nodes.forEach(node => {
+                                node.status = 'idle';
+                                this.updateNodeStatus(node);
+                            });
+
+                            this.currentSessionId = null;
+                        } else {
+                            const error = await response.json();
+                            alert(`Failed to kill workflow: ${error.error}`);
+                        }
+                    } catch (error) {
+                        console.error('Error killing workflow:', error);
+                        alert('Failed to kill workflow. Check console for details.');
+                    }
+                }
+            } else {
+                alert('No active workflow to kill');
+            }
+        }
+
+        updateNodeStatus(node, output = null) {
+            const nodeElement = this.canvas.querySelector(`[data-node-id="${node.id}"]`);
+            if (nodeElement) {
+                const statusText = nodeElement.querySelector('.node-status');
+                if (statusText) {
+                    statusText.textContent = node.status;
+                }
+
+                if (output && (node.status === 'completed' || node.status === 'error')) {
+                    const outputText = nodeElement.querySelector('.node-output');
+                    if (outputText) {
+                        // Truncate for display
+                        outputText.textContent = output.substring(0, 30) + (output.length > 30 ? '...' : '');
+                        outputText.style.opacity = 1;
+                    }
+                }
+            }
+        }
+
+        updateTaskbarTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('taskbar-time').textContent = timeString;
+        }
+    }
+
+    // Initialize the workflow engine when the page loads
+    window.initPage = function() {
+        window.workflowEngine = new WorkflowEngine();
+    };
+</script>
+{% endblock %}

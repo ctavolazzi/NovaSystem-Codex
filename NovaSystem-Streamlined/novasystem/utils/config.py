@@ -16,7 +16,7 @@ class Config:
     # LLM Configuration
     openai_api_key: Optional[str] = None
     ollama_host: str = "http://localhost:11434"
-    default_model: str = "gpt-5-nano"
+    default_model: str = "claude-3-5-haiku-20241022"
 
     # Process Configuration
     max_iterations: int = 5

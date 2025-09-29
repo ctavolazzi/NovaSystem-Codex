@@ -1,0 +1,183 @@
+{
+  "timestamp": "2025-09-27T15:04:23.584233",
+  "total_tests": 25,
+  "passed_tests": 21,
+  "failed_tests": 4,
+  "test_details": [
+    {
+      "test_name": "Server Startup",
+      "status": "PASS",
+      "details": "Server started successfully on http://localhost:5000",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.650608"
+    },
+    {
+      "test_name": "Page Response: Home",
+      "status": "PASS",
+      "details": "Status: 200, Size: 36287 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.658607"
+    },
+    {
+      "test_name": "Page Content: Home",
+      "status": "FAIL",
+      "details": "Missing elements: ['chat-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.664739"
+    },
+    {
+      "test_name": "Page Response: Workflow",
+      "status": "PASS",
+      "details": "Status: 200, Size: 46920 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.677279"
+    },
+    {
+      "test_name": "Page Content: Workflow",
+      "status": "PASS",
+      "details": "All required elements found: ['Workflow Engine', 'agent-toolbar', 'workflow-canvas']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.683689"
+    },
+    {
+      "test_name": "Page Response: Analytics",
+      "status": "PASS",
+      "details": "Status: 200, Size: 33388 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.699364"
+    },
+    {
+      "test_name": "Page Content: Analytics",
+      "status": "FAIL",
+      "details": "Missing elements: ['chart-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.707526"
+    },
+    {
+      "test_name": "Page Response: Monitor",
+      "status": "PASS",
+      "details": "Status: 200, Size: 35575 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.725100"
+    },
+    {
+      "test_name": "Page Content: Monitor",
+      "status": "FAIL",
+      "details": "Missing elements: ['monitor-content']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.735018"
+    },
+    {
+      "test_name": "Page Response: Settings",
+      "status": "PASS",
+      "details": "Status: 200, Size: 55082 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.776143"
+    },
+    {
+      "test_name": "Page Content: Settings",
+      "status": "PASS",
+      "details": "All required elements found: ['Settings', 'settings-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.787660"
+    },
+    {
+      "test_name": "Page Response: Help",
+      "status": "PASS",
+      "details": "Status: 200, Size: 58932 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.829758"
+    },
+    {
+      "test_name": "Page Content: Help",
+      "status": "PASS",
+      "details": "All required elements found: ['Help & Documentation', 'help-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.840335"
+    },
+    {
+      "test_name": "Page Response: About",
+      "status": "PASS",
+      "details": "Status: 200, Size: 37329 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.875479"
+    },
+    {
+      "test_name": "Page Content: About",
+      "status": "PASS",
+      "details": "All required elements found: ['About', 'about-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.889129"
+    },
+    {
+      "test_name": "Page Response: Session Manager",
+      "status": "PASS",
+      "details": "Status: 200, Size: 47786 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.935265"
+    },
+    {
+      "test_name": "Page Content: Session Manager",
+      "status": "PASS",
+      "details": "All required elements found: ['Session Manager', 'sessions-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.946353"
+    },
+    {
+      "test_name": "Page Response: Session History",
+      "status": "PASS",
+      "details": "Status: 200, Size: 50761 bytes, Type: text/html; charset=utf-8",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.973106"
+    },
+    {
+      "test_name": "Page Content: Session History",
+      "status": "PASS",
+      "details": "All required elements found: ['Session History', 'history-container']",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:31.983130"
+    },
+    {
+      "test_name": "Navigation Consistency",
+      "status": "FAIL",
+      "details": "Only 0/9 pages have consistent navigation",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.046218"
+    },
+    {
+      "test_name": "Responsive Assets",
+      "status": "PASS",
+      "details": "All 3 assets accessible",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.070566"
+    },
+    {
+      "test_name": "Sessions API",
+      "status": "PASS",
+      "details": "Sessions endpoint accessible",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.078764"
+    },
+    {
+      "test_name": "Kill All API",
+      "status": "PASS",
+      "details": "Kill all sessions endpoint working",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.085093"
+    },
+    {
+      "test_name": "Workflow API",
+      "status": "PASS",
+      "details": "Workflow execution endpoint working",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.096137"
+    },
+    {
+      "test_name": "Solve API",
+      "status": "PASS",
+      "details": "Problem solving endpoint working",
+      "error": null,
+      "timestamp": "2025-09-27T15:04:32.332207"
+    }
+  ]
+}

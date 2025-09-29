@@ -10,7 +10,7 @@ class Settings(BaseSettings):
 
     # LLM Settings
     ollama_host: str = "http://localhost:11434"
-    default_model: str = "gpt-4"
+    default_model: str = "gpt-5-nano"
     default_temperature: float = 0.7
 
     # Application Settings

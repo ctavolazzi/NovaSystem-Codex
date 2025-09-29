@@ -1,0 +1,998 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Help & Documentation{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Help & Documentation{% endblock %}
+
+{% block styles %}
+<style>
+    /* Help page specific styles */
+    .help-container {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        gap: 20px;
+        padding: 20px;
+        height: 100%;
+    }
+
+    .help-sidebar {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 16px;
+        height: fit-content;
+        overflow-y: auto;
+    }
+
+    .help-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .help-nav-item {
+        margin-bottom: 2px;
+    }
+
+    .help-nav-link {
+        display: block;
+        padding: 6px 10px;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        font-size: 11px;
+        transition: all 0.2s ease;
+    }
+
+    .help-nav-link:hover {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .help-nav-link.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .help-nav-section {
+        margin-top: 16px;
+        font-size: 10px;
+        font-weight: bold;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 8px;
+    }
+
+    .help-content {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .help-section {
+        display: none;
+    }
+
+    .help-section.active {
+        display: block;
+    }
+
+    .help-title {
+        font-size: 18px;
+        color: var(--primary-color);
+        margin-bottom: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid #c0c0c0;
+        padding-bottom: 8px;
+    }
+
+    .help-subtitle {
+        font-size: 14px;
+        color: var(--text-primary);
+        margin: 16px 0 8px 0;
+        font-weight: bold;
+    }
+
+    .help-text {
+        font-size: 11px;
+        color: var(--text-primary);
+        line-height: 1.5;
+        margin-bottom: 12px;
+    }
+
+    .help-list {
+        margin: 8px 0;
+        padding-left: 20px;
+    }
+
+    .help-list li {
+        font-size: 11px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+
+    .help-code {
+        background: #f0f0f0;
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 10px;
+        color: var(--text-primary);
+        margin: 8px 0;
+        overflow-x: auto;
+    }
+
+    .help-warning {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 3px;
+        padding: 8px 12px;
+        margin: 8px 0;
+        font-size: 11px;
+        color: #856404;
+    }
+
+    .help-info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        border-radius: 3px;
+        padding: 8px 12px;
+        margin: 8px 0;
+        font-size: 11px;
+        color: #0c5460;
+    }
+
+    .help-tip {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        border-radius: 3px;
+        padding: 8px 12px;
+        margin: 8px 0;
+        font-size: 11px;
+        color: #155724;
+    }
+
+    .help-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0;
+        font-size: 11px;
+    }
+
+    .help-table th,
+    .help-table td {
+        border: 1px solid #c0c0c0;
+        padding: 6px 8px;
+        text-align: left;
+    }
+
+    .help-table th {
+        background: var(--bg-secondary);
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .help-table td {
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+    }
+
+    .help-search {
+        margin-bottom: 16px;
+    }
+
+    .help-search-input {
+        width: 100%;
+        padding: 6px 8px;
+        border: 1px inset #c0c0c0;
+        font-size: 11px;
+        background: white;
+        color: var(--text-primary);
+        font-family: var(--windows-font);
+    }
+
+    .help-search-input:focus {
+        outline: none;
+        border: 1px inset var(--primary-color);
+    }
+
+    .help-result {
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 3px;
+        padding: 8px;
+        margin: 4px 0;
+        font-size: 11px;
+        color: #856404;
+    }
+
+    .help-contact {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 12px;
+        margin-top: 16px;
+    }
+
+    .help-contact-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .help-contact-item {
+        font-size: 11px;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="help-container">
+    <!-- Help Navigation -->
+    <div class="help-sidebar">
+        <div class="help-search">
+            <input type="text" class="help-search-input" placeholder="Search help..." id="help-search">
+        </div>
+
+        <ul class="help-nav">
+            <div class="help-nav-section">Getting Started</div>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link active" data-section="overview">Overview</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="quickstart">Quick Start</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="features">Features</a>
+            </li>
+
+            <div class="help-nav-section">Navigation</div>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="navigation">Navigation Guide</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="shortcuts">Keyboard Shortcuts</a>
+            </li>
+
+            <div class="help-nav-section">Features</div>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="chat">Chat Interface</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="workflow">Workflow Builder</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="analytics">Analytics Dashboard</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="monitor">System Monitor</a>
+            </li>
+
+            <div class="help-nav-section">Configuration</div>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="settings">Settings Guide</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="api">API Configuration</a>
+            </li>
+
+            <div class="help-nav-section">Troubleshooting</div>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="troubleshooting">Common Issues</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="faq">FAQ</a>
+            </li>
+            <li class="help-nav-item">
+                <a href="#" class="help-nav-link" data-section="support">Support</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Help Content -->
+    <div class="help-content">
+        <!-- Overview Section -->
+        <div class="help-section active" id="overview">
+            <div class="help-title">NovaSystem v3.0 Overview</div>
+
+            <div class="help-text">
+                Welcome to NovaSystem v3.0, an advanced AI-powered problem-solving framework that combines multiple AI agents to tackle complex challenges across various domains.
+            </div>
+
+            <div class="help-subtitle">What is NovaSystem?</div>
+            <div class="help-text">
+                NovaSystem is a sophisticated AI platform that orchestrates multiple specialized AI agents to solve problems collaboratively. Each agent brings unique expertise to the table, creating a comprehensive solution approach.
+            </div>
+
+            <div class="help-subtitle">Key Components</div>
+            <ul class="help-list">
+                <li><strong>Chat Interface</strong> - Direct interaction with AI agents</li>
+                <li><strong>Workflow Builder</strong> - Visual workflow creation and management</li>
+                <li><strong>Analytics Dashboard</strong> - Performance metrics and insights</li>
+                <li><strong>System Monitor</strong> - Real-time system health monitoring</li>
+                <li><strong>Settings Panel</strong> - Comprehensive configuration options</li>
+            </ul>
+
+            <div class="help-tip">
+                <strong>💡 Tip:</strong> Start with the Quick Start guide to get familiar with NovaSystem's core features.
+            </div>
+        </div>
+
+        <!-- Quick Start Section -->
+        <div class="help-section" id="quickstart">
+            <div class="help-title">Quick Start Guide</div>
+
+            <div class="help-subtitle">1. Your First Session</div>
+            <div class="help-text">
+                Navigate to the Home page and start typing your problem in the chat interface. NovaSystem will automatically select the best AI model and agents for your task.
+            </div>
+
+            <div class="help-subtitle">2. Basic Navigation</div>
+            <ul class="help-list">
+                <li>Use the sidebar navigation to switch between different sections</li>
+                <li>Click on menu items for additional options</li>
+                <li>Use keyboard shortcuts for faster navigation (Ctrl+1-4)</li>
+                <li>Check the taskbar for quick access buttons</li>
+            </ul>
+
+            <div class="help-subtitle">3. Essential Settings</div>
+            <div class="help-text">
+                Before diving in, configure your basic settings:
+            </div>
+            <ul class="help-list">
+                <li>Set your preferred AI model in Settings > AI Models</li>
+                <li>Configure session timeout in Settings > General</li>
+                <li>Enable notifications if desired</li>
+                <li>Set up your API keys if using custom endpoints</li>
+            </ul>
+
+            <div class="help-info">
+                <strong>ℹ️ Note:</strong> NovaSystem works out of the box with default settings, but customization enhances your experience.
+            </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="help-section" id="features">
+            <div class="help-title">Feature Overview</div>
+
+            <div class="help-subtitle">Multi-Agent Architecture</div>
+            <div class="help-text">
+                NovaSystem employs specialized AI agents, each with unique capabilities:
+            </div>
+
+            <table class="help-table">
+                <thead>
+                    <tr>
+                        <th>Agent</th>
+                        <th>Specialization</th>
+                        <th>Best For</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Problem Solver</td>
+                        <td>General problem analysis</td>
+                        <td>Complex multi-step problems</td>
+                    </tr>
+                    <tr>
+                        <td>Data Analyst</td>
+                        <td>Data processing and insights</td>
+                        <td>Statistical analysis, data interpretation</td>
+                    </tr>
+                    <tr>
+                        <td>Research Bot</td>
+                        <td>Information gathering</td>
+                        <td>Fact-checking, research tasks</td>
+                    </tr>
+                    <tr>
+                        <td>Code Helper</td>
+                        <td>Programming assistance</td>
+                        <td>Code review, debugging, implementation</td>
+                    </tr>
+                    <tr>
+                        <td>Marketing Bot</td>
+                        <td>Creative content and strategy</td>
+                        <td>Marketing materials, campaigns</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="help-subtitle">Advanced Capabilities</div>
+            <ul class="help-list">
+                <li><strong>Real-time Collaboration</strong> - Multiple agents working simultaneously</li>
+                <li><strong>Session Management</strong> - Track and manage multiple problem-solving sessions</li>
+                <li><strong>Performance Analytics</strong> - Detailed metrics on system performance</li>
+                <li><strong>Custom Workflows</strong> - Create reusable workflow templates</li>
+                <li><strong>Export/Import</strong> - Save and share session results</li>
+            </ul>
+        </div>
+
+        <!-- Navigation Section -->
+        <div class="help-section" id="navigation">
+            <div class="help-title">Navigation Guide</div>
+
+            <div class="help-subtitle">Main Navigation Areas</div>
+            <div class="help-text">
+                NovaSystem features a unified navigation system that adapts to your screen size:
+            </div>
+
+            <div class="help-subtitle">Desktop Navigation</div>
+            <ul class="help-list">
+                <li><strong>Menu Bar</strong> - File, Edit, View, Tools, and Help menus</li>
+                <li><strong>Sidebar</strong> - Page-specific navigation and tools</li>
+                <li><strong>Taskbar</strong> - Quick access buttons and time display</li>
+                <li><strong>Status Bar</strong> - System status and connection info</li>
+            </ul>
+
+            <div class="help-subtitle">Mobile Navigation</div>
+            <ul class="help-list">
+                <li><strong>Horizontal Sidebar</strong> - Scrollable navigation sections</li>
+                <li><strong>Touch Gestures</strong> - Swipe left/right to navigate pages</li>
+                <li><strong>Quick Actions</strong> - Mobile-optimized action buttons</li>
+                <li><strong>Responsive Menus</strong> - Touch-friendly dropdown menus</li>
+            </ul>
+
+            <div class="help-subtitle">Navigation Tips</div>
+            <div class="help-tip">
+                <strong>💡 Pro Tip:</strong> On mobile devices, you can swipe left or right to quickly navigate between the main pages (Home, Workflow, Analytics, Monitor).
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcuts Section -->
+        <div class="help-section" id="shortcuts">
+            <div class="help-title">Keyboard Shortcuts</div>
+
+            <div class="help-subtitle">Global Shortcuts</div>
+            <table class="help-table">
+                <thead>
+                    <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Ctrl + 1</td>
+                        <td>Navigate to Home</td>
+                        <td>Go to main chat interface</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + 2</td>
+                        <td>Navigate to Workflow</td>
+                        <td>Open workflow builder</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + 3</td>
+                        <td>Navigate to Analytics</td>
+                        <td>View analytics dashboard</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + 4</td>
+                        <td>Navigate to Monitor</td>
+                        <td>Open system monitor</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + Shift + T</td>
+                        <td>Toggle Responsive Test</td>
+                        <td>Enable/disable responsive testing mode</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="help-subtitle">Chat Interface Shortcuts</div>
+            <table class="help-table">
+                <thead>
+                    <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Ctrl + Enter</td>
+                        <td>Send Message</td>
+                        <td>Submit current message</td>
+                    </tr>
+                    <tr>
+                        <td>Escape</td>
+                        <td>Clear Input</td>
+                        <td>Clear the message input field</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + /</td>
+                        <td>Focus Input</td>
+                        <td>Focus on message input</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="help-subtitle">Workflow Shortcuts</div>
+            <table class="help-table">
+                <thead>
+                    <tr>
+                        <th>Shortcut</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Space</td>
+                        <td>Start/Pause</td>
+                        <td>Start or pause workflow execution</td>
+                    </tr>
+                    <tr>
+                        <td>R</td>
+                        <td>Reset</td>
+                        <td>Reset workflow to initial state</td>
+                    </tr>
+                    <tr>
+                        <td>Delete</td>
+                        <td>Delete Node</td>
+                        <td>Remove selected workflow node</td>
+                    </tr>
+                    <tr>
+                        <td>Ctrl + S</td>
+                        <td>Save Workflow</td>
+                        <td>Save current workflow</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Chat Interface Section -->
+        <div class="help-section" id="chat">
+            <div class="help-title">Chat Interface Guide</div>
+
+            <div class="help-subtitle">Getting Started with Chat</div>
+            <div class="help-text">
+                The chat interface is your primary way to interact with NovaSystem's AI agents. Simply type your problem or question and let the system work its magic.
+            </div>
+
+            <div class="help-subtitle">Writing Effective Prompts</div>
+            <ul class="help-list">
+                <li><strong>Be Specific</strong> - Provide clear, detailed descriptions</li>
+                <li><strong>Include Context</strong> - Add relevant background information</li>
+                <li><strong>Define Goals</strong> - State what you want to achieve</li>
+                <li><strong>Provide Constraints</strong> - Mention any limitations or requirements</li>
+            </ul>
+
+            <div class="help-subtitle">Example Prompts</div>
+            <div class="help-code">
+# Good Prompt Example:
+"I need help creating a marketing strategy for a new eco-friendly cleaning product. The target market is environmentally conscious families with children. Budget is $50,000 and we need to launch in 3 months."
+
+# Better Prompt Example:
+"Create a comprehensive marketing strategy for 'EcoClean', a new plant-based household cleaner. Target: Environmentally conscious families (ages 25-45) with children under 12. Budget: $50,000 over 6 months. Goals: 10,000 units sold, 15% market share in local area. Constraints: No animal testing, sustainable packaging only, must compete with Method and Seventh Generation."
+            </div>
+
+            <div class="help-subtitle">Session Management</div>
+            <div class="help-text">
+                Each conversation creates a session that can be:
+            </div>
+            <ul class="help-list">
+                <li>Tracked and monitored in real-time</li>
+                <li>Paused and resumed later</li>
+                <li>Exported for future reference</li>
+                <li>Shared with team members</li>
+            </ul>
+
+            <div class="help-warning">
+                <strong>⚠️ Important:</strong> Sessions automatically expire after the configured timeout period. Save important results before sessions expire.
+            </div>
+        </div>
+
+        <!-- Workflow Section -->
+        <div class="help-section" id="workflow">
+            <div class="help-title">Workflow Builder Guide</div>
+
+            <div class="help-subtitle">Creating Your First Workflow</div>
+            <div class="help-text">
+                The Workflow Builder allows you to create visual workflows that combine multiple AI agents for complex problem-solving.
+            </div>
+
+            <div class="help-subtitle">Adding Agents</div>
+            <ol class="help-list">
+                <li>Click on an agent button in the toolbar</li>
+                <li>Drag the agent to your desired position on the canvas</li>
+                <li>Connect agents by drawing lines between their ports</li>
+                <li>Configure each agent's specific parameters</li>
+            </ol>
+
+            <div class="help-subtitle">Workflow Controls</div>
+            <ul class="help-list">
+                <li><strong>Start</strong> - Begin workflow execution</li>
+                <li><strong>Pause</strong> - Temporarily halt execution</li>
+                <li><strong>Reset</strong> - Return to initial state</li>
+                <li><strong>Kill All</strong> - Terminate all active workflows</li>
+            </ul>
+
+            <div class="help-subtitle">Best Practices</div>
+            <ul class="help-list">
+                <li>Start with simple workflows and gradually add complexity</li>
+                <li>Use the Research Bot first to gather information</li>
+                <li>Connect Data Analyst to process research results</li>
+                <li>End with Problem Solver for final synthesis</li>
+                <li>Save successful workflows as templates</li>
+            </ul>
+
+            <div class="help-info">
+                <strong>ℹ️ Note:</strong> Workflow execution follows the connection order. Agents with no inputs execute first, then those that depend on their outputs.
+            </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="help-section" id="analytics">
+            <div class="help-title">Analytics Dashboard Guide</div>
+
+            <div class="help-subtitle">Understanding Your Data</div>
+            <div class="help-text">
+                The Analytics Dashboard provides insights into your NovaSystem usage, performance metrics, and AI model effectiveness.
+            </div>
+
+            <div class="help-subtitle">Key Metrics</div>
+            <ul class="help-list">
+                <li><strong>Session Activity</strong> - Usage patterns over time</li>
+                <li><strong>Model Performance</strong> - Response times and success rates</li>
+                <li><strong>Agent Usage</strong> - Which agents are used most frequently</li>
+                <li><strong>Success Rates</strong> - Problem-solving effectiveness</li>
+            </ul>
+
+            <div class="help-subtitle">Using Analytics Data</div>
+            <div class="help-text">
+                Use analytics data to:
+            </div>
+            <ul class="help-list">
+                <li>Optimize your AI model selection</li>
+                <li>Identify peak usage times</li>
+                <li>Track problem-solving effectiveness</li>
+                <li>Monitor system performance</li>
+                <li>Make informed decisions about resource allocation</li>
+            </ul>
+
+            <div class="help-tip">
+                <strong>💡 Tip:</strong> Check analytics regularly to understand your usage patterns and optimize your NovaSystem experience.
+            </div>
+        </div>
+
+        <!-- Monitor Section -->
+        <div class="help-section" id="monitor">
+            <div class="help-title">System Monitor Guide</div>
+
+            <div class="help-subtitle">Real-Time Monitoring</div>
+            <div class="help-text">
+                The System Monitor provides real-time insights into NovaSystem's performance and health.
+            </div>
+
+            <div class="help-subtitle">Monitor Components</div>
+            <ul class="help-list">
+                <li><strong>Active Sessions</strong> - Current running sessions count</li>
+                <li><strong>CPU Usage</strong> - System resource utilization</li>
+                <li><strong>Memory Usage</strong> - RAM consumption</li>
+                <li><strong>Response Times</strong> - API response performance</li>
+            </ul>
+
+            <div class="help-subtitle">System Alerts</div>
+            <div class="help-text">
+                The monitor displays alerts for:
+            </div>
+            <ul class="help-list">
+                <li>High resource usage</li>
+                <li>API connection issues</li>
+                <li>Session failures</li>
+                <li>System errors</li>
+            </ul>
+
+            <div class="help-warning">
+                <strong>⚠️ Warning:</strong> If you see persistent alerts or high resource usage, consider reducing concurrent sessions or checking your system resources.
+            </div>
+        </div>
+
+        <!-- Settings Section -->
+        <div class="help-section" id="settings">
+            <div class="help-title">Settings Configuration Guide</div>
+
+            <div class="help-subtitle">Essential Settings</div>
+            <div class="help-text">
+                Configure these settings for optimal NovaSystem performance:
+            </div>
+
+            <div class="help-subtitle">General Settings</div>
+            <ul class="help-list">
+                <li><strong>Auto-save Sessions</strong> - Automatically save session data</li>
+                <li><strong>Session Timeout</strong> - How long sessions remain active</li>
+                <li><strong>Notifications</strong> - Enable desktop notifications</li>
+                <li><strong>Language</strong> - Interface language selection</li>
+            </ul>
+
+            <div class="help-subtitle">AI Model Settings</div>
+            <ul class="help-list">
+                <li><strong>Primary Model</strong> - Default AI model selection</li>
+                <li><strong>Max Iterations</strong> - Maximum problem-solving iterations</li>
+                <li><strong>Temperature</strong> - AI creativity level (0.0-1.0)</li>
+                <li><strong>Streaming</strong> - Real-time response streaming</li>
+            </ul>
+
+            <div class="help-subtitle">Performance Settings</div>
+            <ul class="help-list">
+                <li><strong>Max Concurrent Sessions</strong> - Limit simultaneous sessions</li>
+                <li><strong>Cache Duration</strong> - Response caching time</li>
+                <li><strong>Performance Monitoring</strong> - Enable metrics collection</li>
+            </ul>
+
+            <div class="help-info">
+                <strong>ℹ️ Note:</strong> Settings are automatically saved and applied. You can export/import settings for backup or sharing.
+            </div>
+        </div>
+
+        <!-- API Configuration Section -->
+        <div class="help-section" id="api">
+            <div class="help-title">API Configuration Guide</div>
+
+            <div class="help-subtitle">Setting Up API Keys</div>
+            <div class="help-text">
+                To use custom AI models or external services, configure your API credentials:
+            </div>
+
+            <div class="help-code">
+1. Navigate to Settings > AI Models
+2. Enter your API key in the "API Key" field
+3. Specify custom endpoint if needed
+4. Test the connection
+5. Save settings
+            </div>
+
+            <div class="help-subtitle">Supported APIs</div>
+            <ul class="help-list">
+                <li><strong>OpenAI</strong> - GPT-4, GPT-3.5 Turbo</li>
+                <li><strong>Anthropic</strong> - Claude 3.5 Sonnet, Claude 3 Haiku</li>
+                <li><strong>Custom Endpoints</strong> - Any OpenAI-compatible API</li>
+            </ul>
+
+            <div class="help-subtitle">Security Best Practices</div>
+            <ul class="help-list">
+                <li>Never share your API keys</li>
+                <li>Use environment variables for production</li>
+                <li>Monitor API usage regularly</li>
+                <li>Set usage limits to prevent overages</li>
+                <li>Enable encryption for sensitive data</li>
+            </ul>
+
+            <div class="help-warning">
+                <strong>⚠️ Security:</strong> API keys are stored locally and encrypted. Never share your keys or commit them to version control.
+            </div>
+        </div>
+
+        <!-- Troubleshooting Section -->
+        <div class="help-section" id="troubleshooting">
+            <div class="help-title">Troubleshooting Common Issues</div>
+
+            <div class="help-subtitle">Connection Issues</div>
+            <div class="help-text">
+                <strong>Problem:</strong> Cannot connect to AI services
+            </div>
+            <ul class="help-list">
+                <li>Check your internet connection</li>
+                <li>Verify API key is correct</li>
+                <li>Check API endpoint URL</li>
+                <li>Ensure sufficient API credits</li>
+                <li>Check firewall settings</li>
+            </ul>
+
+            <div class="help-subtitle">Performance Issues</div>
+            <div class="help-text">
+                <strong>Problem:</strong> Slow response times or system lag
+            </div>
+            <ul class="help-list">
+                <li>Reduce max concurrent sessions</li>
+                <li>Clear browser cache</li>
+                <li>Restart the application</li>
+                <li>Check system resources</li>
+                <li>Update to latest version</li>
+            </ul>
+
+            <div class="help-subtitle">Session Issues</div>
+            <div class="help-text">
+                <strong>Problem:</strong> Sessions not saving or disappearing
+            </div>
+            <ul class="help-list">
+                <li>Check auto-save is enabled</li>
+                <li>Verify session timeout settings</li>
+                <li>Clear browser storage if corrupted</li>
+                <li>Check available disk space</li>
+            </ul>
+
+            <div class="help-subtitle">Display Issues</div>
+            <div class="help-text">
+                <strong>Problem:</strong> Interface not displaying correctly
+            </div>
+            <ul class="help-list">
+                <li>Clear browser cache</li>
+                <li>Disable browser extensions</li>
+                <li>Check browser compatibility</li>
+                <li>Reset to default theme</li>
+                <li>Update browser to latest version</li>
+            </ul>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="help-section" id="faq">
+            <div class="help-title">Frequently Asked Questions</div>
+
+            <div class="help-subtitle">General Questions</div>
+
+            <div class="help-text">
+                <strong>Q: What is the difference between Chat and Workflow?</strong><br>
+                A: Chat is for direct conversation with AI agents, while Workflow allows you to create complex multi-step processes with multiple agents working together.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: Can I use multiple AI models simultaneously?</strong><br>
+                A: Yes! NovaSystem can orchestrate multiple AI models and agents to work together on complex problems.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: Is my data secure?</strong><br>
+                A: Yes, NovaSystem encrypts sensitive data and follows security best practices. Your API keys and session data are stored securely.
+            </div>
+
+            <div class="help-subtitle">Technical Questions</div>
+
+            <div class="help-text">
+                <strong>Q: What browsers are supported?</strong><br>
+                A: NovaSystem works with all modern browsers including Chrome, Firefox, Safari, and Edge. Mobile browsers are also supported.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: Can I customize the interface?</strong><br>
+                A: Yes! You can customize themes, fonts, colors, and even inject custom CSS in the Advanced settings.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: How do I backup my settings and data?</strong><br>
+                A: Use the Export feature in Settings to backup your configuration. Session data is automatically saved locally.
+            </div>
+
+            <div class="help-subtitle">Usage Questions</div>
+
+            <div class="help-text">
+                <strong>Q: What's the best way to write prompts?</strong><br>
+                A: Be specific, provide context, define goals clearly, and include any constraints or requirements.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: Can I share workflows with others?</strong><br>
+                A: Yes! You can export workflows and share them with team members or save them as templates.
+            </div>
+
+            <div class="help-text">
+                <strong>Q: How do I optimize performance?</strong><br>
+                A: Adjust max concurrent sessions, enable caching, and monitor system resources through the System Monitor.
+            </div>
+        </div>
+
+        <!-- Support Section -->
+        <div class="help-section" id="support">
+            <div class="help-title">Support & Contact</div>
+
+            <div class="help-subtitle">Getting Help</div>
+            <div class="help-text">
+                If you need additional support or have questions not covered in this documentation:
+            </div>
+
+            <div class="help-contact">
+                <div class="help-contact-title">Contact Information</div>
+                <div class="help-contact-item">📧 Email: support@novasystem.ai</div>
+                <div class="help-contact-item">💬 Discord: NovaSystem Community</div>
+                <div class="help-contact-item">📱 GitHub: github.com/novasystem</div>
+                <div class="help-contact-item">🌐 Website: www.novasystem.ai</div>
+            </div>
+
+            <div class="help-subtitle">Reporting Issues</div>
+            <div class="help-text">
+                When reporting issues, please include:
+            </div>
+            <ul class="help-list">
+                <li>Browser version and operating system</li>
+                <li>Steps to reproduce the issue</li>
+                <li>Error messages (if any)</li>
+                <li>Screenshots or screen recordings</li>
+                <li>Console logs (if applicable)</li>
+            </ul>
+
+            <div class="help-subtitle">Feature Requests</div>
+            <div class="help-text">
+                We welcome feature requests! Submit them through:
+            </div>
+            <ul class="help-list">
+                <li>GitHub Issues</li>
+                <li>Discord Community</li>
+                <li>Email to support@novasystem.ai</li>
+            </ul>
+
+            <div class="help-tip">
+                <strong>💡 Tip:</strong> Join our Discord community for real-time support, updates, and discussions with other NovaSystem users.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.initPage = function() {
+        // Help navigation
+        const navLinks = document.querySelectorAll('.help-nav-link');
+        const sections = document.querySelectorAll('.help-section');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Remove active class from all links and sections
+                navLinks.forEach(l => l.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+
+                // Add active class to clicked link
+                link.classList.add('active');
+
+                // Show corresponding section
+                const sectionId = link.getAttribute('data-section');
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.classList.add('active');
+                }
+            });
+        });
+
+        // Search functionality
+        const searchInput = document.getElementById('help-search');
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+
+            if (searchTerm.length < 2) {
+                // Show all sections
+                sections.forEach(section => section.style.display = '');
+                return;
+            }
+
+            // Search through content
+            sections.forEach(section => {
+                const content = section.textContent.toLowerCase();
+                const title = section.querySelector('.help-title');
+
+                if (content.includes(searchTerm) || (title && title.textContent.toLowerCase().includes(searchTerm))) {
+                    section.style.display = 'block';
+
+                    // Highlight search term
+                    if (content.includes(searchTerm)) {
+                        // Simple highlighting - could be enhanced
+                        const regex = new RegExp(`(${searchTerm})`, 'gi');
+                        section.innerHTML = section.innerHTML.replace(regex, '<mark>$1</mark>');
+                    }
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+        });
+
+        // Clear search on escape
+        searchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+            }
+        });
+    };
+</script>
+{% endblock %}

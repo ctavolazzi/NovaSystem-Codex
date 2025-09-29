@@ -1,0 +1,32 @@
+{
+  "session": {
+    "default_session_dir": "sessions",
+    "auto_save_sessions": true,
+    "include_metadata": true,
+    "max_session_size_mb": 10,
+    "session_retention_days": 0
+  },
+  "llm": {
+    "default_model": "claude-3-5-sonnet-20241022",
+    "model_priority": [
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-haiku-20241022",
+      "claude-sonnet-4-20250514",
+      "claude-opus-4-1-20250805"
+    ],
+    "fallback_models": [
+      "ollama:phi3",
+      "ollama:llama3",
+      "ollama:mistral"
+    ],
+    "default_temperature": 0.7,
+    "default_max_tokens": 1000
+  },
+  "system": {
+    "data_dir": "data",
+    "logs_dir": "logs",
+    "config_dir": "config",
+    "auto_create_dirs": true,
+    "log_level": "INFO"
+  }
+}

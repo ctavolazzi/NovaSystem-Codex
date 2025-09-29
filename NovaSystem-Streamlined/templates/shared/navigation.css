@@ -1,0 +1,685 @@
+/**
+ * Unified Navigation Styles for NovaSystem
+ * Consistent styling across all pages
+ */
+
+/* Menu Dropdown Styles */
+.menu-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: var(--bg-window);
+    border: 1px solid #c0c0c0;
+    border-top: none;
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+    z-index: 1000;
+    min-width: 150px;
+    padding: 4px 0;
+}
+
+.menu-option {
+    padding: 6px 12px;
+    font-size: 11px;
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.menu-option:hover {
+    background: #316ac5;
+    color: white;
+}
+
+.menu-separator {
+    height: 1px;
+    background: #c0c0c0;
+    margin: 4px 0;
+}
+
+/* Enhanced Sidebar Styles */
+.sidebar-item {
+    padding: 8px 12px;
+    font-size: 11px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 2px;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.sidebar-item:hover {
+    background: #e8e5e0;
+    transform: translateX(2px);
+}
+
+.sidebar-item.active {
+    background: var(--accent-color);
+    color: white;
+    font-weight: bold;
+}
+
+.sidebar-item.active:hover {
+    background: #5aa03a;
+}
+
+/* Taskbar Navigation Styles */
+.taskbar-nav {
+    display: flex;
+    gap: 4px;
+    margin-left: 12px;
+}
+
+.taskbar-nav-btn {
+    background: linear-gradient(180deg, #31a8ff, #1e5da6);
+    border: 1px solid #ffffff;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: white;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 32px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.taskbar-nav-btn:hover {
+    background: linear-gradient(180deg, #4ab8ff, #2e6db6);
+    transform: translateY(-1px);
+}
+
+.taskbar-nav-btn.active {
+    background: linear-gradient(180deg, #44bb44, #2d7d2d);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+.taskbar-nav-btn.active:hover {
+    background: linear-gradient(180deg, #54cc54, #3d8d3d);
+}
+
+/* Navigation Breadcrumb Styles */
+.nav-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid #c0c0c0;
+    font-size: 11px;
+    color: var(--text-primary);
+}
+
+.nav-breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.nav-breadcrumb-separator {
+    color: #666;
+}
+
+.nav-breadcrumb-item.active {
+    color: var(--primary-color);
+    font-weight: bold;
+}
+
+/* Quick Navigation Bar */
+.quick-nav {
+    display: flex;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid #c0c0c0;
+    align-items: center;
+}
+
+.quick-nav-btn {
+    background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+    border: 1px outset #ffffff;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.2s ease;
+}
+
+.quick-nav-btn:hover {
+    background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+}
+
+.quick-nav-btn.active {
+    background: linear-gradient(180deg, #316ac5, #1e4a8c);
+    color: white;
+}
+
+/* Navigation Status Indicators */
+.nav-status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.nav-status-indicator.connected {
+    background: #6BBF44;
+    animation: pulse 2s infinite;
+}
+
+.nav-status-indicator.disconnected {
+    background: #FF0000;
+}
+
+.nav-status-indicator.loading {
+    background: #3B8CFF;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Responsive Navigation */
+@media (max-width: 768px) {
+    .taskbar-nav {
+        display: flex;
+        gap: 2px;
+        margin-left: 8px;
+    }
+
+    .taskbar-nav-btn {
+        min-width: 28px;
+        height: 20px;
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+
+    .menu-dropdown {
+        position: fixed;
+        top: auto;
+        bottom: 40px;
+        left: 0;
+        right: 0;
+        width: 100%;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1001;
+    }
+
+    .menu-dropdown::-webkit-scrollbar {
+        width: 12px;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: 120px;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: none;
+        border-bottom: 1px solid #c0c0c0;
+        position: relative;
+        z-index: 100;
+    }
+
+    .sidebar-section {
+        min-width: 200px;
+        border-right: 1px solid #b8b5b2;
+        border-bottom: none;
+        margin-right: 8px;
+        flex-shrink: 0;
+    }
+
+    .sidebar-section:last-child {
+        border-right: none;
+    }
+
+    .quick-nav {
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 6px 8px;
+    }
+
+    .quick-nav-btn {
+        font-size: 9px;
+        padding: 3px 6px;
+    }
+}
+
+@media (max-width: 480px) {
+    .taskbar-nav {
+        display: none;
+    }
+
+    .sidebar {
+        height: 100px;
+    }
+
+    .sidebar-section {
+        min-width: 150px;
+    }
+
+    .sidebar-title {
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
+
+    .sidebar-item {
+        font-size: 10px;
+        padding: 4px 6px;
+        margin-bottom: 1px;
+    }
+
+    .menu-dropdown {
+        bottom: 30px;
+        max-height: 150px;
+    }
+
+    .menu-option {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+
+    .quick-nav {
+        padding: 4px 6px;
+    }
+
+    .quick-nav-btn {
+        font-size: 8px;
+        padding: 2px 4px;
+    }
+}
+
+@media (max-width: 320px) {
+    .sidebar {
+        height: 80px;
+    }
+
+    .sidebar-section {
+        min-width: 120px;
+    }
+
+    .sidebar-title {
+        font-size: 9px;
+        margin-bottom: 2px;
+        padding: 2px;
+    }
+
+    .sidebar-item {
+        font-size: 9px;
+        padding: 3px 4px;
+        margin-bottom: 1px;
+    }
+
+    .menu-dropdown {
+        bottom: 28px;
+        max-height: 120px;
+    }
+
+    .menu-option {
+        font-size: 9px;
+        padding: 3px 6px;
+    }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1600px) {
+    .taskbar-nav {
+        gap: 6px;
+        margin-left: 16px;
+    }
+
+    .taskbar-nav-btn {
+        min-width: 36px;
+        height: 24px;
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    .menu-bar {
+        gap: 20px;
+        font-size: 12px;
+    }
+
+    .menu-item {
+        padding: 6px 12px;
+    }
+
+    .sidebar {
+        width: 250px;
+    }
+
+    .sidebar-section {
+        padding: 12px;
+    }
+
+    .sidebar-title {
+        font-size: 12px;
+        margin-bottom: 12px;
+    }
+
+    .sidebar-item {
+        font-size: 12px;
+        padding: 8px 12px;
+        margin-bottom: 4px;
+    }
+}
+
+@media (min-width: 1920px) {
+    .sidebar {
+        width: 280px;
+    }
+
+    .menu-bar {
+        gap: 24px;
+        font-size: 13px;
+    }
+
+    .taskbar-nav-btn {
+        min-width: 40px;
+        height: 26px;
+        font-size: 13px;
+    }
+}
+
+/* Mobile-specific enhancements */
+.mobile-sidebar {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mobile-quick-nav .sidebar-item {
+    background: var(--bg-tertiary);
+    border: 1px solid #c0c0c0;
+    border-radius: 3px;
+    margin-bottom: 4px;
+}
+
+.mobile-quick-nav .sidebar-item:hover {
+    background: var(--accent-color);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+    .sidebar-item {
+        min-height: 44px;
+        padding: 12px 8px;
+        display: flex;
+        align-items: center;
+    }
+
+    .menu-item {
+        min-height: 44px;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+    }
+
+    .taskbar-nav-btn {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn {
+        min-height: 44px;
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    .window-control {
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Improved touch targets for small screens */
+@media (max-width: 480px) {
+    .sidebar-item {
+        min-height: 48px;
+        padding: 12px 8px;
+        font-size: 14px;
+    }
+
+    .menu-item {
+        min-height: 48px;
+        padding: 12px 8px;
+    }
+
+    .taskbar-nav-btn {
+        min-height: 48px;
+        min-width: 48px;
+        font-size: 16px;
+    }
+}
+
+/* Landscape orientation optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+    .sidebar {
+        height: 80px;
+    }
+
+    .sidebar-section {
+        min-width: 150px;
+    }
+
+    .sidebar-title {
+        font-size: 10px;
+        margin-bottom: 2px;
+    }
+
+    .sidebar-item {
+        font-size: 10px;
+        padding: 6px 4px;
+        min-height: 32px;
+    }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .sidebar-item,
+    .menu-item,
+    .taskbar-nav-btn {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .nav-slide-in,
+    .nav-slide-out {
+        animation: none;
+    }
+
+    .sidebar-item:hover,
+    .taskbar-nav-btn:hover,
+    .menu-item:hover {
+        transform: none;
+        transition: none;
+    }
+
+    .pulse-dot {
+        animation: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .sidebar-item,
+    .menu-item,
+    .taskbar-nav-btn {
+        border: 2px solid currentColor;
+    }
+
+    .sidebar-item.active,
+    .taskbar-nav-btn.active {
+        background: currentColor;
+        color: var(--bg-window);
+    }
+}
+
+/* Navigation Animation Classes */
+.nav-slide-in {
+    animation: slideIn 0.3s ease-out;
+}
+
+.nav-slide-out {
+    animation: slideOut 0.3s ease-in;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+}
+
+/* Navigation Focus Styles */
+.nav-focusable:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Navigation Loading States */
+.nav-loading {
+    position: relative;
+    pointer-events: none;
+}
+
+.nav-loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+/* Navigation Tooltip Styles */
+.nav-tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    z-index: 1001;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.nav-tooltip.show {
+    opacity: 1;
+}
+
+/* Navigation Badge Styles */
+.nav-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #FF0000;
+    color: white;
+    font-size: 8px;
+    padding: 2px 4px;
+    border-radius: 8px;
+    min-width: 12px;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Navigation Search Styles */
+.nav-search {
+    position: relative;
+    margin: 8px 12px;
+}
+
+.nav-search-input {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px inset #c0c0c0;
+    font-size: 11px;
+    background: white;
+    color: var(--text-primary);
+    font-family: var(--windows-font);
+}
+
+.nav-search-input:focus {
+    outline: none;
+    border: 1px inset var(--primary-color);
+}
+
+.nav-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--bg-window);
+    border: 1px solid #c0c0c0;
+    border-top: none;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.nav-search-result {
+    padding: 6px 8px;
+    font-size: 11px;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.nav-search-result:hover {
+    background: #e8e5e0;
+}
+
+.nav-search-result:last-child {
+    border-bottom: none;
+}
