@@ -1,0 +1,922 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Session History{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Session History{% endblock %}
+
+{% block styles %}
+<style>
+    /* Session History specific styles */
+    .history-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+    }
+
+    .history-title {
+        font-size: 16px;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+
+    .history-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .history-filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .history-filter {
+        padding: 4px 8px;
+        font-size: 10px;
+        border: 1px solid #c0c0c0;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+    }
+
+    .history-filter.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .history-filter:hover {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .history-search {
+        margin-bottom: 16px;
+    }
+
+    .history-search-input {
+        width: 100%;
+        max-width: 400px;
+        padding: 6px 8px;
+        border: 1px inset #c0c0c0;
+        font-size: 11px;
+        background: white;
+        color: var(--text-primary);
+        font-family: var(--windows-font);
+    }
+
+    .history-search-input:focus {
+        outline: none;
+        border: 1px inset var(--primary-color);
+    }
+
+    .history-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .history-stat {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .history-stat-number {
+        font-size: 18px;
+        font-weight: bold;
+        color: var(--primary-color);
+        display: block;
+    }
+
+    .history-stat-label {
+        font-size: 10px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .history-content {
+        flex: 1;
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        overflow-y: auto;
+    }
+
+    .history-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .history-list-item {
+        border-bottom: 1px solid #e0e0e0;
+        padding: 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .history-list-item:hover {
+        background: var(--bg-secondary);
+    }
+
+    .history-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+
+    .history-item-id {
+        font-size: 10px;
+        font-weight: bold;
+        color: #666;
+        font-family: monospace;
+    }
+
+    .history-item-status {
+        padding: 2px 6px;
+        border-radius: 2px;
+        font-size: 9px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .history-item-status.completed {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .history-item-status.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .history-item-status.killed {
+        background: #f5c6cb;
+        color: #721c24;
+    }
+
+    .history-item-problem {
+        font-size: 12px;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .history-item-meta {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 10px;
+        color: #666;
+    }
+
+    .history-item-date {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .history-item-duration {
+        font-weight: bold;
+        color: var(--primary-color);
+    }
+
+    .history-item-actions {
+        display: flex;
+        gap: 4px;
+    }
+
+    .history-action-btn {
+        padding: 2px 6px;
+        font-size: 9px;
+        border: 1px outset #ffffff;
+        border-radius: 2px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+        transition: all 0.2s ease;
+        background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+        color: var(--text-primary);
+    }
+
+    .history-action-btn:hover {
+        background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        transform: translateY(-1px);
+    }
+
+    .history-action-btn:active {
+        border: 1px inset #808080;
+    }
+
+    .history-action-btn.view {
+        background: linear-gradient(180deg, #87CEEB, #4682B4);
+        color: white;
+    }
+
+    .history-action-btn.export {
+        background: linear-gradient(180deg, #90EE90, #7ED321);
+        color: var(--text-primary);
+    }
+
+    .history-action-btn.delete {
+        background: linear-gradient(180deg, #FFB6C1, #FF69B4);
+        color: var(--text-primary);
+    }
+
+    .history-pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border-top: 1px solid #c0c0c0;
+    }
+
+    .history-pagination-btn {
+        padding: 4px 8px;
+        font-size: 10px;
+        border: 1px outset #ffffff;
+        border-radius: 2px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+        background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+        color: var(--text-primary);
+    }
+
+    .history-pagination-btn:hover {
+        background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+    }
+
+    .history-pagination-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .history-pagination-info {
+        font-size: 10px;
+        color: #666;
+        margin: 0 8px;
+    }
+
+    .history-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: #666;
+    }
+
+    .history-empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .history-empty-text {
+        font-size: 14px;
+        margin-bottom: 8px;
+    }
+
+    .history-empty-subtext {
+        font-size: 11px;
+        opacity: 0.8;
+    }
+
+    .history-export-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+
+    .history-export-content {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 20px;
+        max-width: 400px;
+        width: 90%;
+    }
+
+    .history-export-title {
+        font-size: 14px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 16px;
+    }
+
+    .history-export-options {
+        margin-bottom: 16px;
+    }
+
+    .history-export-option {
+        margin-bottom: 8px;
+    }
+
+    .history-export-option input[type="checkbox"] {
+        margin-right: 8px;
+    }
+
+    .history-export-option label {
+        font-size: 11px;
+        color: var(--text-primary);
+        cursor: pointer;
+    }
+
+    .history-export-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+
+    .history-export-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+        border: 1px outset #ffffff;
+        border-radius: 3px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+    }
+
+    .history-export-btn.primary {
+        background: linear-gradient(180deg, #90EE90, #7ED321);
+        color: var(--text-primary);
+    }
+
+    .history-export-btn.secondary {
+        background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+        color: var(--text-primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="history-container">
+    <!-- History Header -->
+    <div class="history-header">
+        <div class="history-title">Session History</div>
+        <div class="history-actions">
+            <button class="btn" id="export-history">Export History</button>
+            <button class="btn" id="clear-history">Clear History</button>
+            <button class="btn" id="refresh-history">Refresh</button>
+        </div>
+    </div>
+
+    <!-- History Statistics -->
+    <div class="history-stats">
+        <div class="history-stat">
+            <span class="history-stat-number" id="total-history">0</span>
+            <div class="history-stat-label">Total Sessions</div>
+        </div>
+        <div class="history-stat">
+            <span class="history-stat-number" id="completed-history">0</span>
+            <div class="history-stat-label">Completed</div>
+        </div>
+        <div class="history-stat">
+            <span class="history-stat-number" id="failed-history">0</span>
+            <div class="history-stat-label">Failed</div>
+        </div>
+        <div class="history-stat">
+            <span class="history-stat-number" id="avg-duration">0m</span>
+            <div class="history-stat-label">Avg Duration</div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="history-search">
+        <input type="text" class="history-search-input" placeholder="Search session history..." id="history-search">
+    </div>
+
+    <div class="history-filters">
+        <div class="history-filter active" data-filter="all">All</div>
+        <div class="history-filter" data-filter="completed">Completed</div>
+        <div class="history-filter" data-filter="failed">Failed</div>
+        <div class="history-filter" data-filter="today">Today</div>
+        <div class="history-filter" data-filter="week">This Week</div>
+        <div class="history-filter" data-filter="month">This Month</div>
+    </div>
+
+    <!-- History Content -->
+    <div class="history-content">
+        <ul class="history-list" id="history-list">
+            <!-- History items will be populated here -->
+        </ul>
+    </div>
+
+    <!-- Pagination -->
+    <div class="history-pagination">
+        <button class="history-pagination-btn" id="prev-page" disabled>Previous</button>
+        <span class="history-pagination-info" id="pagination-info">Page 1 of 1</span>
+        <button class="history-pagination-btn" id="next-page" disabled>Next</button>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="history-export-modal" id="export-modal">
+    <div class="history-export-content">
+        <div class="history-export-title">Export Session History</div>
+        <div class="history-export-options">
+            <div class="history-export-option">
+                <input type="checkbox" id="export-completed" checked>
+                <label for="export-completed">Include completed sessions</label>
+            </div>
+            <div class="history-export-option">
+                <input type="checkbox" id="export-failed" checked>
+                <label for="export-failed">Include failed sessions</label>
+            </div>
+            <div class="history-export-option">
+                <input type="checkbox" id="export-results" checked>
+                <label for="export-results">Include session results</label>
+            </div>
+            <div class="history-export-option">
+                <input type="checkbox" id="export-metadata">
+                <label for="export-metadata">Include metadata (timestamps, duration)</label>
+            </div>
+        </div>
+        <div class="history-export-actions">
+            <button class="history-export-btn secondary" id="cancel-export">Cancel</button>
+            <button class="history-export-btn primary" id="confirm-export">Export</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let historySessions = [];
+    let filteredSessions = [];
+    let currentPage = 1;
+    const itemsPerPage = 10;
+
+    window.initPage = function() {
+        loadHistory();
+        setupEventListeners();
+    };
+
+    function setupEventListeners() {
+        // Filter buttons
+        document.querySelectorAll('.history-filter').forEach(filter => {
+            filter.addEventListener('click', () => {
+                document.querySelectorAll('.history-filter').forEach(f => f.classList.remove('active'));
+                filter.classList.add('active');
+                applyFilters();
+            });
+        });
+
+        // Search input
+        document.getElementById('history-search').addEventListener('input', applyFilters);
+
+        // Action buttons
+        document.getElementById('refresh-history').addEventListener('click', loadHistory);
+        document.getElementById('export-history').addEventListener('click', showExportModal);
+        document.getElementById('clear-history').addEventListener('click', clearHistory);
+
+        // Export modal
+        document.getElementById('cancel-export').addEventListener('click', hideExportModal);
+        document.getElementById('confirm-export').addEventListener('click', exportHistory);
+
+        // Pagination
+        document.getElementById('prev-page').addEventListener('click', () => changePage(currentPage - 1));
+        document.getElementById('next-page').addEventListener('click', () => changePage(currentPage + 1));
+    }
+
+    async function loadHistory() {
+        try {
+            // For now, we'll use the same API endpoint and filter for completed sessions
+            const response = await fetch('/api/sessions');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const allSessions = await response.json();
+            // Filter for completed/failed sessions (history)
+            historySessions = allSessions.filter(s =>
+                s.status === 'completed' || s.status === 'error' || s.status === 'killed'
+            );
+
+            // Sort by creation date (newest first)
+            historySessions.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+            updateStatistics();
+            applyFilters();
+
+        } catch (error) {
+            console.error('Error loading history:', error);
+            showError('Failed to load session history: ' + error.message);
+        }
+    }
+
+    function updateStatistics() {
+        const stats = {
+            total: historySessions.length,
+            completed: historySessions.filter(s => s.status === 'completed').length,
+            failed: historySessions.filter(s => s.status === 'error' || s.status === 'killed').length,
+            avgDuration: calculateAverageDuration()
+        };
+
+        document.getElementById('total-history').textContent = stats.total;
+        document.getElementById('completed-history').textContent = stats.completed;
+        document.getElementById('failed-history').textContent = stats.failed;
+        document.getElementById('avg-duration').textContent = stats.avgDuration;
+    }
+
+    function calculateAverageDuration() {
+        if (historySessions.length === 0) return '0m';
+
+        const totalDuration = historySessions.reduce((sum, session) => {
+            const start = new Date(session.created_at);
+            const end = new Date(session.updated_at);
+            return sum + (end - start);
+        }, 0);
+
+        const avgMs = totalDuration / historySessions.length;
+        const avgMinutes = Math.round(avgMs / 60000);
+
+        return avgMinutes < 60 ? `${avgMinutes}m` : `${Math.floor(avgMinutes / 60)}h ${avgMinutes % 60}m`;
+    }
+
+    function applyFilters() {
+        const searchTerm = document.getElementById('history-search').value.toLowerCase();
+        const activeFilter = document.querySelector('.history-filter.active').getAttribute('data-filter');
+
+        filteredSessions = historySessions.filter(session => {
+            // Search filter
+            if (searchTerm && !session.problem?.toLowerCase().includes(searchTerm)) {
+                return false;
+            }
+
+            // Status filter
+            switch (activeFilter) {
+                case 'completed':
+                    return session.status === 'completed';
+                case 'failed':
+                    return session.status === 'error' || session.status === 'killed';
+                case 'today':
+                    return isToday(new Date(session.created_at));
+                case 'week':
+                    return isThisWeek(new Date(session.created_at));
+                case 'month':
+                    return isThisMonth(new Date(session.created_at));
+                default:
+                    return true;
+            }
+        });
+
+        currentPage = 1;
+        renderHistory();
+        updatePagination();
+    }
+
+    function isToday(date) {
+        const today = new Date();
+        return date.toDateString() === today.toDateString();
+    }
+
+    function isThisWeek(date) {
+        const today = new Date();
+        const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return date >= weekAgo;
+    }
+
+    function isThisMonth(date) {
+        const today = new Date();
+        return date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear();
+    }
+
+    function renderHistory() {
+        const historyList = document.getElementById('history-list');
+
+        if (filteredSessions.length === 0) {
+            historyList.innerHTML = `
+                <div class="history-empty">
+                    <div class="history-empty-icon">📋</div>
+                    <div class="history-empty-text">No session history found</div>
+                    <div class="history-empty-subtext">Complete some sessions to see them here</div>
+                </div>
+            `;
+            return;
+        }
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+        const pageSessions = filteredSessions.slice(startIndex, endIndex);
+
+        historyList.innerHTML = '';
+        pageSessions.forEach(session => {
+            const historyItem = createHistoryItem(session);
+            historyList.appendChild(historyItem);
+        });
+    }
+
+    function createHistoryItem(session) {
+        const li = document.createElement('li');
+        li.className = 'history-list-item';
+        li.setAttribute('data-session-id', session.session_id);
+
+        const createdAt = new Date(session.created_at);
+        const updatedAt = new Date(session.updated_at);
+        const duration = calculateDuration(session.created_at, session.updated_at);
+
+        li.innerHTML = `
+            <div class="history-item-header">
+                <span class="history-item-id">${session.session_id.substring(0, 8)}...</span>
+                <span class="history-item-status ${session.status}">${session.status}</span>
+            </div>
+            <div class="history-item-problem">${session.problem || 'No problem description'}</div>
+            <div class="history-item-meta">
+                <div class="history-item-date">
+                    <span>${createdAt.toLocaleDateString()}</span>
+                    <span>${createdAt.toLocaleTimeString()}</span>
+                </div>
+                <div class="history-item-duration">${duration}</div>
+                <div class="history-item-actions">
+                    <button class="history-action-btn view" data-action="view">View</button>
+                    <button class="history-action-btn export" data-action="export">Export</button>
+                    <button class="history-action-btn delete" data-action="delete">Delete</button>
+                </div>
+            </div>
+        `;
+
+        // Add event listeners for action buttons
+        li.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                handleHistoryAction(session, e.target.getAttribute('data-action'));
+            });
+        });
+
+        // Add click listener to view session details
+        li.addEventListener('click', () => viewSessionDetails(session));
+
+        return li;
+    }
+
+    function handleHistoryAction(session, action) {
+        switch (action) {
+            case 'view':
+                viewSessionDetails(session);
+                break;
+            case 'export':
+                exportSingleSession(session);
+                break;
+            case 'delete':
+                deleteSession(session);
+                break;
+        }
+    }
+
+    function viewSessionDetails(session) {
+        const details = session.result ?
+            session.result.final_synthesis || JSON.stringify(session.result, null, 2) :
+            'No results available';
+
+        const newWindow = window.open('', '_blank');
+        newWindow.document.write(`
+            <html>
+                <head>
+                    <title>Session Details - ${session.session_id}</title>
+                    <style>
+                        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 20px; background: #f5f5f5; }
+                        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+                        .header { border-bottom: 1px solid #e0e0e0; padding-bottom: 16px; margin-bottom: 20px; }
+                        .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+                        .meta-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+                        .meta-label { font-weight: bold; color: #666; }
+                        .meta-value { color: #333; }
+                        .problem { background: #f8f9fa; padding: 16px; border-radius: 4px; margin-bottom: 20px; }
+                        .result { background: #f8f9fa; padding: 16px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+                        .status { padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+                        .status.completed { background: #d4edda; color: #155724; }
+                        .status.error { background: #f8d7da; color: #721c24; }
+                        .status.killed { background: #f5c6cb; color: #721c24; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Session Details</h1>
+                            <div class="meta">
+                                <div class="meta-item">
+                                    <span class="meta-label">Session ID:</span>
+                                    <span class="meta-value">${session.session_id}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Status:</span>
+                                    <span class="status ${session.status}">${session.status}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Created:</span>
+                                    <span class="meta-value">${new Date(session.created_at).toLocaleString()}</span>
+                                </div>
+                                <div class="meta-item">
+                                    <span class="meta-label">Duration:</span>
+                                    <span class="meta-value">${calculateDuration(session.created_at, session.updated_at)}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="problem">
+                            <h3>Problem Description</h3>
+                            <p>${session.problem || 'No problem description available'}</p>
+                        </div>
+                        <div class="result">
+                            <h3>Result</h3>
+                            ${details}
+                        </div>
+                    </div>
+                </body>
+            </html>
+        `);
+    }
+
+    function exportSingleSession(session) {
+        const exportData = {
+            session_id: session.session_id,
+            status: session.status,
+            created_at: session.created_at,
+            updated_at: session.updated_at,
+            duration: calculateDuration(session.created_at, session.updated_at),
+            problem: session.problem,
+            result: session.result,
+            error: session.error
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `session-${session.session_id.substring(0, 8)}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function deleteSession(session) {
+        if (confirm(`Are you sure you want to delete this session?\n\nSession ID: ${session.session_id.substring(0, 8)}...`)) {
+            try {
+                // In a real implementation, you'd have a delete API endpoint
+                // For now, we'll just remove it from the local array
+                const index = historySessions.findIndex(s => s.session_id === session.session_id);
+                if (index !== -1) {
+                    historySessions.splice(index, 1);
+                    updateStatistics();
+                    applyFilters();
+                    showInfo('Session deleted successfully');
+                }
+            } catch (error) {
+                console.error('Error deleting session:', error);
+                showError('Failed to delete session: ' + error.message);
+            }
+        }
+    }
+
+    function showExportModal() {
+        document.getElementById('export-modal').style.display = 'flex';
+    }
+
+    function hideExportModal() {
+        document.getElementById('export-modal').style.display = 'none';
+    }
+
+    function exportHistory() {
+        const exportCompleted = document.getElementById('export-completed').checked;
+        const exportFailed = document.getElementById('export-failed').checked;
+        const exportResults = document.getElementById('export-results').checked;
+        const exportMetadata = document.getElementById('export-metadata').checked;
+
+        let sessionsToExport = filteredSessions.filter(session => {
+            if (session.status === 'completed' && !exportCompleted) return false;
+            if ((session.status === 'error' || session.status === 'killed') && !exportFailed) return false;
+            return true;
+        });
+
+        const exportData = sessionsToExport.map(session => {
+            const data = {
+                session_id: session.session_id,
+                status: session.status,
+                problem: session.problem
+            };
+
+            if (exportMetadata) {
+                data.created_at = session.created_at;
+                data.updated_at = session.updated_at;
+                data.duration = calculateDuration(session.created_at, session.updated_at);
+            }
+
+            if (exportResults && session.result) {
+                data.result = session.result;
+            }
+
+            if (session.error) {
+                data.error = session.error;
+            }
+
+            return data;
+        });
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `novasystem-history-${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        hideExportModal();
+        showInfo(`Exported ${sessionsToExport.length} sessions`);
+    }
+
+    async function clearHistory() {
+        if (confirm('Are you sure you want to clear all session history? This action cannot be undone.')) {
+            try {
+                // In a real implementation, you'd have a clear history API endpoint
+                historySessions = [];
+                updateStatistics();
+                applyFilters();
+                showInfo('Session history cleared successfully');
+            } catch (error) {
+                console.error('Error clearing history:', error);
+                showError('Failed to clear history: ' + error.message);
+            }
+        }
+    }
+
+    function changePage(page) {
+        const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
+        if (page < 1 || page > totalPages) return;
+
+        currentPage = page;
+        renderHistory();
+        updatePagination();
+    }
+
+    function updatePagination() {
+        const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
+        const startIndex = (currentPage - 1) * itemsPerPage + 1;
+        const endIndex = Math.min(currentPage * itemsPerPage, filteredSessions.length);
+
+        document.getElementById('prev-page').disabled = currentPage === 1;
+        document.getElementById('next-page').disabled = currentPage === totalPages || totalPages === 0;
+        document.getElementById('pagination-info').textContent =
+            totalPages === 0 ? 'No items' : `Page ${currentPage} of ${totalPages} (${startIndex}-${endIndex} of ${filteredSessions.length})`;
+    }
+
+    function calculateDuration(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const diff = end - start;
+
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+
+        if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else if (minutes > 0) {
+            return `${minutes}m ${seconds}s`;
+        } else {
+            return `${seconds}s`;
+        }
+    }
+
+    function showInfo(message) {
+        console.log('INFO:', message);
+        // Could add a toast notification here
+    }
+
+    function showError(message) {
+        console.error('ERROR:', message);
+        // Could add a toast notification here
+        alert(message); // Temporary fallback
+    }
+</script>
+{% endblock %}

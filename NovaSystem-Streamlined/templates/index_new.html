@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v2.0 - Home{% endblock %}
+{% block window_title %}NovaSystem v2.0{% endblock %}
+
+{% block styles %}
+<style>
+    /* Chat-specific styles */
+    .chat-header {
+        text-align: center;
+        padding: 20px;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid #c0c0c0;
+    }
+
+    .chat-title {
+        font-size: 18px;
+        color: #316ac5;
+        margin-bottom: 4px;
+        font-weight: normal;
+    }
+
+    .chat-subtitle {
+        font-size: 11px;
+        color: #666;
+    }
+
+    /* Chat Messages Area */
+    .chat-messages {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+        background: var(--bg-tertiary);
+        border-bottom: 1px solid #c0c0c0;
+    }
+
+    .message {
+        margin-bottom: 12px;
+        padding: 8px 12px;
+        border-radius: 0px; /* XP style - no rounded corners */
+        max-width: 80%;
+        line-height: 1.4;
+        font-size: 11px;
+        border: 1px solid #c0c0c0;
+    }
+
+    .message.user {
+        background: #E1E1E1;
+        border: 1px inset #c0c0c0;
+        margin-left: auto;
+        margin-right: 0;
+    }
+
+    .message.bot {
+        background: #DAEEFF;
+        border: 1px inset #a0c0e0;
+        margin-left: 0;
+        margin-right: auto;
+        position: relative;
+    }
+
+    .message:hover .copy-btn {
+        opacity: 1;
+    }
+
+    .copy-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 20px;
+        height: 20px;
+        background: #f0f0f0;
+        border: 1px outset #ffffff;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s;
+        font-size: 10px;
+        line-height: 18px;
+        text-align: center;
+    }
+
+    .copy-btn:active {
+        border-style: inset;
+    }
+
+    .message.system {
+        background: #FFF8DC;
+        border: 1px inset #e0e0a0;
+        margin: 0 auto;
+        max-width: 60%;
+        text-align: center;
+        font-style: italic;
+        color: #666;
+    }
+
+    /* Chat Input Form */
+    .chat-input-form {
+        padding: 12px;
+        background: var(--bg-window);
+        border-top: 1px solid #c0c0c0;
+    }
+
+    .chat-input-form form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+
+    .chat-input-form input {
+        flex: 1;
+        padding: 4px 6px;
+        border: 2px inset #c0c0c0;
+        font-size: 11px;
+        background: #ffffff !important;
+        color: #000000 !important;
+        font-family: var(--windows-font);
+    }
+
+    .chat-input-form input:focus {
+        outline: none;
+        border: 2px inset #316ac5;
+    }
+
+    /* Typing indicator */
+    .typing-indicator {
+        padding: 8px 12px;
+        background: #f0f0f0;
+        border: 1px inset #c0c0c0;
+        margin: 8px 0;
+        font-style: italic;
+        color: #666;
+        font-size: 11px;
+    }
+
+    .typing-dots {
+        display: inline-block;
+        animation: typing 1.5s infinite;
+    }
+
+    @keyframes typing {
+        0%, 20% { content: '.'; }
+        40% { content: '..'; }
+        60%, 100% { content: '...'; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Chat Header -->
+<div class="chat-header">
+    <div class="chat-title">What can I help with?</div>
+    <div class="chat-subtitle">Multi-Agent Problem-Solving Framework</div>
+</div>
+
+<!-- Chat Messages Area -->
+<div class="chat-messages" id="chat-messages">
+    <div class="message system">Welcome to NovaSystem! How can I assist you today?</div>
+</div>
+
+<!-- Chat Input Form -->
+<div class="chat-input-form">
+    <form id="messageForm">
+        <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off">
+        <button type="submit" class="btn">Send</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Page-specific functionality for home page
+    window.initPage = function() {
+        const messageForm = document.getElementById('messageForm');
+        const messageInput = document.getElementById('messageInput');
+        const chatMessages = document.getElementById('chat-messages');
+        const statusSpan = document.getElementById('status');
+        const statusIndicator = document.getElementById('status-indicator');
+
+        // Focus on input when page loads
+        messageInput.focus();
+
+        // Form submission handler
+        messageForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const messageText = messageInput.value.trim();
+
+            if (messageText) {
+                addMessage(messageText, 'user');
+                messageInput.value = '';
+                updateStatus('processing', 'Processing...');
+
+                // Show typing indicator
+                showTypingIndicator();
+
+                try {
+                    // Format the data the way your backend expects
+                    let problemText = messageText;
+
+                    // Pad short messages to meet 10 character minimum
+                    if (problemText.length < 10) {
+                        problemText = `Please help me with: ${messageText}`;
+                    }
+
+                    const requestData = {
+                        problem: problemText,
+                        domains: ["General", "Technology", "Business"],
+                        max_iterations: 3,
+                        model: "auto"
+                    };
+
+                    console.log('Sending request:', requestData);
+
+                    const response = await fetch('/api/solve', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    console.log('Response status:', response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error('Server error:', errorText);
+                        throw new Error(`Server error: ${response.status}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Response data:', data);
+
+                    // Check if this is a session start response
+                    if (data.status === 'started' && data.session_id) {
+                        // Show session started message
+                        addMessage(`Session started! Processing your request...`, 'bot');
+                        updateStatus('processing', 'Processing in background...');
+
+                        // Start polling for results
+                        pollForResults(data.session_id);
+                    } else {
+                        // Fallback response
+                        hideTypingIndicator();
+                        const botResponse = data.message || data.response || 'Processing started, but no immediate response available.';
+                        addMessage(botResponse, 'bot');
+                        updateStatus('ready', 'Ready');
+                    }
+
+                } catch (error) {
+                    console.error('Error details:', error);
+                    hideTypingIndicator();
+                    addErrorMessage(`Sorry, there was an error: ${error.message}`);
+                    updateStatus('error', 'Error');
+                }
+
+                messageInput.focus();
+            }
+        });
+
+        // Polling function to check for results
+        async function pollForResults(sessionId) {
+            const maxAttempts = 60; // Poll for up to 5 minutes
+            let attempts = 0;
+
+            const poll = async () => {
+                try {
+                    attempts++;
+                    console.log(`Polling attempt ${attempts} for session ${sessionId}`);
+
+                    const response = await fetch(`/api/sessions/${sessionId}/status`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (!response.ok) {
+                        let errorText = `Status endpoint failed with status ${response.status}`;
+                        try {
+                            const errorJson = await response.json();
+                            errorText = errorJson.detail || errorText;
+                        } catch (e) {
+                            // Not a json error, stick with the status code
+                        }
+
+                         // If status is not found, it might be complete, try getting result.
+                        if (response.status === 404 && attempts > 1) { // 404 might mean it's done and removed from active.
+                            console.log("Session status not found, attempting to fetch result directly.");
+                            const resultResponse = await fetch(`/api/sessions/${sessionId}/result`);
+                            if(resultResponse.ok) {
+                                const data = await resultResponse.json();
+                                 if (data.result) {
+                                    const solution = data.result.final_synthesis || JSON.stringify(data.result, null, 2);
+                                    addMessage(solution, 'bot');
+                                    updateStatus('ready', 'Ready');
+                                    hideTypingIndicator();
+                                    return;
+                                }
+                            }
+                        }
+                        throw new Error(errorText);
+                    }
+
+                    const data = await response.json();
+                    console.log('Polling response:', data);
+
+                    if (data.status === 'completed' || data.status === 'error') {
+                         hideTypingIndicator();
+
+                        if (data.status === 'error') {
+                            addErrorMessage(`Session failed: ${data.error || 'Unknown error'}`);
+                            updateStatus('error', 'Error');
+                            return;
+                        }
+
+                        const resultResponse = await fetch(`/api/sessions/${sessionId}/result`);
+                        const finalResult = await resultResponse.json();
+
+                        if (!resultResponse.ok) {
+                            throw new Error(finalResult.error || 'Failed to get final result.');
+                        }
+
+                        const solution = finalResult.result && finalResult.result.final_synthesis
+                            ? finalResult.result.final_synthesis
+                            : JSON.stringify(finalResult.result, null, 2);
+
+                        addMessage(solution, 'bot');
+                        updateStatus('ready', 'Ready');
+                        return;
+
+                    } else if (data.status === 'running') {
+                        // Still processing, continue polling
+                        if (attempts < maxAttempts) {
+                            const elapsed = attempts * 3;
+                            updateStatus('processing', `Processing... (${elapsed}s elapsed)`);
+                            updateProcessingMessage(attempts, data.current_iteration, data.total_iterations);
+                            setTimeout(poll, 3000); // Check again in 3 seconds
+                        } else {
+                            addErrorMessage('Processing is taking longer than expected. The system may still be working in the background.');
+                            updateStatus('ready', 'Ready');
+                            hideTypingIndicator();
+                        }
+                        return;
+                    }
+
+                    // If we get here, no valid response was received for status
+                    if (attempts < maxAttempts) {
+                        const elapsed = attempts * 3;
+                        updateStatus('processing', `Processing... (${elapsed}s elapsed)`);
+                        setTimeout(poll, 3000);
+                    } else {
+                        addErrorMessage('Unable to get results. The processing may have completed but the results endpoint is not available.');
+                        updateStatus('ready', 'Ready');
+                        hideTypingIndicator();
+                    }
+
+                } catch (error) {
+                    console.error('Polling error:', error);
+                    if (attempts < maxAttempts) {
+                        setTimeout(poll, 5000); // Try again after a longer delay on error
+                    } else {
+                        addErrorMessage('Error checking for results. Please try again.');
+                        updateStatus('ready', 'Ready');
+                        hideTypingIndicator();
+                    }
+                }
+            };
+
+            // Start polling after a short delay
+            setTimeout(poll, 3000);
+        }
+
+        // Update the processing message to show progress
+        function updateProcessingMessage(attempts, current_iteration, total_iterations) {
+            const processingMsg = document.querySelector('.message.bot:last-child');
+            if (processingMsg && processingMsg.textContent.includes('Processing your request')) {
+                const elapsed = attempts * 3;
+                let percentage = 0;
+                if(total_iterations > 0) {
+                    percentage = Math.min(Math.round((current_iteration / total_iterations) * 100), 95); // Cap at 95%
+                } else {
+                    percentage = Math.min(Math.round((elapsed / 120) * 100), 95); // Fallback to time-based
+                }
+                processingMsg.textContent = `Processing your request... (${elapsed}s elapsed, ~${percentage}% complete)`;
+            }
+        }
+
+        // Helper functions
+        function addMessage(text, type) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', type);
+            messageElement.textContent = text;
+
+            if (type === 'bot') {
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = '📋';
+                copyBtn.title = 'Copy to clipboard';
+                copyBtn.addEventListener('click', () => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        copyBtn.textContent = '✅';
+                        setTimeout(() => {
+                            copyBtn.textContent = '📋';
+                        }, 2000);
+                    }).catch(err => {
+                        console.error('Failed to copy text: ', err);
+                    });
+                });
+                messageElement.appendChild(copyBtn);
+            }
+
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addErrorMessage(text) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', 'system'); // Use 'system' style for errors
+            messageElement.textContent = text;
+            messageElement.style.color = 'var(--error-color)';
+            messageElement.style.fontWeight = 'bold';
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            // Don't show if it's already there
+            if (document.getElementById('typing-indicator')) return;
+            const typingElement = document.createElement('div');
+            typingElement.classList.add('typing-indicator');
+            typingElement.id = 'typing-indicator';
+            typingElement.innerHTML = 'NovaSystem is thinking<span class="typing-dots">...</span>';
+            chatMessages.appendChild(typingElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingElement = document.getElementById('typing-indicator');
+            if (typingElement) {
+                typingElement.parentElement.removeChild(typingElement);
+            }
+        }
+    };
+</script>
+{% endblock %}

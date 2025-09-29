@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NovaSystem v3.0{% endblock %}</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wDR0dH/VVVVf1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/0dHR/////wD///8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVVf9HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/////////////////////x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVX/1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV39HR0f////8A////AP///wDR0dH/VVVV31VVVf9VVVX/VVVX/1VVVf9VVVX/VVVX/VVVX/1VVVf90dHR/////wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A//8AAP//AAD//wAA//8AAIABAACAAQAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAA==">
+
+    <!-- Base CSS Variables -->
+    <style>
+        :root {
+            /* Windows XP Colors */
+            --primary-color: #0054E3;
+            --secondary-color: #3B8CFF;
+            --accent-color: #6BBF44;
+            --success-color: #6BBF44;
+            --warning-color: #FF8000;
+            --error-color: #FF0000;
+            --text-primary: #000000;
+            --text-white: #ffffff;
+            --bg-primary: #ECE9D8;
+            --bg-secondary: #F1F1F1;
+            --bg-tertiary: #FFFFFF;
+            --bg-window: #ECE9D8;
+            --bg-sidebar: #D6D3CE;
+            --border-light: #ffffff;
+            --border-dark: #7A96DF;
+            --border-inset: #c0c0c0;
+            --shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            --windows-font: 'Tahoma', 'MS Sans Serif', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--windows-font);
+            background: linear-gradient(180deg, #5A98D8 0%, #86C5F5 50%, #7BB8E8 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Windows XP Desktop Background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="85" cy="15" r="8" fill="rgba(255,255,255,0.1)"/><circle cx="15" cy="85" r="12" fill="rgba(255,255,255,0.05)"/></svg>');
+            pointer-events: none;
+        }
+
+        /* Main Application Window */
+        .main-window {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 40px;
+            background: var(--bg-window);
+            border: 1px solid #0054E3;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Window Title Bar */
+        .window-titlebar {
+            background: linear-gradient(180deg, #0054E3, #3B8CFF);
+            color: var(--text-white);
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #0054E3;
+        }
+
+        .window-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .window-icon {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border-radius: 2px;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 1px;
+        }
+
+        .window-control {
+            width: 17px;
+            height: 15px;
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            border: 1px outset #ffffff;
+            font-size: 9px;
+            text-align: center;
+            line-height: 13px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .window-control:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .window-control:active {
+            border: 1px inset #808080;
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: var(--bg-window);
+            border-bottom: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            display: flex;
+            gap: 16px;
+            position: relative;
+        }
+
+        .menu-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+            position: relative;
+        }
+
+        .menu-item:hover {
+            background: #316ac5;
+            color: white;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            background: var(--bg-window);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 200px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid #c0c0c0;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .sidebar-section {
+            padding: 8px;
+            border-bottom: 1px solid #b8b5b2;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            padding: 4px;
+        }
+
+        .sidebar-item {
+            padding: 6px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 2px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sidebar-item:hover {
+            background: #e8e5e0;
+        }
+
+        .sidebar-item.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .sidebar-icon {
+            width: 16px;
+            height: 16px;
+            background: #4a90e2;
+            border-radius: 1px;
+        }
+
+        /* Content Area */
+        .content-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-tertiary);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--bg-window);
+            border-top: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+            border: 1px solid #808080;
+        }
+        .status-indicator.ready { background: #6BBF44; }
+        .status-indicator.processing {
+            background: #3B8CFF;
+            animation: pulse 1.5s infinite;
+        }
+        .status-indicator.error { background: #FF0000; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        /* Windows Taskbar */
+        .windows-taskbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border-top: 1px solid #ffffff;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            font-size: 11px;
+            color: white;
+        }
+
+        .start-button {
+            background: linear-gradient(180deg, #44bb44, #2d7d2d);
+            border: 1px outset #44bb44;
+            padding: 4px 12px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            color: white;
+            font-weight: bold;
+            border-radius: 2px;
+        }
+
+        .start-button:hover {
+            background: linear-gradient(180deg, #54cc54, #3d8d3d);
+        }
+
+        .taskbar-app {
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border: 1px solid #ffffff;
+            padding: 4px 8px;
+            margin-right: 4px;
+            font-size: 11px;
+            color: white;
+            border-radius: 2px;
+        }
+
+        .taskbar-time {
+            margin-left: auto;
+            font-size: 11px;
+            color: white;
+        }
+
+        /* Page-specific content area */
+        .page-content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+        }
+
+        /* Common button styles */
+        .btn {
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            color: var(--text-primary);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            padding: 6px 16px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: var(--windows-font);
+            min-height: 23px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .btn:active {
+            border: 1px inset #808080;
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Classic Windows XP Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 17px;
+            height: 17px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #ece9d8;
+            border: 1px inset #c0c0c0;
+            border-radius: 0;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ece9d8 0%, #d6d3ce 50%, #c6c3c0 100%);
+            border: 1px outset #c0c0c0;
+            border-radius: 0;
+            box-shadow: inset 1px 1px 0 #ffffff;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #f0f0f0 0%, #e0ddd8 50%, #d0cdc0 100%);
+        }
+
+        ::-webkit-scrollbar-thumb:active {
+            border: 1px inset #c0c0c0;
+            background: linear-gradient(180deg, #c6c3c0 0%, #d6d3ce 50%, #ece9d8 100%);
+            box-shadow: inset 1px 1px 0 #808080;
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: #ece9d8;
+            border: 1px inset #c0c0c0;
+        }
+
+        /* Firefox scrollbar styling */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #d6d3ce #ece9d8;
+        }
+
+        /* Responsive Design Enhancements */
+        @media (max-width: 1200px) {
+            .main-window {
+                top: 5px;
+                left: 5px;
+                right: 5px;
+                bottom: 35px;
+            }
+
+            .sidebar {
+                width: 180px;
+            }
+
+            .menu-bar {
+                gap: 12px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            .main-window {
+                top: 2px;
+                left: 2px;
+                right: 2px;
+                bottom: 32px;
+            }
+
+            .sidebar {
+                width: 160px;
+            }
+
+            .menu-bar {
+                gap: 8px;
+                font-size: 10px;
+            }
+
+            .window-titlebar {
+                font-size: 10px;
+                padding: 3px 6px;
+            }
+
+            .window-control {
+                width: 15px;
+                height: 13px;
+                font-size: 8px;
+                line-height: 11px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-window {
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 30px;
+            }
+
+            .main-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: 120px;
+                flex-direction: row;
+                overflow-x: auto;
+                overflow-y: hidden;
+                border-right: none;
+                border-bottom: 1px solid #c0c0c0;
+            }
+
+            .sidebar-section {
+                min-width: 200px;
+                border-right: 1px solid #b8b5b2;
+                border-bottom: none;
+                margin-right: 8px;
+            }
+
+            .content-area {
+                flex: 1;
+                min-height: 0;
+            }
+
+            .menu-bar {
+                flex-wrap: wrap;
+                gap: 4px;
+                font-size: 9px;
+            }
+
+            .menu-item {
+                padding: 2px 4px;
+            }
+
+            .windows-taskbar {
+                height: 30px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .sidebar {
+                height: 100px;
+            }
+
+            .sidebar-section {
+                min-width: 150px;
+            }
+
+            .menu-bar {
+                display: none;
+            }
+
+            .window-titlebar {
+                padding: 2px 4px;
+            }
+
+            .window-title span {
+                font-size: 10px;
+            }
+
+            .windows-taskbar {
+                height: 28px;
+                font-size: 10px;
+            }
+
+            .start-button {
+                padding: 2px 8px;
+                font-size: 10px;
+            }
+
+            .taskbar-app {
+                padding: 2px 6px;
+                font-size: 10px;
+            }
+        }
+
+        @media (max-width: 320px) {
+            .sidebar {
+                height: 80px;
+            }
+
+            .sidebar-section {
+                min-width: 120px;
+            }
+
+            .sidebar-title {
+                font-size: 10px;
+            }
+
+            .sidebar-item {
+                font-size: 10px;
+                padding: 4px 6px;
+            }
+
+            .windows-taskbar {
+                height: 26px;
+            }
+        }
+
+        /* Large screen optimizations */
+        @media (min-width: 1600px) {
+            .main-window {
+                max-width: 1400px;
+                margin: 0 auto;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .sidebar {
+                width: 250px;
+            }
+
+            .menu-bar {
+                gap: 20px;
+                font-size: 12px;
+            }
+        }
+
+        @media (min-width: 1920px) {
+            .sidebar {
+                width: 280px;
+            }
+        }
+    </style>
+
+    <!-- Include navigation CSS -->
+    <link rel="stylesheet" href="/static/shared/navigation.css">
+
+    <!-- Page-specific styles -->
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <!-- Main Application Window -->
+    <div class="main-window">
+        <!-- Window Title Bar -->
+        <div class="window-titlebar">
+            <div class="window-title">
+                <div class="window-icon"></div>
+                <span>{% block window_title %}NovaSystem v3.0{% endblock %}</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control" title="Minimize">_</div>
+                <div class="window-control" title="Maximize">□</div>
+                <div class="window-control" title="Close">×</div>
+            </div>
+        </div>
+
+        <!-- Menu Bar -->
+        <div class="menu-bar">
+            <!-- Menu items will be populated by navigation.js -->
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Sidebar content will be populated by navigation.js -->
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Page-specific content -->
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div>
+                <span id="status-indicator" class="status-indicator ready"></span>
+                <span id="status">Ready</span>
+            </div>
+            <span>NovaSystem v3.0 | Connected</span>
+        </div>
+    </div>
+
+    <!-- Windows Taskbar -->
+    <div class="windows-taskbar">
+        <button class="start-button">Start</button>
+        <div class="taskbar-app">NovaSystem v3.0</div>
+        <!-- Navigation buttons will be added here by navigation.js -->
+        <span class="taskbar-time" id="taskbar-time"></span>
+    </div>
+
+    <!-- Include navigation JavaScript -->
+    <script src="/static/shared/navigation.js"></script>
+
+    <!-- Include responsive testing utility (development only) -->
+    {% if config.DEBUG %}
+    <script src="/static/shared/responsive-test.js"></script>
+    {% endif %}
+
+    <!-- Page-specific scripts -->
+    {% block scripts %}{% endblock %}
+
+    <!-- Common JavaScript functionality -->
+    <script>
+        // Common functionality for all pages
+        document.addEventListener('DOMContentLoaded', function() {
+            // Update taskbar time
+            function updateTaskbarTime() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', {
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const timeElement = document.getElementById('taskbar-time');
+                if (timeElement) {
+                    timeElement.textContent = timeString;
+                }
+            }
+
+            updateTaskbarTime();
+            setInterval(updateTaskbarTime, 1000);
+
+            // Window control functionality
+            const windowControls = document.querySelectorAll('.window-control');
+            windowControls.forEach((control, index) => {
+                control.addEventListener('click', function() {
+                    if (index === 0) { // Minimize
+                        console.log('Minimize clicked');
+                        // Could minimize the window
+                    } else if (index === 1) { // Maximize
+                        console.log('Maximize clicked');
+                        // Could maximize the window
+                    } else if (index === 2) { // Close
+                        console.log('Close clicked');
+                        // Could close the window or show confirmation
+                        if (confirm('Are you sure you want to close NovaSystem?')) {
+                            window.close();
+                        }
+                    }
+                });
+            });
+
+            // Status update helper
+            window.updateStatus = function(state, text) {
+                const statusIndicator = document.getElementById('status-indicator');
+                const statusSpan = document.getElementById('status');
+
+                if (statusIndicator && statusSpan) {
+                    statusIndicator.className = 'status-indicator';
+                    statusIndicator.classList.add(state);
+                    statusSpan.textContent = text;
+                }
+            };
+
+            // Initialize page-specific functionality
+            if (typeof window.initPage === 'function') {
+                window.initPage();
+            }
+        });
+    </script>
+</body>
+</html>

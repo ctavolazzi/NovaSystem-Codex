@@ -1,0 +1,956 @@
+"""
+LLM Service for NovaSystem.
+
+This module provides a unified interface for interacting with different
+LLM providers (OpenAI, Ollama, etc.).
+"""
+
+import os
+import asyncio
+import logging
+import time
+from datetime import datetime
+
+from typing import List, Dict, Any, Optional, AsyncGenerator
+import httpx
+from openai import AsyncOpenAI
+import anthropic
+import ollama
+from .metrics import get_metrics_collector
+from .model_cache import get_model_cache
+from ..config import get_config
+from ..session import get_session_manager
+
+logger = logging.getLogger(__name__)
+
+class LLMService:
+    """Unified LLM service for multiple providers."""
+
+    def __init__(self,
+                 openai_api_key: Optional[str] = None,
+                 anthropic_api_key: Optional[str] = None,
+                 ollama_host: str = "http://localhost:11434",
+                 enable_session_recording: bool = True):
+        """
+        Initialize the LLM service.
+
+        Args:
+            openai_api_key: OpenAI API key
+            anthropic_api_key: Anthropic API key
+            ollama_host: Ollama server host
+            enable_session_recording: Whether to record sessions automatically
+        """
+        self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+        self.anthropic_api_key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.ollama_host = ollama_host
+        self.metrics_collector = get_metrics_collector()
+        self.model_cache = get_model_cache()
+
+        # Session management
+        self.enable_session_recording = enable_session_recording
+        self.config = get_config()
+        if self.enable_session_recording:
+            self.session_manager = get_session_manager()
+        else:
+            self.session_manager = None
+
+        # Initialize clients
+        if self.openai_api_key:
+            self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
+            logger.info("OpenAI client initialized")
+        else:
+            self.openai_client = None
+            logger.info("No OpenAI API key provided, will use Ollama if available")
+
+        if self.anthropic_api_key:
+            self.anthropic_client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
+            logger.info("Anthropic client initialized")
+        else:
+            self.anthropic_client = None
+            logger.info("No Anthropic API key provided")
+
+        try:
+            self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
+            # Test if Ollama is running
+            available_models = self.get_ollama_models()
+            if available_models and len(available_models) > 0:
+                logger.info(f"Ollama client initialized with {len(available_models)} models: {[m.replace('ollama:', '') for m in available_models]}")
+            else:
+                logger.warning("Ollama client initialized but no models found")
+        except Exception as e:
+            self.ollama_client = None
+            logger.warning(f"Ollama client initialization failed: {str(e)}")
+
+    async def get_completion(self,
+                           messages: List[Dict[str, Any]],
+                           model: str = None,
+                           temperature: float = 0.7,
+                           max_tokens: Optional[int] = None) -> str:
+        """
+        Get completion from the specified model.
+
+        Args:
+            messages: List of messages in OpenAI format
+            model: Model name (if None, uses default model)
+            temperature: Sampling temperature
+            max_tokens: Maximum tokens to generate
+
+        Returns:
+            Generated text
+        """
+        # Use default model if none specified
+        if model is None:
+            model = self.get_default_model()
+
+        start_time = time.time()
+        tokens_input = sum(len(msg.get('content', '').split()) for msg in messages)
+
+        # Check cache first
+        if model.startswith("ollama:"):
+            model_type = "ollama"
+        elif model.startswith("claude-"):
+            model_type = "anthropic"
+        else:
+            model_type = "openai"
+        cache_entry = self.model_cache.get_model(model, model_type)
+
+        if cache_entry and cache_entry.is_loaded:
+            logger.debug(f"Using cached model: {model}")
+
+        try:
+            # If model starts with ollama:, use Ollama directly
+            if model.startswith("ollama:"):
+                result = await self._get_ollama_completion(messages, model, temperature)
+
+            # If model starts with claude-, use Anthropic
+            elif model.startswith("claude-"):
+                if self.anthropic_client:
+                    result = await self._get_anthropic_completion(messages, model, temperature, max_tokens)
+                else:
+                    # Fallback to Ollama if no Anthropic client
+                    result = await self._get_ollama_fallback(messages, temperature)
+
+            # If model starts with gpt or o1, try OpenAI first
+            elif model.startswith("gpt") or model.startswith("o1"):
+                if self.openai_client:
+                    result = await self._get_openai_completion(messages, model, temperature, max_tokens)
+                else:
+                    # Fallback to Ollama if no OpenAI client
+                    result = await self._get_ollama_fallback(messages, temperature)
+
+            # For any other model, try Ollama first
+            else:
+                try:
+                    result = await self._get_ollama_completion(messages, model, temperature)
+                except Exception:
+                    raise ValueError(f"Model {model} not supported. Please use a valid Claude or Ollama model.")
+
+        except Exception as e:
+            logger.error(f"Error getting completion: {str(e)}")
+            result = f"Error: {str(e)}"
+
+        # Record metrics
+        end_time = time.time()
+        response_time = end_time - start_time
+        tokens_generated = len(result.split()) if result else 0
+
+        self.metrics_collector.record_llm_call(
+            model=model,
+            response_time=response_time,
+            tokens_input=tokens_input,
+            tokens_generated=tokens_generated
+        )
+
+        # Update cache if this was a new model
+        if not cache_entry:
+            memory_usage = self.model_cache._estimate_memory_usage(model, model_type)
+            self.model_cache.put_model(
+                model_name=model,
+                model_type=model_type,
+                load_time=response_time,
+                memory_usage_mb=memory_usage,
+                metadata={'last_used': datetime.now().isoformat()}
+            )
+
+        # Record session if enabled
+        if self.enable_session_recording and self.session_manager:
+            try:
+                # Add user messages to session
+                for msg in messages:
+                    if msg.get("role") == "user":
+                        self.session_manager.add_message(
+                            role="user",
+                            content=msg.get("content", ""),
+                            metadata={"model": model, "temperature": temperature}
+                        )
+
+                # Add assistant response to session
+                self.session_manager.add_message(
+                    role="assistant",
+                    content=result,
+                    metadata={
+                        "model": model,
+                        "temperature": temperature,
+                        "max_tokens": max_tokens,
+                        "response_time": response_time,
+                        "tokens_input": tokens_input,
+                        "tokens_generated": tokens_generated
+                    }
+                )
+
+                # Update session metadata
+                current_session = self.session_manager.get_current_session()
+                if current_session:
+                    current_session.metadata.model_used = model
+                    current_session.metadata.total_tokens += tokens_input + tokens_generated
+
+            except Exception as e:
+                logger.warning(f"Failed to record session: {e}")
+
+        return result
+
+    async def _get_ollama_fallback(self, messages: List[Dict[str, Any]], temperature: float) -> str:
+        """Fallback to Ollama when OpenAI is not available."""
+        if not self.ollama_client:
+            raise ValueError("No LLM service available (OpenAI key missing and Ollama not running)")
+
+        # Get available Ollama models
+        ollama_models = self.get_ollama_models()
+        if not ollama_models:
+            raise ValueError("No Ollama models available")
+
+        # Use the first available model
+        fallback_model = ollama_models[0]
+        logger.info(f"Falling back to Ollama model: {fallback_model}")
+        return await self._get_ollama_completion(messages, fallback_model, temperature)
+
+    async def _get_openai_completion(self,
+                                   messages: List[Dict[str, Any]],
+                                   model: str,
+                                   temperature: float,
+                                   max_tokens: Optional[int]) -> str:
+        """Get completion from OpenAI."""
+        if not self.openai_client:
+            raise ValueError("OpenAI client not initialized")
+
+        try:
+            response = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                return "Error: Rate limit exceeded. Please try again later."
+            elif "insufficient_quota" in str(e).lower():
+                return "Error: Insufficient API quota. Please check your OpenAI account."
+            else:
+                return f"OpenAI Error: {str(e)}"
+
+    async def _get_anthropic_completion(self,
+                                      messages: List[Dict[str, Any]],
+                                      model: str,
+                                      temperature: float,
+                                      max_tokens: Optional[int]) -> str:
+        """Get completion from Anthropic."""
+        if not self.anthropic_client:
+            raise ValueError("Anthropic client not initialized")
+
+        try:
+            # Convert OpenAI format to Anthropic format
+            # Anthropic expects system message and user messages
+            system_message = ""
+            user_messages = []
+
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    user_messages.append(msg)
+
+            # Handle the case where we have user messages
+            if user_messages:
+                # If we have multiple messages, combine them
+                if len(user_messages) > 1:
+                    content = ""
+                    for msg in user_messages:
+                        content += f"{msg['role']}: {msg['content']}\n"
+                else:
+                    # Single user message
+                    content = user_messages[0]["content"]
+
+                # Prepare the API call parameters
+                api_params = {
+                    "model": model,
+                    "max_tokens": max_tokens or 1000,
+                    "temperature": temperature,
+                    "messages": [{"role": "user", "content": content}]
+                }
+
+                # Only add system parameter if we have a system message
+                if system_message:
+                    api_params["system"] = system_message
+
+                response = await self.anthropic_client.messages.create(**api_params)
+            else:
+                raise ValueError("No user messages provided")
+
+            return response.content[0].text
+        except Exception as e:
+            if "rate limit" in str(e).lower():
+                return "Error: Rate limit exceeded. Please try again later."
+            elif "insufficient_quota" in str(e).lower():
+                return "Error: Insufficient API quota. Please check your Anthropic account."
+            else:
+                return f"Anthropic Error: {str(e)}"
+
+    async def _get_ollama_completion(self,
+                                   messages: List[Dict[str, Any]],
+                                   model: str,
+                                   temperature: float,
+                                   timeout: int = 120) -> str:
+        """Get completion from Ollama with timeout."""
+        if not self.ollama_client:
+            raise ValueError("Ollama client not initialized")
+
+        try:
+            # Convert OpenAI format to Ollama format
+            ollama_messages = []
+            for msg in messages:
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    # Extract text from content array
+                    text = " ".join(item.get("text", "") for item in content if item.get("type") == "text")
+                else:
+                    text = str(content)
+                ollama_messages.append({"role": msg["role"], "content": text})
+
+            # Remove ollama: prefix if present
+            model_name = model.replace("ollama:", "")
+
+            # Add timeout to prevent hanging
+            import asyncio
+            response = await asyncio.wait_for(
+                self.ollama_client.chat(
+                    model=model_name,
+                    messages=ollama_messages,
+                    options={"temperature": temperature}
+                ),
+                timeout=timeout
+            )
+            return response['message']['content']
+
+        except asyncio.TimeoutError:
+            return f"Error: Ollama model '{model}' timed out after {timeout} seconds. Try a smaller/faster model."
+        except Exception as e:
+            if "model not found" in str(e).lower():
+                return f"Error: Model '{model}' not found. Please run 'ollama pull {model}' first."
+            elif "connection refused" in str(e).lower():
+                return "Error: Cannot connect to Ollama. Is it running? Start with 'ollama serve'"
+            else:
+                return f"Ollama Error: {str(e)}"
+
+    async def stream_completion(self,
+                              messages: List[Dict[str, Any]],
+                              model: str = None,
+                              temperature: float = 0.7) -> AsyncGenerator[str, None]:
+        """
+        Stream completion from the specified model.
+
+        Args:
+            messages: List of messages in OpenAI format
+            model: Model name (if None, uses default model)
+            temperature: Sampling temperature
+
+        Yields:
+            Generated text chunks
+        """
+        # Use default model if none specified
+        if model is None:
+            model = self.get_default_model()
+
+        try:
+            if model.startswith("claude-"):
+                async for chunk in self._stream_anthropic_completion(messages, model, temperature):
+                    yield chunk
+            elif model.startswith("gpt"):
+                async for chunk in self._stream_openai_completion(messages, model, temperature):
+                    yield chunk
+            elif model.startswith("ollama:"):
+                async for chunk in self._stream_ollama_completion(messages, model, temperature):
+                    yield chunk
+            else:
+                # Try Ollama first
+                try:
+                    async for chunk in self._stream_ollama_completion(messages, model, temperature):
+                        yield chunk
+                except Exception:
+                    raise ValueError(f"Model {model} not supported. Please use a valid Claude or Ollama model.")
+
+        except Exception as e:
+            logger.error(f"Error streaming completion: {str(e)}")
+            yield f"Error: {str(e)}"
+
+    async def _stream_openai_completion(self,
+                                      messages: List[Dict[str, Any]],
+                                      model: str,
+                                      temperature: float) -> AsyncGenerator[str, None]:
+        """Stream completion from OpenAI."""
+        if not self.openai_client:
+            raise ValueError("OpenAI client not initialized")
+
+        try:
+            stream = await self.openai_client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                stream=True
+            )
+
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+
+        except Exception as e:
+            yield f"OpenAI Streaming Error: {str(e)}"
+
+    async def _stream_anthropic_completion(self,
+                                         messages: List[Dict[str, Any]],
+                                         model: str,
+                                         temperature: float) -> AsyncGenerator[str, None]:
+        """Stream completion from Anthropic."""
+        if not self.anthropic_client:
+            raise ValueError("Anthropic client not initialized")
+
+        try:
+            # Convert OpenAI format to Anthropic format
+            system_message = ""
+            user_messages = []
+
+            for msg in messages:
+                if msg["role"] == "system":
+                    system_message = msg["content"]
+                else:
+                    user_messages.append(msg)
+
+            # Handle the case where we have user messages
+            if user_messages:
+                # If we have multiple messages, combine them
+                if len(user_messages) > 1:
+                    content = ""
+                    for msg in user_messages:
+                        content += f"{msg['role']}: {msg['content']}\n"
+                else:
+                    # Single user message
+                    content = user_messages[0]["content"]
+
+                # Prepare the API call parameters
+                api_params = {
+                    "model": model,
+                    "max_tokens": 1000,
+                    "temperature": temperature,
+                    "messages": [{"role": "user", "content": content}],
+                    "stream": True
+                }
+
+                # Only add system parameter if we have a system message
+                if system_message:
+                    api_params["system"] = system_message
+
+                stream = await self.anthropic_client.messages.create(**api_params)
+            else:
+                raise ValueError("No user messages provided")
+
+            async for chunk in stream:
+                if chunk.type == "content_block_delta":
+                    if chunk.delta.text:
+                        yield chunk.delta.text
+
+        except Exception as e:
+            yield f"Anthropic Streaming Error: {str(e)}"
+
+    async def _stream_ollama_completion(self,
+                                      messages: List[Dict[str, Any]],
+                                      model: str,
+                                      temperature: float) -> AsyncGenerator[str, None]:
+        """Stream completion from Ollama."""
+        if not self.ollama_client:
+            raise ValueError("Ollama client not initialized")
+
+        try:
+            # Convert OpenAI format to Ollama format
+            ollama_messages = []
+            for msg in messages:
+                content = msg.get("content", "")
+                if isinstance(content, list):
+                    text = " ".join(item.get("text", "") for item in content if item.get("type") == "text")
+                else:
+                    text = str(content)
+                ollama_messages.append({"role": msg["role"], "content": text})
+
+            # Remove ollama: prefix if present
+            model_name = model.replace("ollama:", "")
+
+            stream = await self.ollama_client.chat(
+                model=model_name,
+                messages=ollama_messages,
+                options={"temperature": temperature},
+                stream=True
+            )
+
+            async for chunk in stream:
+                if chunk.get('message', {}).get('content'):
+                    yield chunk['message']['content']
+
+        except Exception as e:
+            yield f"Ollama Streaming Error: {str(e)}"
+
+    def get_available_models(self) -> List[str]:
+        """Get list of available models."""
+        models = []
+
+        if self.openai_client:
+            models.extend([
+                "gpt-4",
+                "gpt-4-turbo",
+                "gpt-3.5-turbo",
+                "o1-preview",
+                "o1-mini"
+            ])
+
+        if self.anthropic_client:
+            models.extend([
+                "claude-opus-4-1-20250805",
+                "claude-opus-4-20250514",
+                "claude-sonnet-4-20250514",
+                "claude-3-5-sonnet-20241022",
+                "claude-3-5-haiku-20241022",
+                "claude-3-opus-20240229",
+                "claude-3-sonnet-20240229",
+                "claude-3-haiku-20240307"
+            ])
+
+        # Get actual Ollama models
+        ollama_models = self.get_ollama_models()
+        if ollama_models and len(ollama_models) > 0:
+            models.extend(ollama_models)
+
+        return models
+
+    def get_ollama_models(self) -> List[str]:
+        """Get list of available Ollama models."""
+        try:
+            import subprocess
+            import json
+
+            # Run ollama list command (try JSON format first, then fallback to text parsing)
+            try:
+                result = subprocess.run(
+                    ["ollama", "list", "--format", "json"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10
+                )
+
+                if result.returncode == 0:
+                    models_data = json.loads(result.stdout)
+                    models = []
+                    for model in models_data:
+                        model_name = model.get("name", "")
+                        if model_name:
+                            # Remove :latest suffix for cleaner display
+                            clean_name = model_name.replace(":latest", "")
+                            models.append(f"ollama:{clean_name}")
+                    return models
+
+            except Exception:
+                # Fallback to text parsing if JSON format not supported
+                pass
+
+            # Try text parsing
+            result = subprocess.run(
+                ["ollama", "list"],
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            if result.returncode == 0:
+                models = []
+                lines = result.stdout.strip().split('\n')[1:]  # Skip header
+                for line in lines:
+                    if line.strip():
+                        # Parse model name from line (format: "model_name    id    size    modified")
+                        # Split by whitespace and take the first part (model name)
+                        parts = line.split()
+                        if parts:
+                            model_name = parts[0]
+                            # Remove :latest suffix for cleaner display
+                            clean_name = model_name.replace(":latest", "")
+                            models.append(f"ollama:{clean_name}")
+                return models
+            else:
+                logger.warning(f"Failed to get Ollama models: {result.stderr}")
+                return []
+
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout getting Ollama models")
+            return []
+        except FileNotFoundError:
+            logger.warning("Ollama not found in PATH")
+            return []
+        except Exception as e:
+            logger.warning(f"Error getting Ollama models: {str(e)}")
+            return []
+
+    def get_default_model(self) -> str:
+        """Get the default model to use, preferring Claude 3.5 Sonnet for optimal balance."""
+        # Use configured default model if available
+        config_default = self.config.llm.default_model
+
+        # Check if configured default is available
+        if config_default.startswith("claude-") and self.anthropic_client:
+            return config_default
+        elif config_default.startswith("ollama:"):
+            ollama_models = self.get_ollama_models()
+            if config_default in ollama_models:
+                return config_default
+
+        # Fallback to priority order
+        # First priority: Claude models
+        if self.anthropic_client:
+            for model in self.config.llm.model_priority:
+                if model.startswith("claude-"):
+                    return model
+
+        # Second priority: Ollama models
+        ollama_models = self.get_ollama_models()
+        if ollama_models and len(ollama_models) > 0:
+            # Try configured fallback models first
+            for model in self.config.llm.fallback_models:
+                if model in ollama_models:
+                    return model
+            # Fallback to best available Ollama model
+            return self.get_best_model_for_task("general", prioritize_speed=True)
+
+        # No fallback - raise error if no models available
+        raise ValueError("No LLM models available. Please configure Anthropic API key or ensure Ollama is running.")
+
+    def get_model_capabilities(self, model_name: str) -> Dict[str, Any]:
+        """Get capabilities for a specific model."""
+        # Remove ollama: prefix for lookup
+        clean_name = model_name.replace("ollama:", "").lower()
+
+        # Model capability database
+        capabilities = {
+            # OpenAI models
+            "gpt-4": {
+                "reasoning": 95,
+                "coding": 90,
+                "analysis": 95,
+                "creativity": 85,
+                "speed": 70,
+                "context_length": 128000,
+                "type": "openai"
+            },
+            "gpt-4-turbo": {
+                "reasoning": 95,
+                "coding": 90,
+                "analysis": 95,
+                "creativity": 85,
+                "speed": 85,
+                "context_length": 128000,
+                "type": "openai"
+            },
+            "gpt-3.5-turbo": {
+                "reasoning": 80,
+                "coding": 75,
+                "analysis": 80,
+                "creativity": 75,
+                "speed": 90,
+                "context_length": 16000,
+                "type": "openai"
+            },
+            "o1-preview": {
+                "reasoning": 98,
+                "coding": 95,
+                "analysis": 98,
+                "creativity": 90,
+                "speed": 30,
+                "context_length": 128000,
+                "type": "openai",
+                "description": "OpenAI o1-preview: Advanced reasoning model with exceptional problem-solving capabilities"
+            },
+            "o1-mini": {
+                "reasoning": 95,
+                "coding": 90,
+                "analysis": 95,
+                "creativity": 85,
+                "speed": 50,
+                "context_length": 128000,
+                "type": "openai",
+                "description": "OpenAI o1-mini: Fast reasoning model with strong analytical capabilities"
+            },
+
+            # Anthropic Claude 4 models
+            "claude-opus-4-1-20250805": {
+                "reasoning": 98,
+                "coding": 98,
+                "analysis": 98,
+                "creativity": 95,
+                "speed": 60,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude Opus 4.1: Most powerful and capable model with superior reasoning capabilities"
+            },
+            "claude-opus-4-20250514": {
+                "reasoning": 97,
+                "coding": 97,
+                "analysis": 97,
+                "creativity": 95,
+                "speed": 65,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude Opus 4: Previous flagship model with very high intelligence and capability"
+            },
+            "claude-sonnet-4-20250514": {
+                "reasoning": 95,
+                "coding": 95,
+                "analysis": 95,
+                "creativity": 90,
+                "speed": 85,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude Sonnet 4: High-performance model with exceptional reasoning and efficiency"
+            },
+
+            # Anthropic Claude 3.5 models
+            "claude-3-5-sonnet-20241022": {
+                "reasoning": 95,
+                "coding": 95,
+                "analysis": 95,
+                "creativity": 90,
+                "speed": 85,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude 3.5 Sonnet: Latest and most capable Claude 3.5 model with excellent reasoning and coding"
+            },
+            "claude-3-5-haiku-20241022": {
+                "reasoning": 90,
+                "coding": 85,
+                "analysis": 90,
+                "creativity": 85,
+                "speed": 95,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude 3.5 Haiku: Fast and efficient Claude model for quick tasks"
+            },
+
+            # Anthropic Claude 3 models
+            "claude-3-opus-20240229": {
+                "reasoning": 95,
+                "coding": 90,
+                "analysis": 95,
+                "creativity": 95,
+                "speed": 70,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude 3 Opus: Most capable Claude 3 model with exceptional reasoning and creativity"
+            },
+            "claude-3-sonnet-20240229": {
+                "reasoning": 90,
+                "coding": 90,
+                "analysis": 90,
+                "creativity": 85,
+                "speed": 85,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude 3 Sonnet: Balanced Claude 3 model with strong all-around capabilities"
+            },
+            "claude-3-haiku-20240307": {
+                "reasoning": 85,
+                "coding": 80,
+                "analysis": 85,
+                "creativity": 80,
+                "speed": 95,
+                "context_length": 200000,
+                "type": "anthropic",
+                "description": "Claude 3 Haiku: Fast Claude 3 model for quick and efficient tasks"
+            },
+
+            # Common Ollama models
+            "phi3": {
+                "reasoning": 85,
+                "coding": 80,
+                "analysis": 85,
+                "creativity": 80,
+                "speed": 95,
+                "context_length": 32000,
+                "size_gb": 2.2,
+                "type": "ollama",
+                "description": "Microsoft Phi-3: Fast and efficient for general reasoning"
+            },
+            "gpt-oss": {
+                "reasoning": 90,
+                "coding": 95,
+                "analysis": 90,
+                "creativity": 85,
+                "speed": 60,  # Much slower due to size
+                "context_length": 32000,
+                "size_gb": 13.0,
+                "type": "ollama",
+                "description": "GPT-OSS: Excellent for coding but slow due to size"
+            },
+            "gemma3n": {
+                "reasoning": 85,
+                "coding": 75,
+                "analysis": 80,
+                "creativity": 90,
+                "speed": 75,  # Slower due to size
+                "context_length": 32000,
+                "size_gb": 7.5,
+                "type": "ollama",
+                "description": "Gemma 3N: Good for creative tasks but slower"
+            },
+            "llama3": {
+                "reasoning": 90,
+                "coding": 85,
+                "analysis": 90,
+                "creativity": 85,
+                "speed": 80,
+                "context_length": 128000,
+                "type": "ollama",
+                "description": "Llama 3: Strong general-purpose model"
+            },
+            "llama3.2": {
+                "reasoning": 88,
+                "coding": 80,
+                "analysis": 88,
+                "creativity": 82,
+                "speed": 85,
+                "context_length": 128000,
+                "type": "ollama",
+                "description": "Llama 3.2: Good balance of capabilities"
+            },
+            "mistral": {
+                "reasoning": 85,
+                "coding": 90,
+                "analysis": 85,
+                "creativity": 80,
+                "speed": 90,
+                "context_length": 32000,
+                "type": "ollama",
+                "description": "Mistral: Strong coding and reasoning"
+            },
+            "codellama": {
+                "reasoning": 80,
+                "coding": 95,
+                "analysis": 75,
+                "creativity": 70,
+                "speed": 85,
+                "context_length": 100000,
+                "type": "ollama",
+                "description": "Code Llama: Specialized for coding tasks"
+            },
+            "neural-chat": {
+                "reasoning": 82,
+                "coding": 75,
+                "analysis": 85,
+                "creativity": 90,
+                "speed": 85,
+                "context_length": 32000,
+                "type": "ollama",
+                "description": "Neural Chat: Good for conversational and creative tasks"
+            }
+        }
+
+        # Try exact match first
+        if clean_name in capabilities:
+            return capabilities[clean_name]
+
+        # Try partial matches
+        for model_key, caps in capabilities.items():
+            if clean_name in model_key or model_key in clean_name:
+                return caps
+
+        # Default capabilities for unknown models
+        model_type = "ollama" if "ollama:" in model_name else ("anthropic" if "claude-" in model_name else "openai")
+        return {
+            "reasoning": 70,
+            "coding": 70,
+            "analysis": 70,
+            "creativity": 70,
+            "speed": 80,
+            "context_length": 32000,
+            "type": model_type,
+            "description": "Unknown model with default capabilities"
+        }
+
+    def get_best_model_for_task(self, task_type: str, available_models: List[str] = None, prioritize_speed: bool = False) -> str:
+        """Get the best model for a specific task type."""
+        if available_models is None:
+            available_models = self.get_available_models()
+
+        if not available_models:
+            return "gpt-4"  # Fallback
+
+        # Task type weights
+        task_weights = {
+            "reasoning": ["reasoning", "analysis"],
+            "coding": ["coding", "reasoning"],
+            "analysis": ["analysis", "reasoning"],
+            "creativity": ["creativity", "reasoning"],
+            "general": ["reasoning", "analysis", "creativity", "coding"],
+            "dce": ["reasoning", "analysis"],  # Discussion Continuity Expert
+            "cae": ["analysis", "reasoning"],  # Critical Analysis Expert
+            "domain": ["analysis", "reasoning", "coding"]  # Domain Expert
+        }
+
+        weights = task_weights.get(task_type, task_weights["general"])
+
+        best_model = None
+        best_score = 0
+
+        for model in available_models:
+            caps = self.get_model_capabilities(model)
+            score = 0
+
+            for weight in weights:
+                score += caps.get(weight, 0)
+
+            if prioritize_speed:
+                # Heavily weight speed for fast mode
+                score += caps.get("speed", 0) * 0.5
+                # Penalty for large models
+                size_gb = caps.get("size_gb", 0)
+                if size_gb > 5:  # Penalty for models > 5GB
+                    score -= (size_gb - 5) * 10
+            else:
+                # Normal speed bonus
+                score += caps.get("speed", 0) * 0.1
+
+            if score > best_score:
+                best_score = score
+                best_model = model
+
+        return best_model or available_models[0]
+
+    def get_model_info(self, model_name: str) -> str:
+        """Get human-readable information about a model."""
+        caps = self.get_model_capabilities(model_name)
+        clean_name = model_name.replace("ollama:", "")
+
+        info = f"Model: {clean_name}\n"
+        info += f"Type: {caps.get('type', 'unknown').upper()}\n"
+        info += f"Description: {caps.get('description', 'No description available')}\n\n"
+        info += "Capabilities (0-100):\n"
+        info += f"  Reasoning: {caps.get('reasoning', 0)}\n"
+        info += f"  Coding: {caps.get('coding', 0)}\n"
+        info += f"  Analysis: {caps.get('analysis', 0)}\n"
+        info += f"  Creativity: {caps.get('creativity', 0)}\n"
+        info += f"  Speed: {caps.get('speed', 0)}\n"
+        info += f"  Context Length: {caps.get('context_length', 0):,} tokens"
+
+        return info

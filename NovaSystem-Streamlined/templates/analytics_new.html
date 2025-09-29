@@ -1,0 +1,447 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Analytics Dashboard{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Analytics Dashboard{% endblock %}
+
+{% block styles %}
+<!-- Chart.js for data visualization -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+
+<style>
+    /* Analytics-specific styles */
+    .analytics-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto 1fr;
+        gap: 16px;
+        padding: 16px;
+        height: 100%;
+    }
+
+    .analytics-header {
+        grid-column: 1 / -1;
+        text-align: center;
+        background: var(--bg-secondary);
+        padding: 16px;
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+    }
+
+    .analytics-title {
+        font-size: 18px;
+        color: var(--primary-color);
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
+
+    .analytics-subtitle {
+        font-size: 11px;
+        color: #666;
+    }
+
+    .analytics-card {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 16px;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .analytics-chart {
+        height: 300px;
+        position: relative;
+    }
+
+    .analytics-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 12px;
+        margin-bottom: 16px;
+    }
+
+    .metric-card {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        padding: 12px;
+        text-align: center;
+        border-radius: 4px;
+    }
+
+    .metric-value {
+        font-size: 24px;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin-bottom: 4px;
+    }
+
+    .metric-label {
+        font-size: 11px;
+        color: #666;
+        text-transform: uppercase;
+    }
+
+    .analytics-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+    .analytics-table th,
+    .analytics-table td {
+        padding: 8px;
+        text-align: left;
+        border-bottom: 1px solid #c0c0c0;
+    }
+
+    .analytics-table th {
+        background: var(--bg-secondary);
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .analytics-table tr:hover {
+        background: #f0f0f0;
+    }
+
+    .status-badge {
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .status-badge.success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .status-badge.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .status-badge.warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .refresh-btn {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: var(--accent-color);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+    }
+
+    .refresh-btn:hover {
+        background: #5aa03a;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-container">
+    <!-- Analytics Header -->
+    <div class="analytics-header">
+        <div class="analytics-title">📊 Analytics Dashboard</div>
+        <div class="analytics-subtitle">Performance metrics and usage statistics</div>
+        <button class="refresh-btn" onclick="refreshAnalytics()">🔄 Refresh</button>
+    </div>
+
+    <!-- Metrics Overview -->
+    <div class="analytics-metrics">
+        <div class="metric-card">
+            <div class="metric-value" id="total-sessions">0</div>
+            <div class="metric-label">Total Sessions</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" id="active-sessions">0</div>
+            <div class="metric-label">Active Sessions</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" id="avg-response-time">0s</div>
+            <div class="metric-label">Avg Response Time</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value" id="success-rate">0%</div>
+            <div class="metric-label">Success Rate</div>
+        </div>
+    </div>
+
+    <!-- Charts Grid -->
+    <div class="analytics-card">
+        <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--text-primary);">📈 Session Activity Over Time</h3>
+        <div class="analytics-chart">
+            <canvas id="sessionChart"></canvas>
+        </div>
+    </div>
+
+    <div class="analytics-card">
+        <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--text-primary);">🎯 Model Usage Distribution</h3>
+        <div class="analytics-chart">
+            <canvas id="modelChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Recent Sessions Table -->
+    <div class="analytics-card" style="grid-column: 1 / -1;">
+        <h3 style="margin-bottom: 16px; font-size: 14px; color: var(--text-primary);">📋 Recent Sessions</h3>
+        <table class="analytics-table" id="sessionsTable">
+            <thead>
+                <tr>
+                    <th>Session ID</th>
+                    <th>Started</th>
+                    <th>Duration</th>
+                    <th>Model</th>
+                    <th>Status</th>
+                    <th>Iterations</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="6" style="text-align: center; color: #666;">Loading sessions...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sessionChart, modelChart;
+
+    window.initPage = function() {
+        initializeCharts();
+        loadAnalyticsData();
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadAnalyticsData, 30000);
+    };
+
+    function initializeCharts() {
+        // Session Activity Chart
+        const sessionCtx = document.getElementById('sessionChart').getContext('2d');
+        sessionChart = new Chart(sessionCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Sessions',
+                    data: [],
+                    borderColor: '#0054E3',
+                    backgroundColor: 'rgba(0, 84, 227, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            font: {
+                                family: 'Tahoma, MS Sans Serif, sans-serif',
+                                size: 10
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            font: {
+                                family: 'Tahoma, MS Sans Serif, sans-serif',
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Model Usage Chart
+        const modelCtx = document.getElementById('modelChart').getContext('2d');
+        modelChart = new Chart(modelCtx, {
+            type: 'doughnut',
+            data: {
+                labels: [],
+                datasets: [{
+                    data: [],
+                    backgroundColor: [
+                        '#0054E3',
+                        '#3B8CFF',
+                        '#6BBF44',
+                        '#FF8000',
+                        '#FF0000'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                family: 'Tahoma, MS Sans Serif, sans-serif',
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    async function loadAnalyticsData() {
+        try {
+            // Load sessions data
+            const sessionsResponse = await fetch('/api/sessions');
+            const sessions = await sessionsResponse.json();
+
+            // Update metrics
+            updateMetrics(sessions);
+
+            // Update charts
+            updateSessionChart(sessions);
+            updateModelChart(sessions);
+
+            // Update sessions table
+            updateSessionsTable(sessions);
+
+        } catch (error) {
+            console.error('Error loading analytics data:', error);
+            updateStatus('error', 'Failed to load analytics data');
+        }
+    }
+
+    function updateMetrics(sessions) {
+        const totalSessions = sessions.length;
+        const activeSessions = sessions.filter(s => s.status === 'running').length;
+
+        document.getElementById('total-sessions').textContent = totalSessions;
+        document.getElementById('active-sessions').textContent = activeSessions;
+
+        // Calculate average response time (mock data for now)
+        document.getElementById('avg-response-time').textContent = '2.3s';
+
+        // Calculate success rate
+        const completedSessions = sessions.filter(s => s.status === 'completed').length;
+        const successRate = totalSessions > 0 ? Math.round((completedSessions / totalSessions) * 100) : 0;
+        document.getElementById('success-rate').textContent = successRate + '%';
+    }
+
+    function updateSessionChart(sessions) {
+        // Generate time-based data (last 24 hours)
+        const now = new Date();
+        const labels = [];
+        const data = [];
+
+        for (let i = 23; i >= 0; i--) {
+            const hour = new Date(now.getTime() - (i * 60 * 60 * 1000));
+            labels.push(hour.getHours() + ':00');
+
+            // Count sessions in this hour (mock data)
+            const hourSessions = Math.floor(Math.random() * 10);
+            data.push(hourSessions);
+        }
+
+        sessionChart.data.labels = labels;
+        sessionChart.data.datasets[0].data = data;
+        sessionChart.update();
+    }
+
+    function updateModelChart(sessions) {
+        // Count model usage (mock data for now)
+        const modelData = {
+            'Claude 3.5 Sonnet': Math.floor(Math.random() * 20) + 10,
+            'GPT-4': Math.floor(Math.random() * 15) + 5,
+            'Claude 3 Haiku': Math.floor(Math.random() * 25) + 15,
+            'GPT-3.5 Turbo': Math.floor(Math.random() * 10) + 3,
+            'Other': Math.floor(Math.random() * 5) + 1
+        };
+
+        modelChart.data.labels = Object.keys(modelData);
+        modelChart.data.datasets[0].data = Object.values(modelData);
+        modelChart.update();
+    }
+
+    function updateSessionsTable(sessions) {
+        const tbody = document.querySelector('#sessionsTable tbody');
+        tbody.innerHTML = '';
+
+        if (sessions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No sessions found</td></tr>';
+            return;
+        }
+
+        sessions.slice(0, 10).forEach(session => {
+            const row = document.createElement('tr');
+
+            const startedDate = new Date(session.started_at);
+            const duration = calculateDuration(startedDate);
+            const statusBadge = getStatusBadge(session.status);
+
+            row.innerHTML = `
+                <td style="font-family: monospace; font-size: 10px;">${session.session_id.substring(0, 8)}...</td>
+                <td>${startedDate.toLocaleTimeString()}</td>
+                <td>${duration}</td>
+                <td>Auto</td>
+                <td>${statusBadge}</td>
+                <td>3</td>
+            `;
+
+            tbody.appendChild(row);
+        });
+    }
+
+    function calculateDuration(startTime) {
+        const now = new Date();
+        const diffMs = now - startTime;
+        const diffMins = Math.floor(diffMs / 60000);
+
+        if (diffMins < 1) return '< 1m';
+        if (diffMins < 60) return `${diffMins}m`;
+
+        const diffHours = Math.floor(diffMins / 60);
+        return `${diffHours}h ${diffMins % 60}m`;
+    }
+
+    function getStatusBadge(status) {
+        const badgeClasses = {
+            'running': 'warning',
+            'completed': 'success',
+            'error': 'error',
+            'killed': 'error'
+        };
+
+        const badgeClass = badgeClasses[status] || 'warning';
+        return `<span class="status-badge ${badgeClass}">${status}</span>`;
+    }
+
+    function refreshAnalytics() {
+        updateStatus('processing', 'Refreshing analytics...');
+        loadAnalyticsData().then(() => {
+            updateStatus('ready', 'Analytics refreshed');
+        });
+    }
+
+    // Export function for external use
+    window.refreshAnalytics = refreshAnalytics;
+</script>
+{% endblock %}

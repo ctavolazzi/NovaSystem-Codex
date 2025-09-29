@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaSystem v3.0 - Analytics Dashboard</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABILAAASCwAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wDR0dH/VVVVf1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/0dHR/////wD///8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVVf9HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/////////////////////x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f//Hx8f/x8fH/8fHx//Hx8f/x8fH/39/f/9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/39/f/9/f3//f39//39/f/9/f3//f39//1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVX/1VVVf9VVVX/VVVV39HR0f////8A////ANHQ0P9VVVXfVVVV/1VVVf9VVVX/VVVV/1VVVf9VVVX/VVVX/1VVVf9VVVX/VVVV39HR0f////8A////AP///wDR0dH/VVVV31VVVf9VVVX/VVVX/1VVVf9VVVX/VVVX/VVVX/1VVVf90dHR/////wD///8A////AP///wD///8A0dHR/9HR0f/R0dH/0dHR/9HR0f/R0dH/0dHR/9HR0f////8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A//8AAP//AAD//wAA//8AAIABAACAAQAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAP//AAD//wAA//8AAA==">
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2"></script>
+    <style>
+        :root {
+            /* Windows XP Colors */
+            --primary-color: #0054E3;
+            --secondary-color: #3B8CFF;
+            --accent-color: #6BBF44;
+            --text-primary: #000000;
+            --text-white: #ffffff;
+            --bg-primary: #ECE9D8;
+            --bg-secondary: #F1F1F1;
+            --bg-tertiary: #FFFFFF;
+            --bg-window: #ECE9D8;
+            --bg-sidebar: #D6D3CE;
+            --border-light: #ffffff;
+            --border-dark: #7A96DF;
+            --border-inset: #c0c0c0;
+            --shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            --windows-font: 'Tahoma', 'MS Sans Serif', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--windows-font);
+            background: linear-gradient(180deg, #5A98D8 0%, #86C5F5 50%, #7BB8E8 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Windows XP Desktop Background */
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="85" cy="15" r="8" fill="rgba(255,255,255,0.1)"/><circle cx="15" cy="85" r="12" fill="rgba(255,255,255,0.05)"/></svg>');
+            pointer-events: none;
+        }
+
+        /* Main Application Window */
+        .main-window {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            bottom: 40px;
+            background: var(--bg-window);
+            border: 1px solid #0054E3;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Window Title Bar */
+        .window-titlebar {
+            background: linear-gradient(180deg, #0054E3, #3B8CFF);
+            color: var(--text-white);
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #0054E3;
+        }
+
+        .window-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .window-icon {
+            width: 16px;
+            height: 16px;
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            border-radius: 2px;
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 1px;
+        }
+
+        .window-control {
+            width: 17px;
+            height: 15px;
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            border: 1px outset #ffffff;
+            font-size: 9px;
+            text-align: center;
+            line-height: 13px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .window-control:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .window-control:active {
+            border: 1px inset #808080;
+        }
+
+        /* Menu Bar */
+        .menu-bar {
+            background: var(--bg-window);
+            border-bottom: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            display: flex;
+            gap: 16px;
+        }
+
+        .menu-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .menu-item:hover {
+            background: #316ac5;
+            color: white;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            background: var(--bg-window);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 200px;
+            background: var(--bg-sidebar);
+            border-right: 1px solid #c0c0c0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-section {
+            padding: 8px;
+            border-bottom: 1px solid #b8b5b2;
+        }
+
+        .sidebar-title {
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            padding: 4px;
+        }
+
+        .sidebar-item {
+            padding: 6px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            cursor: pointer;
+            border-radius: 2px;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .sidebar-item:hover {
+            background: #e8e5e0;
+        }
+
+        .sidebar-item.active {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .sidebar-icon {
+            width: 16px;
+            height: 16px;
+            background: #4a90e2;
+            border-radius: 1px;
+        }
+
+        /* Analytics Content */
+        .analytics-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: var(--bg-tertiary);
+        }
+
+        .controls {
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid #c0c0c0;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            color: var(--text-primary);
+            font-size: 11px;
+        }
+
+        .control-group select, .control-group input {
+            padding: 4px 6px;
+            border: 2px inset #c0c0c0;
+            background: #ffffff;
+            color: #000000;
+            font-family: var(--windows-font);
+            font-size: 11px;
+        }
+
+        .control-group select:focus, .control-group input:focus {
+            outline: none;
+            border: 2px inset #316ac5;
+        }
+
+        .btn {
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            color: var(--text-primary);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            padding: 6px 16px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: var(--windows-font);
+            min-height: 23px;
+        }
+
+        .btn:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .btn:active {
+            border: 1px inset #808080;
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .content {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            background: var(--bg-tertiary);
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: var(--bg-secondary);
+            border: 1px inset #c0c0c0;
+            padding: 12px;
+            text-align: center;
+            font-family: var(--windows-font);
+        }
+
+        .metric-card h3 {
+            color: var(--text-primary);
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .metric-card .value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .metric-card .unit {
+            color: #666;
+            font-size: 10px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-size: 14px;
+            font-weight: bold;
+            font-family: var(--windows-font);
+        }
+
+        .chart-container {
+            background: var(--bg-tertiary);
+            border: 1px inset #c0c0c0;
+            padding: 12px;
+            margin-bottom: 12px;
+            position: relative;
+            font-family: var(--windows-font);
+        }
+
+        .chart-container h3 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            margin-bottom: 8px;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chart-controls button {
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            color: var(--text-primary);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: var(--windows-font);
+        }
+
+        .chart-controls button:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .chart-controls button:active {
+            border: 1px inset #808080;
+        }
+
+        .chart-controls button.active {
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+            border: 1px inset #808080;
+        }
+
+        .gauge-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .gauge {
+            background: var(--bg-secondary);
+            border: 1px inset #c0c0c0;
+            padding: 12px;
+            text-align: center;
+            font-family: var(--windows-font);
+        }
+
+        .gauge-value {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 6px;
+            color: var(--text-primary);
+        }
+
+        .gauge-label {
+            color: #666;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border: 1px inset #c0c0c0;
+            background: var(--bg-secondary);
+            font-weight: bold;
+            font-size: 10px;
+            font-family: var(--windows-font);
+        }
+
+        .status-healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-degraded {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-down {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-healthy .status-dot {
+            background: #28a745;
+        }
+
+        .status-degraded .status-dot {
+            background: #ffc107;
+        }
+
+        .status-down .status-dot {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .table-container {
+            background: var(--bg-tertiary);
+            border: 1px inset #c0c0c0;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: var(--windows-font);
+            font-size: 11px;
+        }
+
+        th, td {
+            padding: 6px 8px;
+            text-align: left;
+            border-bottom: 1px solid #c0c0c0;
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        tr:hover {
+            background: #e8e5e0;
+        }
+
+        .status-badge {
+            padding: 2px 6px;
+            border: 1px inset #c0c0c0;
+            font-size: 9px;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-family: var(--windows-font);
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-failed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-running {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-family: var(--windows-font);
+            font-size: 11px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 8px;
+            border: 1px inset #c0c0c0;
+            margin: 12px 0;
+            font-family: var(--windows-font);
+            font-size: 11px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--bg-window);
+            border-top: 1px solid #c0c0c0;
+            padding: 4px 8px;
+            font-size: 11px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--windows-font);
+        }
+
+        /* Windows Taskbar */
+        .windows-taskbar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border-top: 1px solid #ffffff;
+            display: flex;
+            align-items: center;
+            padding: 0 4px;
+            font-size: 11px;
+            color: white;
+        }
+
+        .start-button {
+            background: linear-gradient(180deg, #44bb44, #2d7d2d);
+            border: 1px outset #44bb44;
+            padding: 4px 12px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-size: 11px;
+            color: white;
+            font-weight: bold;
+            border-radius: 2px;
+        }
+
+        .taskbar-app {
+            background: linear-gradient(180deg, #31a8ff, #1e5da6);
+            border: 1px solid #ffffff;
+            padding: 4px 8px;
+            margin-right: 4px;
+            font-size: 11px;
+            color: white;
+            border-radius: 2px;
+        }
+
+        .taskbar-time {
+            margin-left: auto;
+            font-size: 11px;
+            color: white;
+        }
+
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 150px;
+            color: #666;
+            font-family: var(--windows-font);
+            font-size: 11px;
+        }
+
+        .chart-loading::after {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid #c0c0c0;
+            border-top: 2px solid #0054E3;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Scrollbar styling for XP */
+        .content::-webkit-scrollbar {
+            width: 16px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: #f0f0f0;
+            border: 1px inset #c0c0c0;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #d0d0d0, #a0a0a0);
+            border: 1px outset #d0d0d0;
+        }
+
+        .content::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(180deg, #e0e0e0, #b0b0b0);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .control-group {
+                justify-content: space-between;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Application Window -->
+    <div class="main-window">
+        <!-- Window Title Bar -->
+        <div class="window-titlebar">
+            <div class="window-title">
+                <div class="window-icon"></div>
+                <span>NovaSystem v3.0 - Analytics Dashboard</span>
+            </div>
+            <div class="window-controls">
+                <div class="window-control">_</div>
+                <div class="window-control">□</div>
+                <div class="window-control">×</div>
+            </div>
+        </div>
+
+        <!-- Menu Bar -->
+        <div class="menu-bar">
+            <div class="menu-item">File</div>
+            <div class="menu-item">Edit</div>
+            <div class="menu-item">View</div>
+            <div class="menu-item">Tools</div>
+            <div class="menu-item">Help</div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-item active">
+                        <div class="sidebar-icon"></div>
+                        <span>Analytics</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Performance</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Reports</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Quick Stats</div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>System Health</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Cost Analysis</span>
+                    </div>
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Model Usage</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section" style="margin-top: auto;">
+                    <div class="sidebar-item">
+                        <div class="sidebar-icon"></div>
+                        <span>Settings</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Content -->
+            <div class="analytics-content">
+                <div class="controls">
+            <div class="control-group">
+                <label for="period">Period:</label>
+                <select id="period">
+                    <option value="1">Last 24 hours</option>
+                    <option value="7" selected>Last 7 days</option>
+                    <option value="30">Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="metric">Trend Metric:</label>
+                <select id="metric">
+                    <option value="sessions">Sessions</option>
+                    <option value="cost">Cost</option>
+                    <option value="duration">Duration</option>
+                    <option value="tokens">Tokens</option>
+                </select>
+            </div>
+
+            <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="btn" onclick="exportData()">📊 Export</button>
+        </div>
+
+        <div class="content">
+            <div id="loading" class="loading">
+                <p>Loading analytics data...</p>
+            </div>
+
+            <div id="error" class="error" style="display: none;">
+                <p id="error-message"></p>
+            </div>
+
+            <div id="content" style="display: none;">
+                <!-- System Health Status -->
+                <div class="section">
+                    <h2>🏥 System Health</h2>
+                    <div class="gauge-container" id="system-health-gauges">
+                        <!-- System health gauges will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div class="section">
+                    <h2>📊 Key Metrics</h2>
+                    <div class="metrics-grid" id="metrics-grid">
+                        <!-- Metrics will be populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Performance Trends -->
+                <div class="section">
+                    <h2>📈 Performance Trends</h2>
+                    <div class="chart-container">
+                        <h3>Session & Performance Trends</h3>
+                        <div class="chart-controls">
+                            <button class="active" onclick="switchTrendChart('sessions')">Sessions</button>
+                            <button onclick="switchTrendChart('cost')">Cost</button>
+                            <button onclick="switchTrendChart('duration')">Duration</button>
+                            <button onclick="switchTrendChart('tokens')">Tokens</button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="trend-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Performance Comparison -->
+                <div class="section">
+                    <h2>🤖 Model Performance</h2>
+                    <div class="chart-container">
+                        <h3>Model Usage & Performance</h3>
+                        <div class="chart-controls">
+                            <button class="active" onclick="switchModelChart('usage')">Usage</button>
+                            <button onclick="switchModelChart('cost')">Cost</button>
+                            <button onclick="switchModelChart('performance')">Performance</button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="model-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Agent Effectiveness -->
+                <div class="section">
+                    <h2>👥 Agent Effectiveness</h2>
+                    <div class="chart-container">
+                        <h3>Agent Performance Radar</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="agent-radar-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cost Analysis -->
+                <div class="section">
+                    <h2>💰 Cost Analysis</h2>
+                    <div class="chart-container">
+                        <h3>Cost Breakdown</h3>
+                        <div class="chart-controls">
+                            <button class="active" onclick="switchCostChart('breakdown')">Breakdown</button>
+                            <button onclick="switchCostChart('trend')">Trend</button>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="cost-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Tables -->
+                <div class="section">
+                    <h2>📋 Detailed Data</h2>
+
+                    <!-- Top Models Table -->
+                    <div class="chart-container">
+                        <h3>🤖 Top Models</h3>
+                        <div class="table-container">
+                            <table id="models-table">
+                                <thead>
+                                    <tr>
+                                        <th>Model</th>
+                                        <th>Provider</th>
+                                        <th>Requests</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Response Time</th>
+                                        <th>Total Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Top Agents Table -->
+                    <div class="chart-container">
+                        <h3>👥 Top Agents</h3>
+                        <div class="table-container">
+                            <table id="agents-table">
+                                <thead>
+                                    <tr>
+                                        <th>Agent Type</th>
+                                        <th>Executions</th>
+                                        <th>Success Rate</th>
+                                        <th>Avg Duration</th>
+                                        <th>Avg Quality</th>
+                                        <th>Total Cost</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Recent Sessions Table -->
+                    <div class="chart-container">
+                        <h3>🕒 Recent Sessions</h3>
+                        <div class="table-container">
+                            <table id="sessions-table">
+                                <thead>
+                                    <tr>
+                                        <th>Session ID</th>
+                                        <th>Type</th>
+                                        <th>Model</th>
+                                        <th>Status</th>
+                                        <th>Duration</th>
+                                        <th>Cost</th>
+                                        <th>Started</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <span id="status">Ready</span>
+            <span>NovaSystem v3.0 | Analytics Dashboard</span>
+        </div>
+    </div>
+
+    <!-- Windows Taskbar -->
+    <div class="windows-taskbar">
+        <button class="start-button">Start</button>
+        <div class="taskbar-app">NovaSystem v3.0</div>
+        <span class="taskbar-time" id="taskbar-time"></span>
+    </div>
+
+    <script>
+        // Global variables
+        let currentData = null;
+        let charts = {};
+        let currentTrendMetric = 'sessions';
+        let currentModelChart = 'usage';
+        let currentCostChart = 'breakdown';
+
+        // Chart.js configuration
+        Chart.defaults.font.family = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        Chart.defaults.color = '#495057';
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+
+        // Color palette
+        const colors = {
+            primary: '#667eea',
+            secondary: '#764ba2',
+            success: '#28a745',
+            warning: '#ffc107',
+            danger: '#dc3545',
+            info: '#17a2b8',
+            light: '#f8f9fa',
+            dark: '#343a40',
+            gradient1: ['#667eea', '#764ba2'],
+            gradient2: ['#28a745', '#20c997'],
+            gradient3: ['#dc3545', '#fd7e14'],
+            gradient4: ['#17a2b8', '#6f42c1']
+        };
+
+        async function fetchData() {
+            const period = document.getElementById('period').value;
+            const metric = document.getElementById('metric').value;
+
+            try {
+                // Show loading state
+                showLoading();
+
+                // Fetch all data in parallel
+                const [reportResponse, trendResponse, sessionsResponse, costResponse] = await Promise.all([
+                    fetch(`/api/database/analytics/performance-report?days=${period}`),
+                    fetch(`/api/database/analytics/trends?metric=${metric}&days=${period}`),
+                    fetch(`/api/database/sessions?limit=20&days=${period}`),
+                    fetch(`/api/database/analytics/cost?days=${period}`)
+                ]);
+
+                if (!reportResponse.ok) throw new Error('Failed to fetch performance report');
+                if (!trendResponse.ok) throw new Error('Failed to fetch trend data');
+                if (!sessionsResponse.ok) throw new Error('Failed to fetch sessions');
+                if (!costResponse.ok) throw new Error('Failed to fetch cost data');
+
+                const [report, trends, sessions, costData] = await Promise.all([
+                    reportResponse.json(),
+                    trendResponse.json(),
+                    sessionsResponse.json(),
+                    costResponse.json()
+                ]);
+
+                currentData = { report, trends, sessions, costData };
+                displayData();
+
+            } catch (error) {
+                showError(error.message);
+            }
+        }
+
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        function displayData() {
+            if (!currentData) return;
+
+            const { report, trends, sessions, costData } = currentData;
+
+            // Hide loading, show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+
+            // Display all visualizations
+            displaySystemHealth(report.system_health);
+            displayMetrics(report);
+            createTrendChart(trends);
+            createModelChart(report.top_models);
+            createAgentRadarChart(report.top_agents);
+            createCostChart(costData);
+
+            // Display tables
+            displayModelsTable(report.top_models);
+            displayAgentsTable(report.top_agents);
+            displaySessionsTable(sessions.sessions);
+        }
+
+        function displaySystemHealth(health) {
+            const container = document.getElementById('system-health-gauges');
+            const statusClass = `status-${health.status}`;
+
+            container.innerHTML = `
+                <div class="gauge">
+                    <div class="status-indicator ${statusClass}">
+                        <div class="status-dot"></div>
+                        <span>System Status: ${health.status.toUpperCase()}</span>
+                    </div>
+                </div>
+                <div class="gauge">
+                    <div class="gauge-value">${health.active_sessions || 0}</div>
+                    <div class="gauge-label">Active Sessions</div>
+                </div>
+                <div class="gauge">
+                    <div class="gauge-value">${health.average_response_time ? health.average_response_time.toFixed(1) + 's' : 'N/A'}</div>
+                    <div class="gauge-label">Avg Response Time</div>
+                </div>
+                <div class="gauge">
+                    <div class="gauge-value">${health.average_error_rate ? (health.average_error_rate * 100).toFixed(1) + '%' : '0%'}</div>
+                    <div class="gauge-label">Error Rate</div>
+                </div>
+            `;
+        }
+
+        function displayMetrics(report) {
+            const metricsGrid = document.getElementById('metrics-grid');
+            metricsGrid.innerHTML = `
+                <div class="metric-card">
+                    <h3>Total Sessions</h3>
+                    <div class="value">${report.total_sessions}</div>
+                    <div class="unit">sessions</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Success Rate</h3>
+                    <div class="value">${report.success_rate}%</div>
+                    <div class="unit">successful</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Avg Duration</h3>
+                    <div class="value">${report.average_duration}s</div>
+                    <div class="unit">seconds</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Cost</h3>
+                    <div class="value">$${report.total_cost}</div>
+                    <div class="unit">USD</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Tokens</h3>
+                    <div class="value">${report.total_tokens.toLocaleString()}</div>
+                    <div class="unit">tokens</div>
+                </div>
+                <div class="metric-card">
+                    <h3>System Status</h3>
+                    <div class="value">${report.system_health.status}</div>
+                    <div class="unit">health</div>
+                </div>
+            `;
+        }
+
+        function createTrendChart(trends) {
+            const ctx = document.getElementById('trend-chart').getContext('2d');
+
+            if (charts.trend) {
+                charts.trend.destroy();
+            }
+
+            const data = trends.trend_data.map(item => ({
+                x: item.date,
+                y: item.value
+            }));
+
+            charts.trend = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: trends.metric.charAt(0).toUpperCase() + trends.metric.slice(1),
+                        data: data,
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primary + '20',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: colors.primary,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: colors.primary,
+                            borderWidth: 1
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM dd'
+                                }
+                            },
+                            grid: {
+                                color: '#e9ecef'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: '#e9ecef'
+                            }
+                        }
+                    },
+                    interaction: {
+                        mode: 'nearest',
+                        axis: 'x',
+                        intersect: false
+                    }
+                }
+            });
+        }
+
+        function createModelChart(models) {
+            const ctx = document.getElementById('model-chart').getContext('2d');
+
+            if (charts.model) {
+                charts.model.destroy();
+            }
+
+            let chartData, chartType, chartOptions;
+
+            switch (currentModelChart) {
+                case 'usage':
+                    chartType = 'bar';
+                    chartData = {
+                        labels: models.map(m => m.model_name),
+                        datasets: [{
+                            label: 'Total Requests',
+                            data: models.map(m => m.total_requests),
+                            backgroundColor: colors.gradient1.map(c => c + '80'),
+                            borderColor: colors.gradient1,
+                            borderWidth: 2
+                        }]
+                    };
+                    break;
+                case 'cost':
+                    chartType = 'doughnut';
+                    chartData = {
+                        labels: models.map(m => m.model_name),
+                        datasets: [{
+                            data: models.map(m => m.total_cost_usd),
+                            backgroundColor: [
+                                colors.primary + '80',
+                                colors.secondary + '80',
+                                colors.success + '80',
+                                colors.warning + '80',
+                                colors.danger + '80',
+                                colors.info + '80'
+                            ],
+                            borderColor: [
+                                colors.primary,
+                                colors.secondary,
+                                colors.success,
+                                colors.warning,
+                                colors.danger,
+                                colors.info
+                            ],
+                            borderWidth: 2
+                        }]
+                    };
+                    break;
+                case 'performance':
+                    chartType = 'radar';
+                    chartData = {
+                        labels: ['Success Rate', 'Response Time', 'Cost Efficiency', 'Usage'],
+                        datasets: models.map((model, index) => ({
+                            label: model.model_name,
+                            data: [
+                                model.success_rate,
+                                100 - (model.average_response_time * 10), // Invert for better visualization
+                                model.total_cost_usd > 0 ? 100 / model.total_cost_usd : 0,
+                                model.total_requests / Math.max(...models.map(m => m.total_requests)) * 100
+                            ],
+                            backgroundColor: colors.gradient1[index % colors.gradient1.length] + '20',
+                            borderColor: colors.gradient1[index % colors.gradient1.length],
+                            borderWidth: 2
+                        }))
+                    };
+                    break;
+            }
+
+            chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff'
+                    }
+                }
+            };
+
+            if (chartType === 'radar') {
+                chartOptions.scales = {
+                    r: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                };
+            }
+
+            charts.model = new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: chartOptions
+            });
+        }
+
+        function createAgentRadarChart(agents) {
+            const ctx = document.getElementById('agent-radar-chart').getContext('2d');
+
+            if (charts.agentRadar) {
+                charts.agentRadar.destroy();
+            }
+
+            const labels = ['Executions', 'Success Rate', 'Quality', 'Speed', 'Cost Efficiency'];
+
+            charts.agentRadar = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: agents.map((agent, index) => ({
+                        label: agent.agent_type,
+                        data: [
+                            (agent.total_executions / Math.max(...agents.map(a => a.total_executions))) * 100,
+                            agent.success_rate,
+                            (agent.average_quality_score || 0.5) * 100,
+                            agent.average_duration > 0 ? Math.max(0, 100 - (agent.average_duration * 5)) : 50,
+                            agent.total_cost_usd > 0 ? Math.max(0, 100 - (agent.total_cost_usd * 1000)) : 100
+                        ],
+                        backgroundColor: colors.gradient2[index % colors.gradient2.length] + '20',
+                        borderColor: colors.gradient2[index % colors.gradient2.length],
+                        borderWidth: 2,
+                        pointBackgroundColor: colors.gradient2[index % colors.gradient2.length],
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#e9ecef'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createCostChart(costData) {
+            const ctx = document.getElementById('cost-chart').getContext('2d');
+
+            if (charts.cost) {
+                charts.cost.destroy();
+            }
+
+            let chartData, chartType, chartOptions;
+
+            switch (currentCostChart) {
+                case 'breakdown':
+                    chartType = 'doughnut';
+                    chartData = {
+                        labels: costData.cost_by_model.map(m => m.model),
+                        datasets: [{
+                            data: costData.cost_by_model.map(m => m.total_cost),
+                            backgroundColor: [
+                                colors.primary + '80',
+                                colors.secondary + '80',
+                                colors.success + '80',
+                                colors.warning + '80',
+                                colors.danger + '80',
+                                colors.info + '80'
+                            ],
+                            borderColor: [
+                                colors.primary,
+                                colors.secondary,
+                                colors.success,
+                                colors.warning,
+                                colors.danger,
+                                colors.info
+                            ],
+                            borderWidth: 2
+                        }]
+                    };
+                    break;
+                case 'trend':
+                    chartType = 'line';
+                    chartData = {
+                        labels: costData.daily_trend.map(d => d.date),
+                        datasets: [{
+                            label: 'Daily Cost',
+                            data: costData.daily_trend.map(d => d.cost),
+                            borderColor: colors.danger,
+                            backgroundColor: colors.danger + '20',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    };
+                    break;
+            }
+
+            chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        callbacks: {
+                            label: function(context) {
+                                if (currentCostChart === 'breakdown') {
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.parsed / total) * 100).toFixed(1);
+                                    return `${context.label}: $${context.parsed.toFixed(4)} (${percentage}%)`;
+                                }
+                                return `${context.dataset.label}: $${context.parsed.toFixed(4)}`;
+                            }
+                        }
+                    }
+                }
+            };
+
+            charts.cost = new Chart(ctx, {
+                type: chartType,
+                data: chartData,
+                options: chartOptions
+            });
+        }
+
+        // Chart switching functions
+        function switchTrendChart(metric) {
+            currentTrendMetric = metric;
+            document.querySelectorAll('.chart-controls button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Fetch new trend data and update chart
+            fetch(`/api/database/analytics/trends?metric=${metric}&days=${document.getElementById('period').value}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentData.trends = data;
+                    createTrendChart(data);
+                });
+        }
+
+        function switchModelChart(type) {
+            currentModelChart = type;
+            document.querySelectorAll('.chart-controls button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            createModelChart(currentData.report.top_models);
+        }
+
+        function switchCostChart(type) {
+            currentCostChart = type;
+            document.querySelectorAll('.chart-controls button').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            createCostChart(currentData.costData);
+        }
+
+        // Table display functions
+        function displayModelsTable(models) {
+            const tbody = document.querySelector('#models-table tbody');
+            tbody.innerHTML = models.map(model => `
+                <tr>
+                    <td>${model.model_name}</td>
+                    <td>${model.provider}</td>
+                    <td>${model.total_requests}</td>
+                    <td>${model.success_rate}%</td>
+                    <td>${model.average_response_time}s</td>
+                    <td>$${model.total_cost_usd}</td>
+                </tr>
+            `).join('');
+        }
+
+        function displayAgentsTable(agents) {
+            const tbody = document.querySelector('#agents-table tbody');
+            tbody.innerHTML = agents.map(agent => `
+                <tr>
+                    <td>${agent.agent_type}</td>
+                    <td>${agent.total_executions}</td>
+                    <td>${agent.success_rate}%</td>
+                    <td>${agent.average_duration}s</td>
+                    <td>${agent.average_quality_score || 'N/A'}</td>
+                    <td>$${agent.total_cost_usd}</td>
+                </tr>
+            `).join('');
+        }
+
+        function displaySessionsTable(sessions) {
+            const tbody = document.querySelector('#sessions-table tbody');
+            tbody.innerHTML = sessions.map(session => `
+                <tr>
+                    <td>${session.session_id.substring(0, 8)}...</td>
+                    <td>${session.session_type}</td>
+                    <td>${session.model_used}</td>
+                    <td><span class="status-badge status-${session.status}">${session.status}</span></td>
+                    <td>${session.duration_seconds ? session.duration_seconds.toFixed(1) + 's' : 'N/A'}</td>
+                    <td>$${session.total_cost_usd}</td>
+                    <td>${new Date(session.started_at).toLocaleString()}</td>
+                </tr>
+            `).join('');
+        }
+
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error-message').textContent = message;
+        }
+
+        function refreshData() {
+            fetchData();
+        }
+
+        function exportData() {
+            const period = document.getElementById('period').value;
+            window.open(`/api/database/export?format=json&days=${period}`, '_blank');
+        }
+
+        // Windows XP functionality
+        function updateTaskbarTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('taskbar-time').textContent = timeString;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTaskbarTime();
+            setInterval(updateTaskbarTime, 1000);
+            fetchData();
+        });
+
+        // Auto-refresh every 5 minutes
+        setInterval(refreshData, 5 * 60 * 1000);
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.resize();
+            });
+        });
+    </script>
+</body>
+</html>

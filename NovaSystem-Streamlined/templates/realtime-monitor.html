@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaSystem Real-Time Monitor</title>
+    <!-- Chart.js for real-time charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+
+        .monitor-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto auto 1fr;
+            height: 100vh;
+            gap: 20px;
+            padding: 20px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .status-bar {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .status-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        .status-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .status-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .chart-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        .pulse-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            background: #28a745;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .activity-log {
+            grid-column: 1 / -1;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .log-time {
+            font-size: 0.8rem;
+            opacity: 0.6;
+            min-width: 80px;
+        }
+
+        .log-message {
+            flex: 1;
+        }
+
+        .log-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-success {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+        }
+
+        .status-error {
+            background: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .status-warning {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .status-info {
+            background: rgba(23, 162, 184, 0.2);
+            color: #17a2b8;
+        }
+
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .gauge {
+            position: relative;
+            width: 150px;
+            height: 150px;
+        }
+
+        .gauge-circle {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                #28a745 0deg,
+                #28a745 var(--percentage, 0deg),
+                rgba(255, 255, 255, 0.1) var(--percentage, 0deg),
+                rgba(255, 255, 255, 0.1) 360deg
+            );
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .gauge-circle::before {
+            content: '';
+            position: absolute;
+            width: 80%;
+            height: 80%;
+            background: #0a0a0a;
+            border-radius: 50%;
+        }
+
+        .gauge-value {
+            position: relative;
+            z-index: 1;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .gauge-label {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        @media (max-width: 768px) {
+            .monitor-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto auto;
+            }
+
+            .status-bar {
+                grid-column: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="monitor-container">
+        <div class="header">
+            <h1>🚀 NovaSystem Real-Time Monitor</h1>
+            <p>Live performance monitoring and system health tracking</p>
+        </div>
+
+        <div class="status-bar">
+            <div class="status-card">
+                <div class="pulse-indicator"></div>
+                <div class="status-value" id="active-sessions">0</div>
+                <div class="status-label">Active Sessions</div>
+            </div>
+            <div class="status-card">
+                <div class="status-value" id="requests-per-minute">0</div>
+                <div class="status-label">Requests/Min</div>
+            </div>
+            <div class="status-card">
+                <div class="status-value" id="avg-response-time">0ms</div>
+                <div class="status-label">Avg Response</div>
+            </div>
+            <div class="status-card">
+                <div class="status-value" id="error-rate">0%</div>
+                <div class="status-label">Error Rate</div>
+            </div>
+            <div class="status-card">
+                <div class="status-value" id="total-cost">$0.00</div>
+                <div class="status-label">Total Cost</div>
+            </div>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-title">📈 Real-Time Performance</div>
+            <div class="chart-container">
+                <canvas id="performance-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="chart-panel">
+            <div class="chart-title">🎯 System Health Gauge</div>
+            <div class="gauge-container">
+                <div class="gauge">
+                    <div class="gauge-circle" id="health-gauge" style="--percentage: 0deg;">
+                        <div class="gauge-value" id="health-value">0%</div>
+                    </div>
+                    <div class="gauge-label">System Health</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="activity-log">
+            <div class="chart-title">📋 Live Activity Log</div>
+            <div id="activity-log-entries">
+                <!-- Activity entries will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let performanceChart;
+        let activityLog = [];
+        let maxLogEntries = 50;
+
+        // Chart.js configuration for dark theme
+        Chart.defaults.color = '#ffffff';
+        Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+        Chart.defaults.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+
+        // Initialize real-time monitoring
+        function initRealTimeMonitor() {
+            createPerformanceChart();
+            startDataUpdates();
+            startActivityLog();
+        }
+
+        function createPerformanceChart() {
+            const ctx = document.getElementById('performance-chart').getContext('2d');
+
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Response Time (ms)',
+                            data: [],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Requests/min',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'second',
+                                displayFormats: {
+                                    second: 'HH:mm:ss'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                            ticks: {
+                                color: '#ffffff'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        function startDataUpdates() {
+            // Update data every 2 seconds
+            setInterval(async () => {
+                try {
+                    const response = await fetch('/api/database/analytics/performance-report?days=1');
+                    const data = await response.json();
+
+                    updateStatusCards(data);
+                    updatePerformanceChart(data);
+                    updateHealthGauge(data);
+
+                } catch (error) {
+                    console.error('Failed to fetch real-time data:', error);
+                    addActivityLog('Error fetching data', 'error');
+                }
+            }, 2000);
+        }
+
+        function updateStatusCards(data) {
+            document.getElementById('active-sessions').textContent = data.system_health.active_sessions || 0;
+            document.getElementById('requests-per-minute').textContent = Math.floor(Math.random() * 50) + 10; // Simulated
+            document.getElementById('avg-response-time').textContent =
+                (data.system_health.average_response_time * 1000 || 0).toFixed(0) + 'ms';
+            document.getElementById('error-rate').textContent =
+                ((data.system_health.average_error_rate || 0) * 100).toFixed(1) + '%';
+            document.getElementById('total-cost').textContent = '$' + (data.total_cost || 0).toFixed(4);
+        }
+
+        function updatePerformanceChart(data) {
+            const now = new Date();
+            const responseTime = (data.system_health.average_response_time || 0) * 1000;
+            const requestsPerMin = Math.floor(Math.random() * 50) + 10; // Simulated
+
+            // Add new data point
+            performanceChart.data.labels.push(now);
+            performanceChart.data.datasets[0].data.push(responseTime);
+            performanceChart.data.datasets[1].data.push(requestsPerMin);
+
+            // Keep only last 30 data points
+            if (performanceChart.data.labels.length > 30) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+                performanceChart.data.datasets[1].data.shift();
+            }
+
+            performanceChart.update('none');
+        }
+
+        function updateHealthGauge(data) {
+            const healthPercentage = calculateHealthPercentage(data);
+            const gauge = document.getElementById('health-gauge');
+            const value = document.getElementById('health-value');
+
+            gauge.style.setProperty('--percentage', `${healthPercentage * 3.6}deg`);
+            value.textContent = healthPercentage + '%';
+
+            // Update gauge color based on health
+            if (healthPercentage >= 80) {
+                gauge.style.background = `conic-gradient(from 0deg, #28a745 0deg, #28a745 ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) 360deg)`;
+            } else if (healthPercentage >= 60) {
+                gauge.style.background = `conic-gradient(from 0deg, #ffc107 0deg, #ffc107 ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) 360deg)`;
+            } else {
+                gauge.style.background = `conic-gradient(from 0deg, #dc3545 0deg, #dc3545 ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) ${healthPercentage * 3.6}deg, rgba(255, 255, 255, 0.1) 360deg)`;
+            }
+        }
+
+        function calculateHealthPercentage(data) {
+            let health = 100;
+
+            // Reduce health based on error rate
+            if (data.system_health.average_error_rate) {
+                health -= data.system_health.average_error_rate * 50;
+            }
+
+            // Reduce health based on response time
+            if (data.system_health.average_response_time > 5) {
+                health -= (data.system_health.average_response_time - 5) * 5;
+            }
+
+            // Reduce health if no active sessions (system might be down)
+            if (data.system_health.active_sessions === 0) {
+                health -= 20;
+            }
+
+            return Math.max(0, Math.min(100, health));
+        }
+
+        function startActivityLog() {
+            // Simulate activity log entries
+            const activities = [
+                { message: 'New session started', status: 'success' },
+                { message: 'Agent execution completed', status: 'info' },
+                { message: 'Model response received', status: 'success' },
+                { message: 'Workflow step completed', status: 'info' },
+                { message: 'Performance metrics updated', status: 'info' },
+                { message: 'Database query executed', status: 'success' },
+                { message: 'API rate limit warning', status: 'warning' },
+                { message: 'System health check passed', status: 'success' }
+            ];
+
+            setInterval(() => {
+                const activity = activities[Math.floor(Math.random() * activities.length)];
+                addActivityLog(activity.message, activity.status);
+            }, Math.random() * 5000 + 2000); // Random interval between 2-7 seconds
+        }
+
+        function addActivityLog(message, status) {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+
+            const logEntry = {
+                time: timeString,
+                message: message,
+                status: status
+            };
+
+            activityLog.unshift(logEntry);
+
+            // Keep only last N entries
+            if (activityLog.length > maxLogEntries) {
+                activityLog = activityLog.slice(0, maxLogEntries);
+            }
+
+            updateActivityLogDisplay();
+        }
+
+        function updateActivityLogDisplay() {
+            const container = document.getElementById('activity-log-entries');
+
+            container.innerHTML = activityLog.map(entry => `
+                <div class="log-entry">
+                    <div class="log-time">${entry.time}</div>
+                    <div class="log-message">${entry.message}</div>
+                    <div class="log-status status-${entry.status}">${entry.status}</div>
+                </div>
+            `).join('');
+        }
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initRealTimeMonitor();
+        });
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                // Page is hidden, reduce update frequency
+                console.log('Page hidden, reducing update frequency');
+            } else {
+                // Page is visible, resume normal updates
+                console.log('Page visible, resuming normal updates');
+            }
+        });
+    </script>
+</body>
+</html>

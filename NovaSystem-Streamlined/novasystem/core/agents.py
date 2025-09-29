@@ -13,16 +13,18 @@ import asyncio
 import logging
 
 from ..utils.llm_service import LLMService
+from ..config.models import get_model_for_agent, get_default_model
 
 logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
     """Base class for all Nova Process agents."""
 
-    def __init__(self, name: str, role_description: str, model: str = "gpt-4", llm_service: Optional[LLMService] = None):
+    def __init__(self, name: str, role_description: str, model: Optional[str] = None, llm_service: Optional[LLMService] = None):
         self.name = name
         self.role_description = role_description
-        self.model = model
+        # Use single source of truth for model configuration
+        self.model = model or get_default_model()
         self.conversation_history: List[Dict[str, str]] = []
         self.llm_service = llm_service or LLMService()
 
@@ -98,7 +100,7 @@ class DCEAgent(BaseAgent):
     Responsible for maintaining conversation flow and ensuring coherent problem-solving.
     """
 
-    def __init__(self, model: str = "gpt-4", llm_service: Optional[LLMService] = None):
+    def __init__(self, model: Optional[str] = None, llm_service: Optional[LLMService] = None):
         role_description = """
         You are the Discussion Continuity Expert (DCE). Your role is to:
 
@@ -114,7 +116,9 @@ class DCEAgent(BaseAgent):
         - Recommended next steps
         - Questions for clarification if needed
         """
-        super().__init__("DCE", role_description, model, llm_service)
+        # Use centralized model configuration
+        agent_model = model or get_model_for_agent("dce")
+        super().__init__("DCE", role_description, agent_model, llm_service)
 
     def _get_task_type(self) -> str:
         """DCE specializes in reasoning and analysis."""
@@ -131,7 +135,7 @@ class CAEAgent(BaseAgent):
     Provides critical evaluation and identifies potential issues.
     """
 
-    def __init__(self, model: str = "gpt-4", llm_service: Optional[LLMService] = None):
+    def __init__(self, model: Optional[str] = None, llm_service: Optional[LLMService] = None):
         role_description = """
         You are the Critical Analysis Expert (CAE). Your role is to:
 
@@ -147,7 +151,9 @@ class CAEAgent(BaseAgent):
         - Risk mitigation strategies
         - Validation requirements
         """
-        super().__init__("CAE", role_description, model, llm_service)
+        # Use centralized model configuration
+        agent_model = model or get_model_for_agent("cae")
+        super().__init__("CAE", role_description, agent_model, llm_service)
 
     def _get_task_type(self) -> str:
         """CAE specializes in critical analysis."""
@@ -164,7 +170,7 @@ class DomainExpert(BaseAgent):
     Provides specialized knowledge in specific domains.
     """
 
-    def __init__(self, domain: str, model: str = "gpt-4", llm_service: Optional[LLMService] = None):
+    def __init__(self, domain: str, model: Optional[str] = None, llm_service: Optional[LLMService] = None):
         role_description = f"""
         You are a Domain Expert in {domain}. Your role is to:
 
@@ -180,7 +186,9 @@ class DomainExpert(BaseAgent):
         - Implementation considerations
         - Resource suggestions
         """
-        super().__init__(f"Domain Expert ({domain})", role_description, model, llm_service)
+        # Use centralized model configuration
+        agent_model = model or get_model_for_agent("domain_expert")
+        super().__init__(f"Domain Expert ({domain})", role_description, agent_model, llm_service)
         self.domain = domain
 
     def _get_task_type(self) -> str:
@@ -195,22 +203,22 @@ class AgentFactory:
     """Factory for creating Nova Process agents."""
 
     @staticmethod
-    def create_dce(model: str = "gpt-4", llm_service: Optional[LLMService] = None) -> DCEAgent:
+    def create_dce(model: Optional[str] = None, llm_service: Optional[LLMService] = None) -> DCEAgent:
         """Create a DCE agent."""
         return DCEAgent(model, llm_service)
 
     @staticmethod
-    def create_cae(model: str = "gpt-4", llm_service: Optional[LLMService] = None) -> CAEAgent:
+    def create_cae(model: Optional[str] = None, llm_service: Optional[LLMService] = None) -> CAEAgent:
         """Create a CAE agent."""
         return CAEAgent(model, llm_service)
 
     @staticmethod
-    def create_domain_expert(domain: str, model: str = "gpt-4", llm_service: Optional[LLMService] = None) -> DomainExpert:
+    def create_domain_expert(domain: str, model: Optional[str] = None, llm_service: Optional[LLMService] = None) -> DomainExpert:
         """Create a domain expert agent."""
         return DomainExpert(domain, model, llm_service)
 
     @staticmethod
-    def create_agent_team(domains: List[str], model: str = "gpt-4", llm_service: Optional[LLMService] = None) -> Dict[str, BaseAgent]:
+    def create_agent_team(domains: List[str], model: Optional[str] = None, llm_service: Optional[LLMService] = None) -> Dict[str, BaseAgent]:
         """Create a complete team of agents."""
         team = {
             "dce": AgentFactory.create_dce(model, llm_service),

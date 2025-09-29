@@ -1,0 +1,430 @@
+/* ========================================
+   NOVASYSTEM - AUTHENTIC WINDOWS XP THEME
+   Classic Windows XP Luna Theme Recreation
+   Based on reference images for authentic styling
+   ======================================== */
+
+:root {
+  /* ========================================
+     AUTHENTIC WINDOWS XP LUNA COLORS
+     ======================================== */
+
+  /* Classic Windows XP Blue Theme */
+  --xp-primary-blue: #316AC5;
+  --xp-primary-blue-light: #4A7CE8;
+  --xp-primary-blue-dark: #1E4A8C;
+  --xp-primary-blue-darker: #0F2A5C;
+
+  /* Windows XP System Colors */
+  --xp-window-bg: #ECE9D8;
+  --xp-window-border: #ACA899;
+  --xp-window-border-light: #F4F2E9;
+  --xp-window-border-dark: #8B8B8B;
+
+  /* Button Colors */
+  --xp-button-bg: #ECE9D8;
+  --xp-button-bg-light: #F4F2E9;
+  --xp-button-bg-dark: #D4D0C8;
+  --xp-button-border-light: #F4F2E9;
+  --xp-button-border-dark: #8B8B8B;
+  --xp-button-text: #000000;
+
+  /* Input Field Colors */
+  --xp-input-bg: #FFFFFF;
+  --xp-input-border: #8B8B8B;
+  --xp-input-border-light: #F4F2E9;
+  --xp-input-border-dark: #8B8B8B;
+
+  /* Title Bar Colors */
+  --xp-titlebar-bg: linear-gradient(to bottom, #316AC5 0%, #1E4A8C 100%);
+  --xp-titlebar-text: #FFFFFF;
+  --xp-titlebar-border: #1E4A8C;
+
+  /* Sidebar Colors */
+  --xp-sidebar-bg: #D4D0C8;
+  --xp-sidebar-border: #ACA899;
+
+  /* Content Area Colors */
+  --xp-content-bg: #FFFFFF;
+  --xp-content-border: #ACA899;
+
+  /* Status Colors */
+  --xp-success: #6BBF44;
+  --xp-warning: #FFA500;
+  --xp-error: #FF0000;
+  --xp-info: #316AC5;
+
+  /* ========================================
+     SEMANTIC COLOR MAPPING
+     ======================================== */
+
+  /* Background Colors */
+  --bg-primary: var(--xp-window-bg);
+  --bg-secondary: var(--xp-sidebar-bg);
+  --bg-tertiary: var(--xp-content-bg);
+  --bg-elevated: #FFFFFF;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+
+  /* Text Colors */
+  --text-primary: #000000;
+  --text-secondary: #333333;
+  --text-tertiary: #666666;
+  --text-inverse: #FFFFFF;
+  --text-disabled: #999999;
+
+  /* Border Colors */
+  --border-light: var(--xp-window-border-light);
+  --border-medium: var(--xp-window-border);
+  --border-dark: var(--xp-window-border-dark);
+  --border-focus: var(--xp-primary-blue);
+  --border-error: var(--xp-error);
+  --border-success: var(--xp-success);
+  --border-inset: var(--xp-input-border);
+
+  /* Legacy CSS Variables for Compatibility */
+  --accent-color: var(--xp-primary-blue);
+  --primary-color: var(--xp-primary-blue);
+  --secondary-color: var(--xp-primary-blue-dark);
+  --bg-window: var(--xp-window-bg);
+  --bg-tertiary: var(--xp-content-bg);
+
+  /* ========================================
+     WINDOWS XP TYPOGRAPHY
+     ======================================== */
+
+  /* Font Families */
+  --font-family-sans: 'Tahoma', 'MS Sans Serif', 'Segoe UI', sans-serif;
+  --font-family-mono: 'Courier New', 'MS Sans Serif', monospace;
+  --font-family-serif: 'Times New Roman', 'MS Serif', serif;
+
+  /* Font Sizes */
+  --font-size-xs: 11px;
+  --font-size-sm: 12px;
+  --font-size-base: 13px;
+  --font-size-lg: 14px;
+  --font-size-xl: 16px;
+  --font-size-2xl: 18px;
+  --font-size-3xl: 20px;
+
+  /* Font Weights */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* Line Heights */
+  --line-height-tight: 1.2;
+  --line-height-normal: 1.4;
+  --line-height-relaxed: 1.6;
+
+  /* ========================================
+     WINDOWS XP SPACING
+     ======================================== */
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ========================================
+     WINDOWS XP SHADOWS & EFFECTS
+     ======================================== */
+
+  /* Classic Windows XP Shadows */
+  --shadow-outset: 1px 1px 0px #F4F2E9, -1px -1px 0px #8B8B8B;
+  --shadow-inset: inset 1px 1px 0px #8B8B8B, inset -1px -1px 0px #F4F2E9;
+  --shadow-button: 1px 1px 0px #F4F2E9, -1px -1px 0px #8B8B8B;
+  --shadow-button-active: inset 1px 1px 0px #8B8B8B, inset -1px -1px 0px #F4F2E9;
+  --shadow-window: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown: 2px 2px 4px rgba(0, 0, 0, 0.2);
+
+  /* ========================================
+     WINDOWS XP BORDERS
+     ======================================== */
+
+  /* Border Widths */
+  --border-width-1: 1px;
+  --border-width-2: 2px;
+  --border-width-3: 3px;
+
+  /* Border Radius */
+  --border-radius-none: 0px;
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --border-radius-lg: 6px;
+  --border-radius-xl: 8px;
+
+  /* ========================================
+     WINDOWS XP TRANSITIONS
+     ======================================== */
+
+  /* Transition Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 350ms;
+
+  /* Transition Easing */
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ========================================
+     WINDOWS XP Z-INDEX SCALE
+     ======================================== */
+
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1020;
+  --z-index-fixed: 1030;
+  --z-index-modal-backdrop: 1040;
+  --z-index-modal: 1050;
+  --z-index-popover: 1060;
+  --z-index-tooltip: 1070;
+}
+
+/* ========================================
+   WINDOWS XP COMPONENT STYLES
+   ======================================== */
+
+/* Windows XP Button Styles */
+.xp-button {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-normal);
+  color: var(--xp-button-text);
+  background: var(--xp-button-bg);
+  border: var(--border-width-1) solid;
+  border-color: var(--xp-button-border-light) var(--xp-button-border-dark) var(--xp-button-border-dark) var(--xp-button-border-light);
+  box-shadow: var(--shadow-button);
+  padding: var(--space-1) var(--space-3);
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.xp-button:hover {
+  background: var(--xp-button-bg-light);
+}
+
+.xp-button:active {
+  background: var(--xp-button-bg-dark);
+  box-shadow: var(--shadow-button-active);
+  border-color: var(--xp-button-border-dark) var(--xp-button-border-light) var(--xp-button-border-light) var(--xp-button-border-dark);
+}
+
+.xp-button:disabled {
+  color: var(--text-disabled);
+  background: var(--xp-button-bg-dark);
+  cursor: not-allowed;
+}
+
+/* Windows XP Input Styles */
+.xp-input {
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  background: var(--xp-input-bg);
+  border: var(--border-width-1) solid;
+  border-color: var(--xp-input-border-dark) var(--xp-input-border-light) var(--xp-input-border-light) var(--xp-input-border-dark);
+  box-shadow: var(--shadow-inset);
+  padding: var(--space-1) var(--space-2);
+}
+
+.xp-input:focus {
+  outline: none;
+  border-color: var(--xp-primary-blue);
+  box-shadow: var(--shadow-inset), 0 0 0 1px var(--xp-primary-blue);
+}
+
+/* Windows XP Card Styles */
+.xp-card {
+  background: var(--xp-content-bg);
+  border: var(--border-width-1) solid var(--xp-content-border);
+  box-shadow: var(--shadow-outset);
+}
+
+.xp-card-inset {
+  background: var(--xp-content-bg);
+  border: var(--border-width-1) solid var(--xp-content-border);
+  box-shadow: var(--shadow-inset);
+}
+
+/* Windows XP Window Styles */
+.xp-window {
+  background: var(--xp-window-bg);
+  border: var(--border-width-2) solid var(--xp-window-border);
+  box-shadow: var(--shadow-window);
+}
+
+.xp-titlebar {
+  background: var(--xp-titlebar-bg);
+  color: var(--xp-titlebar-text);
+  border-bottom: var(--border-width-1) solid var(--xp-titlebar-border);
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-family-sans);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+}
+
+/* Windows XP Sidebar Styles */
+.xp-sidebar {
+  background: var(--xp-sidebar-bg);
+  border-right: var(--border-width-1) solid var(--xp-sidebar-border);
+}
+
+/* Windows XP Progress Bar Styles */
+.xp-progress {
+  background: var(--xp-input-bg);
+  border: var(--border-width-1) solid var(--xp-input-border);
+  box-shadow: var(--shadow-inset);
+  height: 16px;
+}
+
+.xp-progress-bar {
+  background: linear-gradient(to bottom, var(--xp-primary-blue-light) 0%, var(--xp-primary-blue) 100%);
+  height: 100%;
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+/* Windows XP Scrollbar Styles */
+.xp-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--xp-window-border) var(--xp-window-bg);
+}
+
+.xp-scrollbar::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+.xp-scrollbar::-webkit-scrollbar-track {
+  background: var(--xp-window-bg);
+  border: var(--border-width-1) solid var(--xp-window-border);
+}
+
+.xp-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--xp-button-bg);
+  border: var(--border-width-1) solid var(--xp-window-border);
+  box-shadow: var(--shadow-inset);
+}
+
+.xp-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--xp-button-bg-light);
+}
+
+.xp-scrollbar::-webkit-scrollbar-corner {
+  background: var(--xp-window-bg);
+}
+
+/* ========================================
+   WINDOWS XP UTILITY CLASSES
+   ======================================== */
+
+/* Text Colors */
+.text-xp-primary { color: var(--text-primary); }
+.text-xp-secondary { color: var(--text-secondary); }
+.text-xp-tertiary { color: var(--text-tertiary); }
+.text-xp-inverse { color: var(--text-inverse); }
+.text-xp-disabled { color: var(--text-disabled); }
+
+/* Background Colors */
+.bg-xp-window { background: var(--xp-window-bg); }
+.bg-xp-sidebar { background: var(--xp-sidebar-bg); }
+.bg-xp-content { background: var(--xp-content-bg); }
+.bg-xp-button { background: var(--xp-button-bg); }
+
+/* Border Colors */
+.border-xp-light { border-color: var(--border-light); }
+.border-xp-medium { border-color: var(--border-medium); }
+.border-xp-dark { border-color: var(--border-dark); }
+
+/* Shadows */
+.shadow-xp-outset { box-shadow: var(--shadow-outset); }
+.shadow-xp-inset { box-shadow: var(--shadow-inset); }
+.shadow-xp-button { box-shadow: var(--shadow-button); }
+.shadow-xp-window { box-shadow: var(--shadow-window); }
+
+/* ========================================
+   WINDOWS XP RESPONSIVE DESIGN
+   ======================================== */
+
+/* Mobile First Approach */
+@media (max-width: 640px) {
+  :root {
+    --font-size-xs: 10px;
+    --font-size-sm: 11px;
+    --font-size-base: 12px;
+    --font-size-lg: 13px;
+    --font-size-xl: 14px;
+    --font-size-2xl: 16px;
+    --font-size-3xl: 18px;
+  }
+}
+
+/* Tablet */
+@media (min-width: 641px) and (max-width: 1024px) {
+  :root {
+    --space-1: 6px;
+    --space-2: 12px;
+    --space-3: 18px;
+    --space-4: 24px;
+    --space-5: 30px;
+    --space-6: 36px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1025px) {
+  :root {
+    --space-1: 8px;
+    --space-2: 16px;
+    --space-3: 24px;
+    --space-4: 32px;
+    --space-5: 40px;
+    --space-6: 48px;
+  }
+}
+
+/* ========================================
+   WINDOWS XP ANIMATIONS
+   ======================================== */
+
+@keyframes xp-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes xp-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes xp-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-xp-fade-in {
+  animation: xp-fade-in var(--duration-normal) var(--ease-out);
+}
+
+.animate-xp-slide-down {
+  animation: xp-slide-down var(--duration-normal) var(--ease-out);
+}
+
+.animate-xp-pulse {
+  animation: xp-pulse 2s var(--ease-in-out) infinite;
+}

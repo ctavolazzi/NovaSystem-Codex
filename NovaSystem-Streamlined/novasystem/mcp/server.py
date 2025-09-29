@@ -27,6 +27,7 @@ from mcp.types import (
 
 from ..core.process import NovaProcess
 from ..core.memory import MemoryManager
+from ..config.models import get_default_model
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +44,7 @@ class NovaMCPServer:
 
     def setup_handlers(self):
         """Set up MCP server handlers."""
-        
+
         @self.server.list_tools()
         async def list_tools() -> List[Tool]:
             """List available NovaSystem tools."""
@@ -74,7 +75,7 @@ class NovaMCPServer:
                                 "type": "string",
                                 "description": "AI model to use for problem solving",
                                 "enum": ["gpt-4", "gpt-3.5-turbo", "claude-3", "claude-3-haiku", "ollama:phi3", "ollama:llama2", "ollama:gpt-oss:20b"],
-                                "default": "gpt-4"
+                                "default": get_default_model()
                             }
                         },
                         "required": ["problem"]
@@ -163,7 +164,7 @@ class NovaMCPServer:
         problem = arguments.get("problem", "")
         domains = arguments.get("domains", "General,Technology,Business")
         max_iterations = arguments.get("max_iterations", 3)
-        model = arguments.get("model", "gpt-4")
+        model = arguments.get("model", get_default_model())
 
         if not problem.strip():
             return [TextContent(
@@ -226,7 +227,7 @@ class NovaMCPServer:
     async def _get_session_status(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """Get session status."""
         session_id = arguments.get("session_id")
-        
+
         if session_id not in self.sessions:
             return [TextContent(
                 type="text",
@@ -277,7 +278,7 @@ class NovaMCPServer:
     async def _get_session_result(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """Get session result."""
         session_id = arguments.get("session_id")
-        
+
         if session_id not in self.sessions:
             return [TextContent(
                 type="text",
@@ -285,7 +286,7 @@ class NovaMCPServer:
             )]
 
         session = self.sessions[session_id]
-        
+
         if session["status"] == "running":
             return [TextContent(
                 type="text",
@@ -311,7 +312,7 @@ class NovaMCPServer:
     async def _cancel_session(self, arguments: Dict[str, Any]) -> List[TextContent]:
         """Cancel a session."""
         session_id = arguments.get("session_id")
-        
+
         if session_id not in self.sessions:
             return [TextContent(
                 type="text",
@@ -319,7 +320,7 @@ class NovaMCPServer:
             )]
 
         session = self.sessions[session_id]
-        
+
         if session["status"] == "running":
             session["status"] = "cancelled"
             return [TextContent(
@@ -364,7 +365,7 @@ class NovaMCPServer:
     async def run_stdio(self):
         """Run the MCP server with stdio transport."""
         from mcp.server.stdio import stdio_server
-        
+
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
@@ -382,7 +383,7 @@ class NovaMCPServer:
     async def run_sse(self, host: str = "localhost", port: int = 3000):
         """Run the MCP server with SSE transport."""
         from mcp.server.sse import SseServerTransport
-        
+
         transport = SseServerTransport(f"http://{host}:{port}")
         await self.server.run_sse(transport)
 
@@ -395,4 +396,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 

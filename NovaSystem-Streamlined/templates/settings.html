@@ -1,0 +1,935 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Settings{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Settings{% endblock %}
+
+{% block styles %}
+<style>
+    /* Settings-specific styles */
+    .settings-container {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 20px;
+        padding: 20px;
+        height: 100%;
+    }
+
+    .settings-sidebar {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 16px;
+        height: fit-content;
+    }
+
+    .settings-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .settings-nav-item {
+        margin-bottom: 4px;
+    }
+
+    .settings-nav-link {
+        display: block;
+        padding: 8px 12px;
+        color: var(--text-primary);
+        text-decoration: none;
+        border: 1px solid transparent;
+        border-radius: 3px;
+        font-size: 11px;
+        transition: all 0.2s ease;
+    }
+
+    .settings-nav-link:hover {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .settings-nav-link.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .settings-content {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        padding: 20px;
+        overflow-y: auto;
+    }
+
+    .settings-section {
+        margin-bottom: 24px;
+        display: none;
+    }
+
+    .settings-section.active {
+        display: block;
+    }
+
+    .settings-title {
+        font-size: 16px;
+        color: var(--primary-color);
+        margin-bottom: 16px;
+        font-weight: bold;
+        border-bottom: 1px solid #c0c0c0;
+        padding-bottom: 8px;
+    }
+
+    .settings-group {
+        margin-bottom: 20px;
+    }
+
+    .settings-group-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    .setting-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        margin-bottom: 8px;
+    }
+
+    .setting-label {
+        flex: 1;
+        font-size: 11px;
+        color: var(--text-primary);
+    }
+
+    .setting-description {
+        font-size: 10px;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    .setting-control {
+        margin-left: 16px;
+    }
+
+    .setting-input {
+        padding: 4px 8px;
+        border: 1px inset #c0c0c0;
+        font-size: 11px;
+        background: white;
+        color: var(--text-primary);
+        font-family: var(--windows-font);
+        min-width: 120px;
+    }
+
+    .setting-input:focus {
+        outline: none;
+        border: 1px inset var(--primary-color);
+    }
+
+    .setting-select {
+        padding: 4px 8px;
+        border: 1px inset #c0c0c0;
+        font-size: 11px;
+        background: white;
+        color: var(--text-primary);
+        font-family: var(--windows-font);
+        min-width: 120px;
+    }
+
+    .setting-checkbox {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--primary-color);
+    }
+
+    .setting-slider {
+        width: 60px;
+        height: 20px;
+        background: #c0c0c0;
+        border: 1px inset #c0c0c0;
+        border-radius: 10px;
+        position: relative;
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .setting-slider.active {
+        background: var(--accent-color);
+    }
+
+    .setting-slider::after {
+        content: '';
+        position: absolute;
+        top: 1px;
+        left: 1px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border: 1px solid #999;
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+    }
+
+    .setting-slider.active::after {
+        transform: translateX(40px);
+    }
+
+    .settings-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid #c0c0c0;
+    }
+
+    .btn-save {
+        background: linear-gradient(180deg, #90EE90, #7ED321);
+        color: var(--text-primary);
+        border: 1px outset #ffffff;
+        padding: 6px 16px;
+        font-size: 11px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+    }
+
+    .btn-reset {
+        background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+        color: var(--text-primary);
+        border: 1px outset #ffffff;
+        padding: 6px 16px;
+        font-size: 11px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+    }
+
+    .btn-export {
+        background: linear-gradient(180deg, #87CEEB, #4682B4);
+        color: var(--text-primary);
+        border: 1px outset #ffffff;
+        padding: 6px 16px;
+        font-size: 11px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+    }
+
+    .btn-import {
+        background: linear-gradient(180deg, #DDA0DD, #9370DB);
+        color: var(--text-primary);
+        border: 1px outset #ffffff;
+        padding: 6px 16px;
+        font-size: 11px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+    }
+
+    .status-message {
+        padding: 8px 12px;
+        margin: 8px 0;
+        border-radius: 3px;
+        font-size: 11px;
+        display: none;
+    }
+
+    .status-message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+    }
+
+    .status-message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+    }
+
+    .status-message.info {
+        background: #d1ecf1;
+        color: #0c5460;
+        border: 1px solid #bee5eb;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="settings-container">
+    <!-- Settings Navigation -->
+    <div class="settings-sidebar">
+        <ul class="settings-nav">
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link active" data-section="general">General</a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link" data-section="appearance">Appearance</a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link" data-section="ai">AI Models</a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link" data-section="performance">Performance</a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link" data-section="security">Security</a>
+            </li>
+            <li class="settings-nav-item">
+                <a href="#" class="settings-nav-link" data-section="advanced">Advanced</a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Settings Content -->
+    <div class="settings-content">
+        <!-- General Settings -->
+        <div class="settings-section active" id="general">
+            <div class="settings-title">General Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Application</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Application Name</div>
+                        <div class="setting-description">Display name for NovaSystem</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" class="setting-input" value="NovaSystem v3.0" id="app-name">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Auto-save Sessions</div>
+                        <div class="setting-description">Automatically save session data</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="auto-save"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Default Session Timeout</div>
+                        <div class="setting-description">Minutes before sessions expire</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="session-timeout">
+                            <option value="30">30 minutes</option>
+                            <option value="60" selected>60 minutes</option>
+                            <option value="120">2 hours</option>
+                            <option value="240">4 hours</option>
+                            <option value="0">Never</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Enable Notifications</div>
+                        <div class="setting-description">Show desktop notifications</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="checkbox" class="setting-checkbox" id="notifications" checked>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Language & Region</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Language</div>
+                        <div class="setting-description">Interface language</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="language">
+                            <option value="en" selected>English</option>
+                            <option value="es">Español</option>
+                            <option value="fr">Français</option>
+                            <option value="de">Deutsch</option>
+                            <option value="it">Italiano</option>
+                            <option value="pt">Português</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Time Format</div>
+                        <div class="setting-description">Display format for time</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="time-format">
+                            <option value="12" selected>12-hour (AM/PM)</option>
+                            <option value="24">24-hour</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Appearance Settings -->
+        <div class="settings-section" id="appearance">
+            <div class="settings-title">Appearance Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Theme</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Color Scheme</div>
+                        <div class="setting-description">Choose your preferred theme</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="color-scheme">
+                            <option value="windows-xp" selected>Windows XP Classic</option>
+                            <option value="windows-95">Windows 95</option>
+                            <option value="windows-98">Windows 98</option>
+                            <option value="dark">Dark Mode</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Font Size</div>
+                        <div class="setting-description">Interface font size</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="font-size">
+                            <option value="small">Small</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="large">Large</option>
+                            <option value="xlarge">Extra Large</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Show Window Borders</div>
+                        <div class="setting-description">Display classic window borders</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="window-borders"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Animated Transitions</div>
+                        <div class="setting-description">Enable smooth animations</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="animations"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Models Settings -->
+        <div class="settings-section" id="ai">
+            <div class="settings-title">AI Models Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Default Models</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Primary AI Model</div>
+                        <div class="setting-description">Default model for problem solving</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="primary-model">
+                            <option value="claude-3.5-sonnet" selected>Claude 3.5 Sonnet</option>
+                            <option value="gpt-4">GPT-4</option>
+                            <option value="claude-3-haiku">Claude 3 Haiku</option>
+                            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            <option value="auto">Auto (Best Available)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Max Iterations</div>
+                        <div class="setting-description">Maximum problem-solving iterations</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="max-iterations">
+                            <option value="1">1 iteration</option>
+                            <option value="3" selected>3 iterations</option>
+                            <option value="5">5 iterations</option>
+                            <option value="10">10 iterations</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Temperature</div>
+                        <div class="setting-description">AI creativity level (0.0-1.0)</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="range" class="setting-input" min="0" max="1" step="0.1" value="0.7" id="temperature">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Enable Streaming</div>
+                        <div class="setting-description">Stream responses in real-time</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="streaming"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">API Configuration</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>API Key</div>
+                        <div class="setting-description">Your API key for AI services</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="password" class="setting-input" placeholder="Enter API key" id="api-key">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>API Endpoint</div>
+                        <div class="setting-description">Custom API endpoint URL</div>
+                    </div>
+                    <div class="setting-control">
+                        <input type="url" class="setting-input" placeholder="https://api.example.com" id="api-endpoint">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Settings -->
+        <div class="settings-section" id="performance">
+            <div class="settings-title">Performance Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">System Resources</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Max Concurrent Sessions</div>
+                        <div class="setting-description">Maximum simultaneous sessions</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="max-sessions">
+                            <option value="1">1 session</option>
+                            <option value="3" selected>3 sessions</option>
+                            <option value="5">5 sessions</option>
+                            <option value="10">10 sessions</option>
+                            <option value="unlimited">Unlimited</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Cache Duration</div>
+                        <div class="setting-description">How long to cache responses</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="cache-duration">
+                            <option value="0">No caching</option>
+                            <option value="300" selected>5 minutes</option>
+                            <option value="1800">30 minutes</option>
+                            <option value="3600">1 hour</option>
+                            <option value="86400">24 hours</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Enable Performance Monitoring</div>
+                        <div class="setting-description">Track system performance metrics</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="monitoring"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Settings -->
+        <div class="settings-section" id="security">
+            <div class="settings-title">Security Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Data Protection</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Encrypt Session Data</div>
+                        <div class="setting-description">Encrypt sensitive session information</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider" data-setting="encryption"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Auto-clear History</div>
+                        <div class="setting-description">Automatically clear old session history</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider active" data-setting="auto-clear"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Session Timeout</div>
+                        <div class="setting-description">Minutes of inactivity before logout</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="security-timeout">
+                            <option value="15">15 minutes</option>
+                            <option value="30" selected>30 minutes</option>
+                            <option value="60">1 hour</option>
+                            <option value="120">2 hours</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="settings-section" id="advanced">
+            <div class="settings-title">Advanced Settings</div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Developer Options</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Debug Mode</div>
+                        <div class="setting-description">Enable detailed logging and debugging</div>
+                    </div>
+                    <div class="setting-control">
+                        <div class="setting-slider" data-setting="debug"></div>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Log Level</div>
+                        <div class="setting-description">Verbosity of system logs</div>
+                    </div>
+                    <div class="setting-control">
+                        <select class="setting-select" id="log-level">
+                            <option value="error">Error only</option>
+                            <option value="warning">Warning</option>
+                            <option value="info" selected>Info</option>
+                            <option value="debug">Debug</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Custom CSS</div>
+                        <div class="setting-description">Inject custom CSS styles</div>
+                    </div>
+                    <div class="setting-control">
+                        <textarea class="setting-input" rows="3" placeholder="/* Custom CSS */" id="custom-css"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-group-title">Data Management</div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Reset All Settings</div>
+                        <div class="setting-description">Restore all settings to defaults</div>
+                    </div>
+                    <div class="setting-control">
+                        <button class="btn-reset" id="reset-settings">Reset</button>
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-label">
+                        <div>Clear All Data</div>
+                        <div class="setting-description">Remove all sessions and cache data</div>
+                    </div>
+                    <div class="setting-control">
+                        <button class="btn-reset" id="clear-data">Clear Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Messages -->
+        <div class="status-message" id="status-message"></div>
+
+        <!-- Action Buttons -->
+        <div class="settings-actions">
+            <button class="btn-save" id="save-settings">Save Settings</button>
+            <button class="btn-reset" id="reset-changes">Reset Changes</button>
+            <button class="btn-export" id="export-settings">Export</button>
+            <button class="btn-import" id="import-settings">Import</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    window.initPage = function() {
+        // Settings navigation
+        const navLinks = document.querySelectorAll('.settings-nav-link');
+        const sections = document.querySelectorAll('.settings-section');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+
+                // Remove active class from all links and sections
+                navLinks.forEach(l => l.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+
+                // Add active class to clicked link
+                link.classList.add('active');
+
+                // Show corresponding section
+                const sectionId = link.getAttribute('data-section');
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.classList.add('active');
+                }
+            });
+        });
+
+        // Toggle sliders
+        const sliders = document.querySelectorAll('.setting-slider');
+        sliders.forEach(slider => {
+            slider.addEventListener('click', () => {
+                slider.classList.toggle('active');
+                const setting = slider.getAttribute('data-setting');
+                console.log(`Setting ${setting}: ${slider.classList.contains('active')}`);
+            });
+        });
+
+        // Save settings
+        document.getElementById('save-settings').addEventListener('click', () => {
+            saveSettings();
+        });
+
+        // Reset changes
+        document.getElementById('reset-changes').addEventListener('click', () => {
+            resetChanges();
+        });
+
+        // Export settings
+        document.getElementById('export-settings').addEventListener('click', () => {
+            exportSettings();
+        });
+
+        // Import settings
+        document.getElementById('import-settings').addEventListener('click', () => {
+            importSettings();
+        });
+
+        // Reset all settings
+        document.getElementById('reset-settings').addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset all settings to defaults?')) {
+                resetAllSettings();
+            }
+        });
+
+        // Clear all data
+        document.getElementById('clear-data').addEventListener('click', () => {
+            if (confirm('Are you sure you want to clear all data? This cannot be undone.')) {
+                clearAllData();
+            }
+        });
+
+        // Load current settings
+        loadSettings();
+    };
+
+    function saveSettings() {
+        const settings = {
+            appName: document.getElementById('app-name').value,
+            autoSave: document.querySelector('[data-setting="auto-save"]').classList.contains('active'),
+            sessionTimeout: document.getElementById('session-timeout').value,
+            notifications: document.getElementById('notifications').checked,
+            language: document.getElementById('language').value,
+            timeFormat: document.getElementById('time-format').value,
+            colorScheme: document.getElementById('color-scheme').value,
+            fontSize: document.getElementById('font-size').value,
+            windowBorders: document.querySelector('[data-setting="window-borders"]').classList.contains('active'),
+            animations: document.querySelector('[data-setting="animations"]').classList.contains('active'),
+            primaryModel: document.getElementById('primary-model').value,
+            maxIterations: document.getElementById('max-iterations').value,
+            temperature: document.getElementById('temperature').value,
+            streaming: document.querySelector('[data-setting="streaming"]').classList.contains('active'),
+            apiKey: document.getElementById('api-key').value,
+            apiEndpoint: document.getElementById('api-endpoint').value,
+            maxSessions: document.getElementById('max-sessions').value,
+            cacheDuration: document.getElementById('cache-duration').value,
+            monitoring: document.querySelector('[data-setting="monitoring"]').classList.contains('active'),
+            encryption: document.querySelector('[data-setting="encryption"]').classList.contains('active'),
+            autoClear: document.querySelector('[data-setting="auto-clear"]').classList.contains('active'),
+            securityTimeout: document.getElementById('security-timeout').value,
+            debug: document.querySelector('[data-setting="debug"]').classList.contains('active'),
+            logLevel: document.getElementById('log-level').value,
+            customCss: document.getElementById('custom-css').value
+        };
+
+        // Save to localStorage
+        localStorage.setItem('novasystem-settings', JSON.stringify(settings));
+
+        showStatusMessage('Settings saved successfully!', 'success');
+
+        // Apply settings
+        applySettings(settings);
+    }
+
+    function loadSettings() {
+        const savedSettings = localStorage.getItem('novasystem-settings');
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+
+            // Load all settings
+            Object.keys(settings).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = settings[key];
+                    } else {
+                        element.value = settings[key];
+                    }
+                }
+
+                // Handle sliders
+                const slider = document.querySelector(`[data-setting="${key}"]`);
+                if (slider) {
+                    if (settings[key]) {
+                        slider.classList.add('active');
+                    } else {
+                        slider.classList.remove('active');
+                    }
+                }
+            });
+        }
+    }
+
+    function applySettings(settings) {
+        // Apply color scheme
+        if (settings.colorScheme && settings.colorScheme !== 'windows-xp') {
+            document.body.classList.add(`theme-${settings.colorScheme}`);
+        }
+
+        // Apply font size
+        if (settings.fontSize) {
+            document.documentElement.style.fontSize = settings.fontSize === 'small' ? '10px' :
+                                                    settings.fontSize === 'large' ? '14px' :
+                                                    settings.fontSize === 'xlarge' ? '16px' : '12px';
+        }
+
+        // Apply custom CSS
+        if (settings.customCss) {
+            let styleElement = document.getElementById('custom-css-styles');
+            if (!styleElement) {
+                styleElement = document.createElement('style');
+                styleElement.id = 'custom-css-styles';
+                document.head.appendChild(styleElement);
+            }
+            styleElement.textContent = settings.customCss;
+        }
+    }
+
+    function resetChanges() {
+        loadSettings();
+        showStatusMessage('Changes reset to saved values', 'info');
+    }
+
+    function exportSettings() {
+        const settings = localStorage.getItem('novasystem-settings');
+        if (settings) {
+            const blob = new Blob([settings], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'novasystem-settings.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatusMessage('Settings exported successfully', 'success');
+        } else {
+            showStatusMessage('No settings to export', 'info');
+        }
+    }
+
+    function importSettings() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        input.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const settings = JSON.parse(e.target.result);
+                        localStorage.setItem('novasystem-settings', JSON.stringify(settings));
+                        loadSettings();
+                        showStatusMessage('Settings imported successfully', 'success');
+                    } catch (error) {
+                        showStatusMessage('Error importing settings: Invalid file format', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        };
+        input.click();
+    }
+
+    function resetAllSettings() {
+        localStorage.removeItem('novasystem-settings');
+        location.reload();
+    }
+
+    function clearAllData() {
+        localStorage.clear();
+        sessionStorage.clear();
+        showStatusMessage('All data cleared successfully', 'success');
+        setTimeout(() => location.reload(), 1000);
+    }
+
+    function showStatusMessage(message, type) {
+        const statusMessage = document.getElementById('status-message');
+        statusMessage.textContent = message;
+        statusMessage.className = `status-message ${type}`;
+        statusMessage.style.display = 'block';
+
+        setTimeout(() => {
+            statusMessage.style.display = 'none';
+        }, 3000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,516 @@
+/* ========================================
+   WORKFLOW SIDEBAR COMPONENT STYLES
+   Self-contained, modular component styles
+   ======================================== */
+
+@import '../../../styles/variables.css';
+
+/* ========================================
+   WORKFLOW SIDEBAR BASE STYLES
+   ======================================== */
+
+.workflowSidebar {
+  position: relative;
+  width: var(--sidebar-width);
+  height: 100%;
+  background: var(--bg-sidebar);
+  border-right: var(--border-width-thin) solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--duration-normal) var(--ease-out);
+}
+
+.workflowSidebar.collapsed {
+  width: var(--sidebar-width-collapsed);
+}
+
+/* ========================================
+   SIDEBAR HEADER
+   ======================================== */
+
+.sidebarHeader {
+  height: var(--sidebar-header-height);
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--secondary-blue) 100%);
+  color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--padding-md);
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.sidebarTitle {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sidebarTitleIcon {
+  font-size: var(--font-size-xl);
+}
+
+.sidebarToggle {
+  width: var(--size-md);
+  height: var(--size-md);
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  transition: var(--transition-fast);
+}
+
+.sidebarToggle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sidebarToggle:active {
+  background: rgba(255, 255, 255, 0.4);
+  transform: scale(0.95);
+}
+
+/* ========================================
+   SIDEBAR CONTENT
+   ======================================== */
+
+.sidebarContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarContent.collapsed {
+  overflow: visible;
+}
+
+/* ========================================
+   SIDEBAR SECTIONS
+   ======================================== */
+
+.sidebarSection {
+  border-bottom: var(--border-width-thin) solid var(--border-light);
+  flex-shrink: 0;
+}
+
+.sidebarSectionHeader {
+  height: 40px;
+  background: var(--bg-secondary);
+  border-bottom: var(--border-width-thin) solid var(--border-light);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--padding-md);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.sidebarSectionHeader:hover {
+  background: var(--bg-hover);
+}
+
+.sidebarSectionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.sidebarSectionIcon {
+  font-size: var(--font-size-sm);
+}
+
+.sidebarSectionToggle {
+  width: var(--size-sm);
+  height: var(--size-sm);
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  transition: var(--transition-fast);
+}
+
+.sidebarSectionToggle:hover {
+  color: var(--text-primary);
+}
+
+.sidebarSectionToggle.collapsed {
+  transform: rotate(-90deg);
+}
+
+.sidebarSectionContent {
+  padding: var(--padding-md);
+  transition: var(--transition-normal);
+}
+
+.sidebarSectionContent.collapsed {
+  height: 0;
+  padding: 0 var(--padding-md);
+  overflow: hidden;
+}
+
+/* ========================================
+   AGENT POOL SECTION
+   ======================================== */
+
+.agentPool {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-sm);
+  padding: var(--padding-md);
+}
+
+.agentPool.collapsed {
+  display: none;
+}
+
+/* ========================================
+   WORKFLOW CONTROLS SECTION
+   ======================================== */
+
+.workflowControls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--padding-md);
+}
+
+.workflowControls.collapsed {
+  display: none;
+}
+
+.controlButton {
+  width: 100%;
+  padding: var(--padding-sm) var(--padding-md);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.controlButton:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.controlButton:active {
+  background: var(--bg-active);
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+.controlButton.primary {
+  background: var(--primary-blue);
+  color: var(--white);
+  border-color: var(--primary-blue);
+}
+
+.controlButton.primary:hover {
+  background: var(--primary-blue-dark);
+  border-color: var(--primary-blue-dark);
+}
+
+.controlButton.success {
+  background: var(--success-green);
+  color: var(--white);
+  border-color: var(--success-green);
+}
+
+.controlButton.success:hover {
+  background: var(--success-green-dark);
+  border-color: var(--success-green-dark);
+}
+
+.controlButton.warning {
+  background: var(--warning-orange);
+  color: var(--white);
+  border-color: var(--warning-orange);
+}
+
+.controlButton.warning:hover {
+  background: var(--warning-orange-dark);
+  border-color: var(--warning-orange-dark);
+}
+
+.controlButton.error {
+  background: var(--error-red);
+  color: var(--white);
+  border-color: var(--error-red);
+}
+
+.controlButton.error:hover {
+  background: var(--error-red-dark);
+  border-color: var(--error-red-dark);
+}
+
+.controlButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ========================================
+   WORKFLOW STATUS SECTION
+   ======================================== */
+
+.workflowStatus {
+  padding: var(--padding-md);
+  border-top: var(--border-width-thin) solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+.workflowStatus.collapsed {
+  display: none;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.statusDot {
+  width: var(--status-indicator-size);
+  height: var(--status-indicator-size);
+  border-radius: var(--radius-full);
+  background-color: var(--gray-400);
+}
+
+.statusDot.idle {
+  background-color: var(--gray-400);
+}
+
+.statusDot.processing {
+  background-color: var(--warning-orange);
+  animation: pulse 2s infinite;
+}
+
+.statusDot.complete {
+  background-color: var(--success-green);
+}
+
+.statusDot.error {
+  background-color: var(--error-red);
+}
+
+.statusText {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.statusDetails {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+/* ========================================
+   SIDEBAR RESPONSIVE
+   ======================================== */
+
+@media (max-width: 1024px) {
+  .workflowSidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: var(--z-index-sidebar);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .workflowSidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  .agentPool {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: var(--space-xs);
+    padding: var(--padding-sm);
+  }
+}
+
+@media (max-width: 768px) {
+  .workflowSidebar {
+    width: 100%;
+    max-width: 300px;
+  }
+
+  .sidebarHeader {
+    height: 50px;
+    padding: 0 var(--padding-sm);
+  }
+
+  .sidebarTitle {
+    font-size: var(--font-size-md);
+  }
+
+  .agentPool {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    padding: var(--padding-sm);
+  }
+
+  .workflowControls {
+    padding: var(--padding-sm);
+  }
+
+  .controlButton {
+    padding: var(--padding-xs) var(--padding-sm);
+    font-size: var(--font-size-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .workflowSidebar {
+    max-width: 280px;
+  }
+
+  .agentPool {
+    grid-template-columns: 1fr;
+    gap: var(--space-xs);
+  }
+}
+
+/* ========================================
+   SIDEBAR COLLAPSED STATE
+   ======================================== */
+
+.workflowSidebar.collapsed .sidebarHeader {
+  justify-content: center;
+  padding: 0;
+}
+
+.workflowSidebar.collapsed .sidebarTitle {
+  display: none;
+}
+
+.workflowSidebar.collapsed .sidebarToggle {
+  position: absolute;
+  right: var(--space-sm);
+}
+
+.workflowSidebar.collapsed .sidebarSectionHeader {
+  justify-content: center;
+  padding: 0;
+}
+
+.workflowSidebar.collapsed .sidebarSectionTitle {
+  display: none;
+}
+
+.workflowSidebar.collapsed .sidebarSectionToggle {
+  display: none;
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+
+.sidebarContent::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebarContent::-webkit-scrollbar-track {
+  background: var(--bg-tertiary);
+}
+
+.sidebarContent::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: var(--radius-sm);
+}
+
+.sidebarContent::-webkit-scrollbar-thumb:hover {
+  background: var(--border-dark);
+}
+
+/* Firefox scrollbar */
+.sidebarContent {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-medium) var(--bg-tertiary);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .workflowSidebar {
+    transition: none;
+  }
+
+  .sidebarSectionContent {
+    transition: none;
+  }
+
+  .sidebarSectionToggle {
+    transition: none;
+  }
+
+  .statusDot.processing {
+    animation: none;
+    background-color: var(--warning-orange);
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .workflowSidebar {
+    border-right-width: var(--border-width-medium);
+  }
+
+  .sidebarSection {
+    border-bottom-width: var(--border-width-medium);
+  }
+
+  .controlButton {
+    border-width: var(--border-width-medium);
+  }
+}

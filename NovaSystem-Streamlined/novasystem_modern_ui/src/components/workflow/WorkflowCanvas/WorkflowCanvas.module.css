@@ -1,0 +1,456 @@
+/* ========================================
+   WORKFLOW CANVAS COMPONENT STYLES
+   Self-contained, modular component styles
+   ======================================== */
+
+@import '../../../styles/variables.css';
+
+/* ========================================
+   WORKFLOW CANVAS BASE STYLES
+   ======================================== */
+
+.workflowCanvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-canvas);
+  background-image:
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  background-position: 0 0, 0 0;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+}
+
+.workflowCanvas:active {
+  cursor: grabbing;
+}
+
+.workflowCanvas.panning {
+  cursor: grabbing;
+}
+
+/* ========================================
+   CANVAS VIEWPORT
+   ======================================== */
+
+.canvasViewport {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.canvasContent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  transition: transform var(--duration-normal) var(--ease-out);
+}
+
+/* ========================================
+   CONNECTION LAYER
+   ======================================== */
+
+.connectionLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: var(--z-index-connection);
+}
+
+.connectionSvg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.connectionPath {
+  fill: none;
+  stroke: var(--connection-color);
+  stroke-width: var(--connection-width);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke var(--transition-fast);
+}
+
+.connectionPath.active {
+  stroke: var(--connection-color-active);
+  stroke-width: calc(var(--connection-width) + 1);
+}
+
+.connectionPath.success {
+  stroke: var(--connection-color-success);
+}
+
+.connectionPath.error {
+  stroke: var(--connection-color-error);
+}
+
+.connectionPath.hover {
+  stroke: var(--primary-blue);
+  stroke-width: calc(var(--connection-width) + 2);
+  filter: drop-shadow(0 0 4px rgba(74, 144, 226, 0.3));
+}
+
+/* Connection Arrow */
+.connectionArrow {
+  fill: var(--connection-color);
+  transition: fill var(--transition-fast);
+}
+
+.connectionArrow.active {
+  fill: var(--connection-color-active);
+}
+
+.connectionArrow.success {
+  fill: var(--connection-color-success);
+}
+
+.connectionArrow.error {
+  fill: var(--connection-color-error);
+}
+
+.connectionArrow.hover {
+  fill: var(--primary-blue);
+  filter: drop-shadow(0 0 4px rgba(74, 144, 226, 0.3));
+}
+
+/* ========================================
+   NODE LAYER
+   ======================================== */
+
+.nodeLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: var(--z-index-node);
+}
+
+/* ========================================
+   CANVAS CONTROLS
+   ======================================== */
+
+.canvasControls {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  z-index: var(--z-index-modal);
+}
+
+.canvasControl {
+  width: var(--size-lg);
+  height: var(--size-lg);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+
+.canvasControl:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+}
+
+.canvasControl:active {
+  background: var(--bg-active);
+  transform: scale(0.95);
+}
+
+.canvasControl.active {
+  background: var(--primary-blue);
+  color: var(--white);
+  border-color: var(--primary-blue);
+}
+
+/* ========================================
+   ZOOM CONTROLS
+   ======================================== */
+
+.zoomControls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.zoomControl {
+  width: var(--size-md);
+  height: var(--size-md);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-primary);
+  transition: var(--transition-fast);
+}
+
+.zoomControl:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-blue);
+}
+
+.zoomControl:active {
+  background: var(--bg-active);
+  transform: scale(0.9);
+}
+
+.zoomIndicator {
+  position: absolute;
+  bottom: var(--space-md);
+  right: var(--space-md);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--padding-xs) var(--padding-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-sm);
+  z-index: var(--z-index-modal);
+}
+
+/* ========================================
+   DROP ZONES
+   ======================================== */
+
+.dropZone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--drop-zone-color);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  pointer-events: none;
+  z-index: var(--z-index-modal);
+}
+
+.dropZone.active {
+  opacity: var(--drop-zone-opacity);
+  pointer-events: all;
+}
+
+.dropZoneIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--primary-blue);
+  color: var(--white);
+  padding: var(--padding-md) var(--padding-lg);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+/* ========================================
+   CANVAS STATES
+   ======================================== */
+
+.workflowCanvas.connecting {
+  cursor: crosshair;
+}
+
+.workflowCanvas.connecting * {
+  cursor: crosshair !important;
+}
+
+.workflowCanvas.selecting {
+  cursor: crosshair;
+}
+
+.workflowCanvas.selecting * {
+  cursor: crosshair !important;
+}
+
+/* ========================================
+   SELECTION RECTANGLE
+   ======================================== */
+
+.selectionRectangle {
+  position: absolute;
+  border: var(--border-width-thin) dashed var(--primary-blue);
+  background: rgba(74, 144, 226, 0.1);
+  pointer-events: none;
+  z-index: var(--z-index-modal);
+}
+
+/* ========================================
+   CANVAS TOOLBAR
+   ======================================== */
+
+.canvasToolbar {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+  z-index: var(--z-index-modal);
+}
+
+.toolbarButton {
+  padding: var(--padding-sm) var(--padding-md);
+  background: var(--bg-card);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbarButton:hover {
+  background: var(--bg-hover);
+  border-color: var(--primary-blue);
+  box-shadow: var(--shadow-md);
+}
+
+.toolbarButton:active {
+  background: var(--bg-active);
+  transform: translateY(1px);
+}
+
+.toolbarButton.active {
+  background: var(--primary-blue);
+  color: var(--white);
+  border-color: var(--primary-blue);
+}
+
+.toolbarButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ========================================
+   CANVAS RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .canvasControls {
+    top: var(--space-sm);
+    right: var(--space-sm);
+    gap: var(--space-xs);
+  }
+
+  .canvasControl {
+    width: var(--size-md);
+    height: var(--size-md);
+    font-size: var(--font-size-xs);
+  }
+
+  .canvasToolbar {
+    top: var(--space-sm);
+    left: var(--space-sm);
+    gap: var(--space-xs);
+  }
+
+  .toolbarButton {
+    padding: var(--padding-xs) var(--padding-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .zoomIndicator {
+    bottom: var(--space-sm);
+    right: var(--space-sm);
+    font-size: 10px;
+    padding: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .canvasControls {
+    flex-direction: row;
+    gap: var(--space-xs);
+  }
+
+  .zoomControls {
+    flex-direction: row;
+    gap: var(--space-xs);
+  }
+
+  .canvasToolbar {
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .toolbarButton {
+    flex: 1;
+    min-width: 0;
+    justify-content: center;
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .workflowCanvas {
+    cursor: default;
+  }
+
+  .canvasContent {
+    transition: none;
+  }
+
+  .connectionPath,
+  .connectionArrow {
+    transition: none;
+  }
+
+  .canvasControl,
+  .toolbarButton {
+    transition: none;
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .connectionPath {
+    stroke-width: calc(var(--connection-width) + 1);
+  }
+
+  .canvasControl,
+  .toolbarButton {
+    border-width: var(--border-width-medium);
+  }
+
+  .selectionRectangle {
+    border-width: var(--border-width-medium);
+  }
+}

@@ -8,12 +8,17 @@ from flask import Flask, render_template, request, jsonify, Response
 import asyncio
 import json
 import logging
+import threading
 from typing import Dict, Any
 import uuid
 from datetime import datetime
 
 from ..core.process import NovaProcess
 from ..core.memory import MemoryManager
+from ..core.workflow import WorkflowProcess
+from ..config.models import get_default_model
+from ..database import init_database, get_performance_tracker
+from ..database.performance_tracker import SessionMetrics, AgentMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +26,20 @@ class WebInterface:
     """Web interface for NovaSystem."""
 
     def __init__(self):
-        self.app = Flask(__name__, template_folder='../../templates')
+        self.app = Flask(__name__, template_folder='../../templates', static_folder='../../templates/shared')
         self.active_sessions = {}
+
+        # Initialize database and performance tracking
+        try:
+            init_database()
+            self.performance_tracker = get_performance_tracker()
+            logger.info("Performance tracking initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize performance tracking: {e}")
+            self.performance_tracker = None
+
         self.setup_routes()
+        self.setup_database_routes()
 
     def setup_routes(self):
         """Setup Flask routes."""
@@ -31,7 +47,61 @@ class WebInterface:
         @self.app.route('/')
         def index():
             """Main page."""
-            return render_template('index.html')
+            return render_template('index_new.html')
+
+        @self.app.route('/static/shared/<path:filename>')
+        def shared_static(filename):
+            """Serve shared navigation files."""
+            return self.app.send_static_file(filename)
+
+        @self.app.template_global()
+        def config():
+            """Make config available in templates."""
+            return self.app.config
+
+        @self.app.route('/workflow')
+        def workflow():
+            """Workflow UI page."""
+            return render_template('workflow_new.html')
+
+        @self.app.route('/api/workflow/execute', methods=['POST'])
+        def execute_workflow():
+            """Start a new workflow execution session."""
+            try:
+                data = request.get_json()
+                if not data or 'nodes' not in data or 'connections' not in data:
+                    return jsonify({'error': 'Invalid workflow data provided'}), 400
+
+                nodes = data.get('nodes')
+                connections = data.get('connections')
+
+                # Create session for the workflow
+                session_id = str(uuid.uuid4())
+
+                workflow_process = WorkflowProcess(data)
+
+                self.active_sessions[session_id] = {
+                    'type': 'workflow',
+                    'workflow_process': workflow_process,
+                    'started_at': datetime.now(),
+                    'status': 'running',
+                }
+
+                logger.info(f"Starting workflow session {session_id} with {len(nodes)} nodes and {len(connections)} connections.")
+
+                # Start the workflow execution in a background thread
+                thread = threading.Thread(target=self.run_async_in_thread, args=(workflow_process.execute(),))
+                thread.start()
+
+                return jsonify({
+                    'session_id': session_id,
+                    'status': 'started',
+                    'message': 'Workflow session initiated successfully'
+                })
+
+            except Exception as e:
+                logger.error(f"Error starting workflow session: {str(e)}")
+                return jsonify({'error': f'Internal server error: {str(e)}'}), 500
 
         @self.app.route('/api/solve', methods=['POST'])
         def solve_problem():
@@ -44,7 +114,7 @@ class WebInterface:
                 problem = data.get('problem', '').strip()
                 domains = data.get('domains', ['General'])
                 max_iterations = data.get('max_iterations', 3)
-                model = data.get('model', 'gpt-4')
+                model = data.get('model', get_default_model())
 
                 # Enhanced validation
                 if not problem:
@@ -87,8 +157,9 @@ class WebInterface:
                     'current_iteration': 0
                 }
 
-                # Start background task
-                asyncio.create_task(self._run_problem_solving(session_id, problem, max_iterations))
+                # Start background task in a new thread
+                thread = threading.Thread(target=self.run_async_in_thread, args=(self._run_problem_solving(session_id, problem, max_iterations),))
+                thread.start()
 
                 return jsonify({
                     'session_id': session_id,
@@ -110,6 +181,20 @@ class WebInterface:
                 return jsonify({'error': 'Session not found'}), 404
 
             session = self.active_sessions[session_id]
+
+            # Handle workflow session type
+            if session.get('type') == 'workflow':
+                workflow_process = session['workflow_process']
+                return jsonify({
+                    'session_id': session_id,
+                    'status': session['status'],
+                    'type': 'workflow',
+                    'node_states': workflow_process.node_states,
+                    'node_outputs': workflow_process.node_outputs,
+                    'execution_order': workflow_process.get_execution_order(), # Assuming this is safe to call again
+                    'started_at': session['started_at'].isoformat()
+                })
+
             nova_process = session['nova_process']
 
             try:
@@ -182,9 +267,114 @@ class WebInterface:
                     'session_id': session_id,
                     'status': session_data['status'],
                     'started_at': session_data['started_at'].isoformat(),
-                    'problem': session_data['problem'][:100] + '...'
+                    'problem': session_data.get('problem', 'Workflow')[:100] + '...'
                 })
             return jsonify(sessions)
+
+        @self.app.route('/api/sessions/kill-all', methods=['POST'])
+        def kill_all_sessions():
+            """Kill all active sessions."""
+            try:
+                killed_count = 0
+                for session_id, session_data in list(self.active_sessions.items()):
+                    # Mark session as killed
+                    session_data['status'] = 'killed'
+                    session_data['killed_at'] = datetime.now()
+                    killed_count += 1
+
+                # Clear all sessions
+                self.active_sessions.clear()
+
+                logger.info(f"Killed {killed_count} active sessions")
+
+                return jsonify({
+                    'message': f'Successfully killed {killed_count} active sessions',
+                    'killed_count': killed_count,
+                    'status': 'success'
+                })
+
+            except Exception as e:
+                logger.error(f"Error killing sessions: {str(e)}")
+                return jsonify({'error': f'Failed to kill sessions: {str(e)}'}), 500
+
+        @self.app.route('/api/sessions/<session_id>/kill', methods=['POST'])
+        def kill_session(session_id):
+            """Kill a specific session."""
+            try:
+                if session_id not in self.active_sessions:
+                    return jsonify({'error': 'Session not found'}), 404
+
+                session_data = self.active_sessions[session_id]
+                session_data['status'] = 'killed'
+                session_data['killed_at'] = datetime.now()
+
+                # Remove from active sessions
+                del self.active_sessions[session_id]
+
+                logger.info(f"Killed session {session_id}")
+
+                return jsonify({
+                    'message': f'Successfully killed session {session_id}',
+                    'session_id': session_id,
+                    'status': 'success'
+                })
+
+            except Exception as e:
+                logger.error(f"Error killing session {session_id}: {str(e)}")
+                return jsonify({'error': f'Failed to kill session: {str(e)}'}), 500
+
+    def setup_database_routes(self):
+        """Setup database API routes."""
+        if not self.performance_tracker:
+            logger.warning("Performance tracking not available, skipping database routes")
+            return
+
+        # Import and register database API blueprint
+        from ..database.api import db_api
+        self.app.register_blueprint(db_api)
+
+        # Add analytics dashboard route
+        @self.app.route('/analytics')
+        def analytics_dashboard():
+            """Analytics dashboard page."""
+            return render_template('analytics_new.html')
+
+        # Add real-time monitor route
+        @self.app.route('/monitor')
+        def realtime_monitor():
+            """Real-time monitoring dashboard page."""
+            return render_template('monitor_new.html')
+
+        @self.app.route('/settings')
+        def settings():
+            """Settings page."""
+            return render_template('settings.html')
+
+        @self.app.route('/help')
+        def help():
+            """Help and documentation page."""
+            return render_template('help.html')
+
+        @self.app.route('/about')
+        def about():
+            """About page."""
+            return render_template('about.html')
+
+        @self.app.route('/sessions')
+        def sessions():
+            """Session manager page."""
+            return render_template('sessions.html')
+
+        @self.app.route('/history')
+        def history():
+            """Session history page."""
+            return render_template('history.html')
+
+    def run_async_in_thread(self, coro):
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(coro)
+        loop.close()
 
     async def _run_problem_solving(self, session_id: str, problem: str, max_iterations: int):
         """Run the problem-solving process in the background with progress tracking."""

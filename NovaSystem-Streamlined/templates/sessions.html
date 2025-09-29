@@ -1,0 +1,891 @@
+{% extends "base.html" %}
+
+{% block title %}NovaSystem v3.0 - Session Manager{% endblock %}
+{% block window_title %}NovaSystem v3.0 - Session Manager{% endblock %}
+
+{% block styles %}
+<style>
+    /* Session Manager specific styles */
+    .sessions-container {
+        display: flex;
+        flex-direction: column;
+        padding: 20px;
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    .sessions-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+    }
+
+    .sessions-title {
+        font-size: 16px;
+        color: var(--primary-color);
+        font-weight: bold;
+    }
+
+    .sessions-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .sessions-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        flex: 1;
+    }
+
+    .sessions-panel {
+        background: var(--bg-tertiary);
+        border: 1px solid #c0c0c0;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sessions-panel-header {
+        padding: 12px 16px;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid #c0c0c0;
+        font-size: 12px;
+        font-weight: bold;
+        color: var(--text-primary);
+    }
+
+    .sessions-panel-content {
+        flex: 1;
+        padding: 16px;
+        overflow-y: auto;
+    }
+
+    .sessions-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .sessions-list-item {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        margin-bottom: 8px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .sessions-list-item:hover {
+        background: var(--accent-color);
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .sessions-list-item.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .session-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .session-item-id {
+        font-size: 10px;
+        font-weight: bold;
+        color: inherit;
+    }
+
+    .session-item-status {
+        padding: 2px 6px;
+        border-radius: 2px;
+        font-size: 9px;
+        font-weight: bold;
+        text-transform: uppercase;
+    }
+
+    .session-item-status.running {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .session-item-status.completed {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .session-item-status.error {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .session-item-status.idle {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .session-item-status.killed {
+        background: #f5c6cb;
+        color: #721c24;
+    }
+
+    .session-item-problem {
+        font-size: 11px;
+        color: inherit;
+        margin-bottom: 4px;
+        line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .session-item-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9px;
+        color: inherit;
+        opacity: 0.8;
+    }
+
+    .session-details {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 12px;
+        margin-bottom: 12px;
+    }
+
+    .session-details-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        border-bottom: 1px solid #c0c0c0;
+        padding-bottom: 4px;
+    }
+
+    .session-details-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        font-size: 10px;
+    }
+
+    .session-details-item {
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .session-details-label {
+        color: #666;
+        font-weight: bold;
+    }
+
+    .session-details-value {
+        color: var(--text-primary);
+    }
+
+    .session-progress {
+        margin: 12px 0;
+    }
+
+    .session-progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border: 1px inset #c0c0c0;
+        border-radius: 2px;
+        overflow: hidden;
+    }
+
+    .session-progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-color), var(--primary-color));
+        transition: width 0.3s ease;
+        border-radius: 1px;
+    }
+
+    .session-progress-text {
+        font-size: 9px;
+        color: #666;
+        text-align: center;
+        margin-top: 4px;
+    }
+
+    .session-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 12px;
+    }
+
+    .session-action-btn {
+        flex: 1;
+        padding: 4px 8px;
+        font-size: 9px;
+        border: 1px outset #ffffff;
+        border-radius: 2px;
+        cursor: pointer;
+        font-family: var(--windows-font);
+        transition: all 0.2s ease;
+    }
+
+    .session-action-btn.start {
+        background: linear-gradient(180deg, #90EE90, #7ED321);
+        color: var(--text-primary);
+    }
+
+    .session-action-btn.pause {
+        background: linear-gradient(180deg, #FFD700, #F5A623);
+        color: var(--text-primary);
+    }
+
+    .session-action-btn.kill {
+        background: linear-gradient(180deg, #FFB6C1, #FF69B4);
+        color: var(--text-primary);
+    }
+
+    .session-action-btn.view {
+        background: linear-gradient(180deg, #87CEEB, #4682B4);
+        color: var(--text-primary);
+    }
+
+    .session-action-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .session-action-btn:active {
+        border: 1px inset #808080;
+    }
+
+    .session-action-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .sessions-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .sessions-stat {
+        background: var(--bg-secondary);
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .sessions-stat-number {
+        font-size: 18px;
+        font-weight: bold;
+        color: var(--primary-color);
+        display: block;
+    }
+
+    .sessions-stat-label {
+        font-size: 10px;
+        color: #666;
+        margin-top: 4px;
+    }
+
+    .sessions-filters {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .sessions-filter {
+        padding: 4px 8px;
+        font-size: 10px;
+        border: 1px solid #c0c0c0;
+        background: var(--bg-tertiary);
+        color: var(--text-primary);
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.2s ease;
+    }
+
+    .sessions-filter.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+
+    .sessions-filter:hover {
+        background: var(--accent-color);
+        color: white;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #666;
+    }
+
+    .empty-state-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+
+    .empty-state-text {
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .empty-state-subtext {
+        font-size: 10px;
+        opacity: 0.8;
+    }
+
+    .session-output {
+        background: #f8f9fa;
+        border: 1px solid #c0c0c0;
+        border-radius: 3px;
+        padding: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 9px;
+        color: var(--text-primary);
+        max-height: 200px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    .session-log {
+        max-height: 150px;
+        overflow-y: auto;
+        background: #000;
+        color: #0f0;
+        padding: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 9px;
+        border: 1px solid #333;
+        border-radius: 3px;
+        margin-top: 8px;
+    }
+
+    .session-log-entry {
+        margin-bottom: 2px;
+    }
+
+    .session-log-entry.error {
+        color: #f00;
+    }
+
+    .session-log-entry.warning {
+        color: #ff0;
+    }
+
+    .session-log-entry.info {
+        color: #0ff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sessions-container">
+    <!-- Sessions Header -->
+    <div class="sessions-header">
+        <div class="sessions-title">Session Manager</div>
+        <div class="sessions-actions">
+            <button class="btn" id="refresh-sessions">Refresh</button>
+            <button class="btn" id="kill-all-sessions">Kill All</button>
+            <button class="btn" id="clear-completed">Clear Completed</button>
+        </div>
+    </div>
+
+    <!-- Session Statistics -->
+    <div class="sessions-stats">
+        <div class="sessions-stat">
+            <span class="sessions-stat-number" id="total-sessions">0</span>
+            <div class="sessions-stat-label">Total Sessions</div>
+        </div>
+        <div class="sessions-stat">
+            <span class="sessions-stat-number" id="active-sessions">0</span>
+            <div class="sessions-stat-label">Active Sessions</div>
+        </div>
+        <div class="sessions-stat">
+            <span class="sessions-stat-number" id="completed-sessions">0</span>
+            <div class="sessions-stat-label">Completed</div>
+        </div>
+        <div class="sessions-stat">
+            <span class="sessions-stat-number" id="error-sessions">0</span>
+            <div class="sessions-stat-label">Errors</div>
+        </div>
+    </div>
+
+    <!-- Sessions Content -->
+    <div class="sessions-content">
+        <!-- Active Sessions Panel -->
+        <div class="sessions-panel">
+            <div class="sessions-panel-header">Active Sessions</div>
+            <div class="sessions-panel-content">
+                <div class="sessions-filters">
+                    <div class="sessions-filter active" data-filter="all">All</div>
+                    <div class="sessions-filter" data-filter="running">Running</div>
+                    <div class="sessions-filter" data-filter="idle">Idle</div>
+                    <div class="sessions-filter" data-filter="error">Error</div>
+                </div>
+
+                <ul class="sessions-list" id="active-sessions-list">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔄</div>
+                        <div class="empty-state-text">No active sessions</div>
+                        <div class="empty-state-subtext">Start a new session from the Home page</div>
+                    </div>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Session Details Panel -->
+        <div class="sessions-panel">
+            <div class="sessions-panel-header">Session Details</div>
+            <div class="sessions-panel-content" id="session-details-content">
+                <div class="empty-state">
+                    <div class="empty-state-icon">📋</div>
+                    <div class="empty-state-text">Select a session to view details</div>
+                    <div class="empty-state-subtext">Click on any session in the list to see more information</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let sessions = [];
+    let selectedSession = null;
+    let refreshInterval = null;
+
+    window.initPage = function() {
+        loadSessions();
+        setupEventListeners();
+
+        // Auto-refresh every 5 seconds
+        refreshInterval = setInterval(loadSessions, 5000);
+    };
+
+    function setupEventListeners() {
+        // Filter buttons
+        document.querySelectorAll('.sessions-filter').forEach(filter => {
+            filter.addEventListener('click', () => {
+                document.querySelectorAll('.sessions-filter').forEach(f => f.classList.remove('active'));
+                filter.classList.add('active');
+                filterSessions(filter.getAttribute('data-filter'));
+            });
+        });
+
+        // Action buttons
+        document.getElementById('refresh-sessions').addEventListener('click', loadSessions);
+        document.getElementById('kill-all-sessions').addEventListener('click', killAllSessions);
+        document.getElementById('clear-completed').addEventListener('click', clearCompletedSessions);
+    }
+
+    async function loadSessions() {
+        try {
+            const response = await fetch('/api/sessions');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            sessions = await response.json();
+            updateStatistics();
+            renderSessions();
+
+        } catch (error) {
+            console.error('Error loading sessions:', error);
+            showError('Failed to load sessions: ' + error.message);
+        }
+    }
+
+    function updateStatistics() {
+        const stats = {
+            total: sessions.length,
+            active: sessions.filter(s => s.status === 'running').length,
+            completed: sessions.filter(s => s.status === 'completed').length,
+            error: sessions.filter(s => s.status === 'error').length
+        };
+
+        document.getElementById('total-sessions').textContent = stats.total;
+        document.getElementById('active-sessions').textContent = stats.active;
+        document.getElementById('completed-sessions').textContent = stats.completed;
+        document.getElementById('error-sessions').textContent = stats.error;
+    }
+
+    function renderSessions() {
+        const sessionsList = document.getElementById('active-sessions-list');
+        const activeFilter = document.querySelector('.sessions-filter.active').getAttribute('data-filter');
+
+        let filteredSessions = sessions;
+        if (activeFilter !== 'all') {
+            filteredSessions = sessions.filter(s => s.status === activeFilter);
+        }
+
+        if (filteredSessions.length === 0) {
+            sessionsList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">${getEmptyStateIcon(activeFilter)}</div>
+                    <div class="empty-state-text">No ${activeFilter} sessions</div>
+                    <div class="empty-state-subtext">${getEmptyStateSubtext(activeFilter)}</div>
+                </div>
+            `;
+            return;
+        }
+
+        sessionsList.innerHTML = '';
+        filteredSessions.forEach(session => {
+            const sessionItem = createSessionItem(session);
+            sessionsList.appendChild(sessionItem);
+        });
+    }
+
+    function createSessionItem(session) {
+        const li = document.createElement('li');
+        li.className = 'sessions-list-item';
+        li.setAttribute('data-session-id', session.session_id);
+
+        if (selectedSession && selectedSession.session_id === session.session_id) {
+            li.classList.add('active');
+        }
+
+        const createdAt = new Date(session.created_at).toLocaleString();
+        const updatedAt = new Date(session.updated_at).toLocaleString();
+
+        li.innerHTML = `
+            <div class="session-item-header">
+                <span class="session-item-id">${session.session_id.substring(0, 8)}...</span>
+                <span class="session-item-status ${session.status}">${session.status}</span>
+            </div>
+            <div class="session-item-problem">${session.problem || 'No problem description'}</div>
+            <div class="session-item-meta">
+                <span>Created: ${createdAt}</span>
+                <span>Updated: ${updatedAt}</span>
+            </div>
+        `;
+
+        li.addEventListener('click', () => selectSession(session));
+
+        return li;
+    }
+
+    function selectSession(session) {
+        selectedSession = session;
+
+        // Update active state
+        document.querySelectorAll('.sessions-list-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector(`[data-session-id="${session.session_id}"]`).classList.add('active');
+
+        renderSessionDetails(session);
+    }
+
+    function renderSessionDetails(session) {
+        const detailsContent = document.getElementById('session-details-content');
+
+        const createdAt = new Date(session.created_at).toLocaleString();
+        const updatedAt = new Date(session.updated_at).toLocaleString();
+        const duration = calculateDuration(session.created_at, session.updated_at);
+
+        detailsContent.innerHTML = `
+            <div class="session-details">
+                <div class="session-details-title">Session Information</div>
+                <div class="session-details-grid">
+                    <div class="session-details-item">
+                        <span class="session-details-label">ID:</span>
+                        <span class="session-details-value">${session.session_id}</span>
+                    </div>
+                    <div class="session-details-item">
+                        <span class="session-details-label">Status:</span>
+                        <span class="session-details-value">${session.status}</span>
+                    </div>
+                    <div class="session-details-item">
+                        <span class="session-details-label">Created:</span>
+                        <span class="session-details-value">${createdAt}</span>
+                    </div>
+                    <div class="session-details-item">
+                        <span class="session-details-label">Updated:</span>
+                        <span class="session-details-value">${updatedAt}</span>
+                    </div>
+                    <div class="session-details-item">
+                        <span class="session-details-label">Duration:</span>
+                        <span class="session-details-value">${duration}</span>
+                    </div>
+                    <div class="session-details-item">
+                        <span class="session-details-label">Iterations:</span>
+                        <span class="session-details-value">${session.current_iteration || 0}/${session.total_iterations || 0}</span>
+                    </div>
+                </div>
+            </div>
+
+            ${session.status === 'running' ? `
+                <div class="session-progress">
+                    <div class="session-progress-bar">
+                        <div class="session-progress-fill" style="width: ${getProgressPercentage(session)}%"></div>
+                    </div>
+                    <div class="session-progress-text">${getProgressPercentage(session)}% Complete</div>
+                </div>
+            ` : ''}
+
+            <div class="session-actions">
+                ${getSessionActionButtons(session)}
+            </div>
+
+            ${session.result ? `
+                <div class="session-details">
+                    <div class="session-details-title">Result</div>
+                    <div class="session-output">${session.result.final_synthesis || JSON.stringify(session.result, null, 2)}</div>
+                </div>
+            ` : ''}
+
+            ${session.error ? `
+                <div class="session-details">
+                    <div class="session-details-title">Error</div>
+                    <div class="session-output" style="color: #d32f2f;">${session.error}</div>
+                </div>
+            ` : ''}
+
+            <div class="session-details">
+                <div class="session-details-title">Log</div>
+                <div class="session-log" id="session-log-${session.session_id}">
+                    ${generateSessionLog(session)}
+                </div>
+            </div>
+        `;
+
+        // Add action button event listeners
+        setupSessionActionListeners(session);
+    }
+
+    function getSessionActionButtons(session) {
+        let buttons = '';
+
+        if (session.status === 'running') {
+            buttons += '<button class="session-action-btn pause" data-action="pause">Pause</button>';
+            buttons += '<button class="session-action-btn kill" data-action="kill">Kill</button>';
+        } else if (session.status === 'idle') {
+            buttons += '<button class="session-action-btn start" data-action="start">Start</button>';
+            buttons += '<button class="session-action-btn kill" data-action="kill">Kill</button>';
+        }
+
+        if (session.result) {
+            buttons += '<button class="session-action-btn view" data-action="view">View Result</button>';
+        }
+
+        return buttons;
+    }
+
+    function setupSessionActionListeners(session) {
+        document.querySelectorAll(`[data-action]`).forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.target.getAttribute('data-action');
+                handleSessionAction(session, action);
+            });
+        });
+    }
+
+    async function handleSessionAction(session, action) {
+        try {
+            switch (action) {
+                case 'start':
+                    await startSession(session.session_id);
+                    break;
+                case 'pause':
+                    await pauseSession(session.session_id);
+                    break;
+                case 'kill':
+                    if (confirm('Are you sure you want to kill this session?')) {
+                        await killSession(session.session_id);
+                    }
+                    break;
+                case 'view':
+                    viewSessionResult(session);
+                    break;
+            }
+        } catch (error) {
+            console.error(`Error ${action}ing session:`, error);
+            showError(`Failed to ${action} session: ${error.message}`);
+        }
+    }
+
+    async function startSession(sessionId) {
+        // Implementation would depend on your API
+        showInfo('Starting session...');
+        await loadSessions();
+    }
+
+    async function pauseSession(sessionId) {
+        // Implementation would depend on your API
+        showInfo('Pausing session...');
+        await loadSessions();
+    }
+
+    async function killSession(sessionId) {
+        const response = await fetch(`/api/sessions/${sessionId}/kill`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to kill session: ${response.status}`);
+        }
+
+        showInfo('Session killed successfully');
+        await loadSessions();
+    }
+
+    function viewSessionResult(session) {
+        if (session.result) {
+            const result = session.result.final_synthesis || JSON.stringify(session.result, null, 2);
+            const newWindow = window.open('', '_blank');
+            newWindow.document.write(`
+                <html>
+                    <head><title>Session Result - ${session.session_id}</title></head>
+                    <body style="font-family: monospace; padding: 20px; background: #f5f5f5;">
+                        <h2>Session Result</h2>
+                        <p><strong>Session ID:</strong> ${session.session_id}</p>
+                        <p><strong>Status:</strong> ${session.status}</p>
+                        <p><strong>Created:</strong> ${new Date(session.created_at).toLocaleString()}</p>
+                        <hr>
+                        <pre style="background: white; padding: 15px; border: 1px solid #ccc; border-radius: 5px; overflow: auto;">${result}</pre>
+                    </body>
+                </html>
+            `);
+        }
+    }
+
+    async function killAllSessions() {
+        if (confirm('Are you sure you want to kill ALL active sessions?')) {
+            try {
+                const response = await fetch('/api/sessions/kill-all', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Failed to kill all sessions: ${response.status}`);
+                }
+
+                const result = await response.json();
+                showInfo(`Killed ${result.killed_count || 0} sessions`);
+                await loadSessions();
+
+            } catch (error) {
+                console.error('Error killing all sessions:', error);
+                showError('Failed to kill all sessions: ' + error.message);
+            }
+        }
+    }
+
+    function clearCompletedSessions() {
+        if (confirm('Are you sure you want to clear all completed sessions?')) {
+            // Implementation would depend on your API
+            showInfo('Clearing completed sessions...');
+            // For now, just refresh
+            loadSessions();
+        }
+    }
+
+    function filterSessions(filter) {
+        renderSessions();
+    }
+
+    function calculateDuration(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+        const diff = end - start;
+
+        const minutes = Math.floor(diff / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+
+        return `${minutes}m ${seconds}s`;
+    }
+
+    function getProgressPercentage(session) {
+        if (!session.total_iterations || session.total_iterations === 0) {
+            return 0;
+        }
+        return Math.min(Math.round((session.current_iteration / session.total_iterations) * 100), 100);
+    }
+
+    function generateSessionLog(session) {
+        const logs = [];
+        logs.push(`[${new Date(session.created_at).toLocaleTimeString()}] Session created`);
+
+        if (session.status === 'running') {
+            logs.push(`[${new Date(session.updated_at).toLocaleTimeString()}] Session running (${session.current_iteration}/${session.total_iterations} iterations)`);
+        } else if (session.status === 'completed') {
+            logs.push(`[${new Date(session.updated_at).toLocaleTimeString()}] Session completed successfully`);
+        } else if (session.status === 'error') {
+            logs.push(`[${new Date(session.updated_at).toLocaleTimeString()}] Session failed: ${session.error || 'Unknown error'}`);
+        } else if (session.status === 'killed') {
+            logs.push(`[${new Date(session.updated_at).toLocaleTimeString()}] Session killed by user`);
+        }
+
+        return logs.map(log => `<div class="session-log-entry">${log}</div>`).join('');
+    }
+
+    function getEmptyStateIcon(filter) {
+        const icons = {
+            all: '📋',
+            running: '🔄',
+            idle: '⏸️',
+            error: '❌'
+        };
+        return icons[filter] || '📋';
+    }
+
+    function getEmptyStateSubtext(filter) {
+        const subtexts = {
+            all: 'No sessions found',
+            running: 'No sessions are currently running',
+            idle: 'No idle sessions found',
+            error: 'No sessions with errors'
+        };
+        return subtexts[filter] || 'No sessions found';
+    }
+
+    function showInfo(message) {
+        console.log('INFO:', message);
+        // Could add a toast notification here
+    }
+
+    function showError(message) {
+        console.error('ERROR:', message);
+        // Could add a toast notification here
+        alert(message); // Temporary fallback
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        if (refreshInterval) {
+            clearInterval(refreshInterval);
+        }
+    });
+</script>
+{% endblock %}

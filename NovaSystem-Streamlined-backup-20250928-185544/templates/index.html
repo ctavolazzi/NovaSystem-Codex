@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaSystem - Multi-Agent Problem Solver</title>
+    <style>
+        :root {
+            /* Authentic Windows XP Blue Theme Colors */
+            --primary-color: #0054E3;
+            --secondary-color: #3B8CFF;
+            --accent-color: #6BBF44;
+            --success-color: #6BBF44;
+            --warning-color: #FF8000;
+            --error-color: #FF0000;
+            --text-primary: #000000;
+            --text-secondary: #000000;
+            --text-white: #ffffff;
+            --bg-primary: #ECE9D8;
+            --bg-secondary: #F5F5DC;
+            --bg-tertiary: #FFFFFF;
+            --bg-window: #ECE9D8;
+            --bg-taskbar: #ECE9D8;
+            --border-light: #ffffff;
+            --border-dark: #7A96DF;
+            --border-inset: #A0A0A0;
+            --shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            --shadow-inset: inset 1px 1px 2px rgba(0,0,0,0.3);
+            --border-radius: 4px;
+            --transition: all 0.1s ease;
+            --windows-font: 'Tahoma', 'MS Sans Serif', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--windows-font);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.3;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        /* Windows XP Desktop Background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--bg-primary);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Windows Taskbar */
+        .windows-taskbar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 30px;
+            background: var(--bg-taskbar);
+            border-top: 1px solid #ffffff;
+            border-bottom: 1px solid #8d8a85;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            z-index: 1000;
+            font-family: var(--windows-font);
+            font-size: 8pt;
+            color: var(--text-primary);
+        }
+
+        .start-button {
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            padding: 4px 12px;
+            margin-right: 8px;
+            cursor: pointer;
+            font-family: var(--windows-font);
+            font-size: 8pt;
+            color: var(--text-primary);
+            border-radius: 3px;
+            min-height: 23px;
+        }
+
+        .start-button:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .start-button:active {
+            border: 1px inset #808080;
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+        }
+
+        .taskbar-time {
+            margin-left: auto;
+            font-size: 8pt;
+        }
+        .header {
+            margin-bottom: 16px;
+            background: var(--bg-window);
+            border: 1px solid var(--border-dark);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .window-titlebar {
+            background: linear-gradient(180deg, #0054E3, #3B8CFF);
+            color: var(--text-white);
+            padding: 4px 8px;
+            font-size: 8pt;
+            font-weight: bold;
+            border-bottom: 1px solid #0054E3;
+            border-top: 1px solid #3B8CFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px 4px 0 0;
+            font-family: var(--windows-font);
+        }
+
+        .window-controls {
+            display: flex;
+            gap: 2px;
+        }
+
+        .window-control {
+            width: 16px;
+            height: 14px;
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            font-size: 8px;
+            text-align: center;
+            line-height: 12px;
+            cursor: pointer;
+            border-radius: 3px;
+            color: var(--text-primary);
+            font-family: var(--windows-font);
+        }
+
+        .window-control:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+
+        .window-control:active {
+            border: 1px inset #808080;
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+        }
+
+        .window-content {
+            padding: 16px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 14pt;
+            margin: 0;
+            font-weight: bold;
+            color: var(--text-primary);
+            letter-spacing: 0px;
+            font-family: var(--windows-font);
+        }
+
+        .header p {
+            font-size: 8pt;
+            color: var(--text-primary);
+            margin: 8px 0;
+            font-weight: normal;
+            font-family: var(--windows-font);
+        }
+
+        .header .subtitle {
+            font-size: 7pt;
+            color: var(--text-primary);
+            margin-top: 4px;
+            font-family: var(--windows-font);
+            font-style: italic;
+        }
+        .form-container {
+            background: var(--bg-window);
+            margin-bottom: 16px;
+            border: 1px solid var(--border-dark);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .form-titlebar {
+            background: linear-gradient(180deg, #0054E3, #3B8CFF);
+            color: var(--text-white);
+            padding: 4px 8px;
+            font-size: 8pt;
+            font-weight: bold;
+            border-bottom: 1px solid #0054E3;
+            border-top: 1px solid #3B8CFF;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 4px 4px 0 0;
+            font-family: var(--windows-font);
+        }
+
+        .form-content {
+            padding: 16px;
+        }
+
+        .status-bar {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-dark);
+            padding: 4px 8px;
+            font-size: 8pt;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: var(--windows-font);
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: normal;
+            color: var(--text-primary);
+            font-size: 8pt;
+            font-family: var(--windows-font);
+        }
+        .form-help {
+            font-size: 7pt;
+            color: var(--text-primary);
+            margin-top: 4px;
+            font-style: italic;
+            font-family: var(--windows-font);
+        }
+
+        /* FIXED FORM INPUTS - No more black backgrounds! */
+        input, textarea, select {
+            width: 100%;
+            padding: 4px 6px;
+            border: 2px inset #c0c0c0;
+            font-size: 8pt;
+            transition: var(--transition);
+            box-sizing: border-box;
+            background: #ffffff !important; /* Force white background */
+            color: #000000 !important; /* Force black text */
+            font-family: var(--windows-font);
+            border-radius: 0px; /* XP inputs had sharp corners */
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border: 2px inset #316ac5;
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        input:hover, textarea:hover, select:hover {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        /* Specific fixes for select dropdowns */
+        select {
+            background: #ffffff !important;
+            color: #000000 !important;
+            border: 2px inset #c0c0c0;
+            padding: 3px 4px;
+        }
+
+        select option {
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+            background: #ffffff !important;
+            color: #000000 !important;
+        }
+
+        /* Placeholder text */
+        input::placeholder, textarea::placeholder {
+            color: #999999 !important;
+        }
+
+        .btn {
+            background: linear-gradient(180deg, #f0f0f0, #d6d3ce);
+            color: var(--text-primary);
+            border: 1px outset #ffffff;
+            border-bottom-color: #808080;
+            border-right-color: #808080;
+            padding: 6px 12px;
+            font-size: 8pt;
+            font-weight: normal;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            font-family: var(--windows-font);
+            border-radius: 3px;
+            min-height: 23px;
+        }
+        .btn:hover {
+            background: linear-gradient(180deg, #f8f8f8, #e0ddd8);
+        }
+        .btn:active {
+            border: 1px inset #808080;
+            background: linear-gradient(180deg, #d6d3ce, #c6c3c0);
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            border: 2px inset var(--border-dark);
+        }
+        .btn-secondary {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border: 2px solid var(--border-dark);
+        }
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+        .results {
+            background: var(--bg-primary);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-top: 30px;
+            display: none;
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+        }
+        .results::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--success-color), var(--primary-color));
+        }
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+        .spinner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+        .loading-subtext {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        .error {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%);
+            color: var(--error-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--error-color);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+        .success {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            color: var(--success-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--success-color);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        .warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(245, 158, 11, 0.05) 100%);
+            color: var(--warning-color);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid var(--warning-color);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .header h1 {
+                font-size: 2.5em;
+            }
+            .header p {
+                font-size: 1.1em;
+            }
+            .form-container {
+                padding: 25px;
+            }
+            .form-row {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .btn {
+                width: 100%;
+                margin-top: 10px;
+            }
+            .results {
+                padding: 25px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 25px 15px;
+            }
+            .header h1 {
+                font-size: 2em;
+            }
+            .form-container {
+                padding: 20px;
+            }
+            .results {
+                padding: 20px;
+            }
+        }
+
+        /* Accessibility improvements */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        /* REMOVED DARK MODE - Windows XP doesn't support dark mode! */
+
+        .model-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="window-titlebar">
+            <span>NovaSystem v2.0</span>
+            <div class="window-controls">
+                <div class="window-control">_</div>
+                <div class="window-control">□</div>
+                <div class="window-control">×</div>
+            </div>
+        </div>
+        <div class="window-content">
+            <h1>NovaSystem</h1>
+            <p>Multi-Agent Problem-Solving Framework</p>
+            <div class="subtitle">Welcome to the early internet experience!</div>
+        </div>
+    </div>
+
+    <div class="form-container">
+        <div class="form-titlebar">
+            <span>Problem Solver</span>
+            <div class="window-controls">
+                <div class="window-control">_</div>
+                <div class="window-control">□</div>
+                <div class="window-control">×</div>
+            </div>
+        </div>
+        <div class="form-content">
+            <form id="novaForm">
+            <div class="form-group">
+                <label for="problem">Problem Statement *</label>
+                <textarea id="problem" name="problem" placeholder="Describe the problem you'd like to solve in detail. Be specific about context, constraints, and desired outcomes..." required></textarea>
+                <div class="form-help">The more specific and detailed your problem description, the better our AI experts can help you solve it.</div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="domains">Expertise Domains</label>
+                    <input type="text" id="domains" name="domains" placeholder="Technology, Business, Science, etc." value="General,Technology,Business">
+                    <div class="form-help">Comma-separated list of expertise areas</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="max_iterations">Max Iterations</label>
+                    <select id="max_iterations" name="max_iterations">
+                        <option value="1">1 iteration (quick)</option>
+                        <option value="3" selected>3 iterations (balanced)</option>
+                        <option value="5">5 iterations (thorough)</option>
+                        <option value="7">7 iterations (comprehensive)</option>
+                        <option value="10">10 iterations (deep analysis)</option>
+                    </select>
+                    <div class="form-help">More iterations = deeper analysis</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="model">AI Model</label>
+                <select id="model" name="model">
+                    <option value="auto">Auto-select (recommended)</option>
+                    <option value="gpt-4">GPT-4 (OpenAI)</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo (OpenAI)</option>
+                    <option value="claude-3">Claude-3 (Anthropic)</option>
+                    <option value="ollama:phi3">Phi3 (Local - Fast)</option>
+                    <option value="ollama:llama2">Llama2 (Local - Balanced)</option>
+                    <option value="ollama:gpt-oss:20b">GPT-OSS 20B (Local - Large)</option>
+                </select>
+                <div class="model-info">
+                    <strong>💡 Model Selection:</strong> Auto-select intelligently chooses the best available model based on your system capabilities and task requirements. For complex problems, GPT-4 or Claude-3 are recommended.
+                </div>
+            </div>
+
+                <div style="display: flex; gap: 15px; margin-top: 30px;">
+                    <button type="submit" class="btn" id="submitBtn">
+                        <span id="btnText">Solve Problem</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="clearBtn">Clear Form</button>
+                </div>
+            </form>
+        </div>
+        <div class="status-bar">
+            <span>Ready</span>
+            <span>NovaSystem v2.0</span>
+        </div>
+    </div>
+
+    <div id="results" class="results">
+        <div id="loading" class="loading" style="display: none;">
+            <div class="spinner-container">
+                <div class="spinner"></div>
+                <div class="loading-text">Processing...</div>
+                <div class="loading-subtext">NovaSystem is working on your problem...</div>
+                <div class="loading-subtext pulse">Please wait while our AI experts collaborate</div>
+            </div>
+        </div>
+        <div id="error" class="error" style="display: none;"></div>
+        <div id="warning" class="warning" style="display: none;"></div>
+        <div id="success" class="success" style="display: none;"></div>
+        <div id="output"></div>
+    </div>
+
+    <!-- Windows Taskbar -->
+    <div class="windows-taskbar">
+        <button class="start-button">Start</button>
+        <span class="taskbar-time" id="taskbar-time"></span>
+    </div>
+
+    <script>
+        // Windows 95 style functionality
+        function updateTaskbarTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', {
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            document.getElementById('taskbar-time').textContent = timeString;
+        }
+
+        // Enhanced form handling with better UX
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize taskbar time
+            updateTaskbarTime();
+            setInterval(updateTaskbarTime, 1000);
+            const form = document.getElementById('novaForm');
+            const submitBtn = document.getElementById('submitBtn');
+            const btnText = document.getElementById('btnText');
+            const clearBtn = document.getElementById('clearBtn');
+            const problemTextarea = document.getElementById('problem');
+
+            // Clear form functionality
+            clearBtn.addEventListener('click', function() {
+                form.reset();
+                document.getElementById('results').style.display = 'none';
+                problemTextarea.focus();
+            });
+
+            // Auto-resize textarea
+            problemTextarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.max(120, this.scrollHeight) + 'px';
+            });
+
+            // Form validation
+            function validateForm() {
+                const problem = document.getElementById('problem').value.trim();
+                if (!problem) {
+                    showError('Please enter a problem statement before submitting.');
+                    return false;
+                }
+                if (problem.length < 10) {
+                    showWarning('Consider providing more detail about your problem for better results.');
+                }
+                return true;
+            }
+
+            // Enhanced error handling
+            function showError(message) {
+                hideAllMessages();
+                const errorDiv = document.getElementById('error');
+                errorDiv.innerHTML = `<strong>❌ Error:</strong> ${message}`;
+                errorDiv.style.display = 'block';
+                document.getElementById('results').style.display = 'block';
+            }
+
+            function showWarning(message) {
+                hideAllMessages();
+                const warningDiv = document.getElementById('warning');
+                warningDiv.innerHTML = `<strong>⚠️ Warning:</strong> ${message}`;
+                warningDiv.style.display = 'block';
+                document.getElementById('results').style.display = 'block';
+            }
+
+            function showSuccess(message) {
+                hideAllMessages();
+                const successDiv = document.getElementById('success');
+                successDiv.innerHTML = `<strong>✅ Success:</strong> ${message}`;
+                successDiv.style.display = 'block';
+                document.getElementById('results').style.display = 'block';
+            }
+
+            function hideAllMessages() {
+                document.getElementById('error').style.display = 'none';
+                document.getElementById('warning').style.display = 'none';
+                document.getElementById('success').style.display = 'none';
+            }
+
+            // Enhanced form submission
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                if (!validateForm()) return;
+
+                const formData = new FormData(e.target);
+                const data = {
+                    problem: formData.get('problem'),
+                    domains: formData.get('domains').split(',').map(d => d.trim()).filter(d => d),
+                    max_iterations: parseInt(formData.get('max_iterations')),
+                    model: formData.get('model') === 'auto' ? 'gpt-4' : formData.get('model')
+                };
+
+                // Enhanced loading state
+                document.getElementById('results').style.display = 'block';
+                document.getElementById('loading').style.display = 'block';
+                hideAllMessages();
+                document.getElementById('output').innerHTML = '';
+
+                submitBtn.disabled = true;
+                btnText.textContent = 'Processing...';
+
+                try {
+                    const response = await fetch('/api/solve', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(data)
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.error || 'An error occurred while processing your request');
+                    }
+
+                    // Show success with enhanced formatting
+                    document.getElementById('loading').style.display = 'none';
+                    showSuccess(`Problem solved successfully! Session ID: ${result.session_id}`);
+
+                    // Enhanced results display
+                    const outputDiv = document.getElementById('output');
+                    outputDiv.innerHTML = `
+                        <div style="margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; border-left: 4px solid var(--success-color);">
+                            <strong>🎯 Solution Summary</strong><br>
+                            <small>Model Used: ${result.model_used || 'Auto-selected'} | Session: ${result.session_id}</small>
+                        </div>
+                        <div style="white-space: pre-wrap; line-height: 1.8; font-size: 1.05em; color: var(--text-primary);">
+                            ${result.result || 'No result available'}
+                        </div>
+                    `;
+
+                } catch (error) {
+                    document.getElementById('loading').style.display = 'none';
+                    showError(error.message);
+                    console.error('Error:', error);
+                } finally {
+                    submitBtn.disabled = false;
+                    btnText.textContent = 'Solve Problem';
+                }
+            });
+
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 'Enter') {
+                    form.dispatchEvent(new Event('submit'));
+                }
+                if (e.key === 'Escape') {
+                    clearBtn.click();
+                }
+            });
+
+            // Add helpful tooltips and hints
+            const hints = {
+                problem: '💡 Tip: Be specific about context, constraints, and desired outcomes',
+                domains: '💡 Tip: Choose 2-4 relevant expertise areas for best results',
+                max_iterations: '💡 Tip: More iterations = deeper analysis but longer processing time',
+                model: '💡 Tip: Auto-select is recommended for optimal performance'
+            };
+
+            // Add hint functionality
+            Object.keys(hints).forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('focus', function() {
+                        showHint(hints[id]);
+                    });
+                }
+            });
+
+            function showHint(message) {
+                // Create or update hint element
+                let hintElement = document.getElementById('hint');
+                if (!hintElement) {
+                    hintElement = document.createElement('div');
+                    hintElement.id = 'hint';
+                    hintElement.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: var(--primary-color);
+                        color: white;
+                        padding: 12px 16px;
+                        border-radius: 8px;
+                        font-size: 0.9em;
+                        z-index: 1000;
+                        max-width: 300px;
+                        box-shadow: var(--shadow);
+                        transition: var(--transition);
+                    `;
+                    document.body.appendChild(hintElement);
+                }
+                hintElement.textContent = message;
+                hintElement.style.opacity = '1';
+
+                setTimeout(() => {
+                    hintElement.style.opacity = '0';
+                }, 3000);
+            }
+        });
+    </script>
+</body>
+</html>

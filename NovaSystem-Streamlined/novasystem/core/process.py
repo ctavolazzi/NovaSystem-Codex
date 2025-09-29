@@ -15,6 +15,7 @@ from .agents import BaseAgent, DCEAgent, CAEAgent, DomainExpert, AgentFactory
 from .memory import MemoryManager
 from ..utils.llm_service import LLMService
 from ..utils.metrics import get_metrics_collector, PerformanceMetrics
+from ..config.models import get_default_model
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,7 @@ class NovaProcess:
 
     def __init__(self,
                  domains: List[str] = None,
-                 model: str = "gpt-5-nano",
+                 model: Optional[str] = None,
                  memory_manager: Optional[MemoryManager] = None,
                  llm_service: Optional[LLMService] = None):
         """
@@ -45,11 +46,8 @@ class NovaProcess:
         self.llm_service = llm_service or LLMService()
         self.metrics_collector = get_metrics_collector()
 
-        # Use default model from LLM service if not specified
-        if model == "gpt-4o":
-            self.model = self.llm_service.get_default_model()
-        else:
-            self.model = model
+        # Use centralized model configuration
+        self.model = model or get_default_model()
 
         # Create agent team with LLM service
         self.agents = AgentFactory.create_agent_team(self.domains, self.model, self.llm_service)

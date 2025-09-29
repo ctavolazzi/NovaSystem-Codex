@@ -1,0 +1,437 @@
+/* ========================================
+   NOVASYSTEM WORKFLOW UI - BASE STYLES
+   Reset and Foundation Styles
+   ======================================== */
+
+@import './variables.css';
+
+/* ========================================
+   CSS RESET AND NORMALIZE
+   ======================================== */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  line-height: 1.15;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height-normal);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* ========================================
+   TYPOGRAPHY BASE STYLES
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-family-display);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+}
+
+h2 {
+  font-size: var(--font-size-3xl);
+}
+
+h3 {
+  font-size: var(--font-size-2xl);
+}
+
+h4 {
+  font-size: var(--font-size-xl);
+}
+
+h5 {
+  font-size: var(--font-size-lg);
+}
+
+h6 {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
+}
+
+p {
+  margin: 0;
+  line-height: var(--line-height-relaxed);
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  color: var(--text-link-hover);
+  text-decoration: underline;
+}
+
+a:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   FORM ELEMENTS BASE STYLES
+   ======================================== */
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+button:focus {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+input,
+textarea,
+select {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+  background: var(--bg-primary);
+  border: var(--border-width-thin) solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--padding-sm) var(--padding-md);
+  outline: none;
+  transition: var(--transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+input:disabled,
+textarea:disabled,
+select:disabled {
+  background-color: var(--bg-disabled);
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+
+/* ========================================
+   LISTS BASE STYLES
+   ======================================== */
+
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+li {
+  margin: 0;
+  padding: 0;
+}
+
+/* ========================================
+   MEDIA ELEMENTS
+   ======================================== */
+
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+svg {
+  fill: currentColor;
+}
+
+/* ========================================
+   TABLE BASE STYLES
+   ======================================== */
+
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+}
+
+th,
+td {
+  text-align: left;
+  padding: var(--padding-sm);
+  border-bottom: var(--border-width-thin) solid var(--border-light);
+}
+
+th {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-secondary);
+  background-color: var(--bg-secondary);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+/* Screen Reader Only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Visible */
+.focus-visible:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
+/* Truncate Text */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ========================================
+   WORKFLOW SPECIFIC BASE STYLES
+   ======================================== */
+
+/* Drag and Drop Base Styles */
+.draggable {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+.draggable:active {
+  cursor: grabbing;
+}
+
+.dragging {
+  opacity: var(--drag-opacity);
+  transform: scale(var(--drag-scale));
+  z-index: var(--z-index-drag);
+  pointer-events: none;
+}
+
+/* Connection Port Base Styles */
+.connection-port {
+  position: absolute;
+  width: var(--node-port-size);
+  height: var(--node-port-size);
+  border-radius: var(--radius-full);
+  background-color: var(--bg-card);
+  border: var(--border-width-medium) solid var(--border-medium);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  z-index: var(--z-index-port);
+}
+
+.connection-port:hover {
+  border-color: var(--primary-blue);
+  transform: scale(1.2);
+}
+
+.connection-port.connected {
+  background-color: var(--success-green);
+  border-color: var(--success-green);
+}
+
+.connection-port.input {
+  left: calc(-1 * var(--node-port-size) / 2);
+}
+
+.connection-port.output {
+  right: calc(-1 * var(--node-port-size) / 2);
+}
+
+/* Status Indicator Base Styles */
+.status-indicator {
+  display: inline-block;
+  width: var(--status-indicator-size);
+  height: var(--status-indicator-size);
+  border-radius: var(--radius-full);
+  background-color: var(--gray-400);
+  transition: var(--transition-fast);
+}
+
+.status-indicator.idle {
+  background-color: var(--gray-400);
+}
+
+.status-indicator.processing {
+  background-color: var(--warning-orange);
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.complete {
+  background-color: var(--success-green);
+}
+
+.status-indicator.error {
+  background-color: var(--error-red);
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-sm));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========================================
+   ACCESSIBILITY ENHANCEMENTS
+   ======================================== */
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-light: var(--gray-700);
+    --border-medium: var(--gray-800);
+    --text-secondary: var(--gray-800);
+  }
+}
+
+/* Focus Management */
+.focus-trap {
+  position: relative;
+}
+
+.focus-trap::before,
+.focus-trap::after {
+  content: '';
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  *,
+  *::before,
+  *::after {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a,
+  a:visited {
+    text-decoration: underline;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

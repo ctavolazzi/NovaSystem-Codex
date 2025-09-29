@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, List, Any, Optional
+from ..config.models import get_default_model
 import asyncio
 import logging
 import uuid
@@ -25,7 +26,7 @@ class ProblemRequest(BaseModel):
     problem: str
     domains: Optional[List[str]] = None
     max_iterations: Optional[int] = 5
-    model: Optional[str] = "gpt-4"
+    model: Optional[str] = get_default_model()
 
 class ProblemResponse(BaseModel):
     session_id: str
