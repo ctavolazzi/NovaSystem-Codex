@@ -17,13 +17,26 @@ from .nova import Nova
 from .version import __version__
 
 # Configure logging
+_log_handlers = [logging.StreamHandler()]
+_disable_file_log = os.environ.get("NOVASYSTEM_DISABLE_FILE_LOG", "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+if not _disable_file_log:
+    _log_path = os.environ.get(
+        "NOVASYSTEM_LOG_PATH", os.path.expanduser("~/.novasystem.log")
+    )
+    try:
+        _log_handlers.append(logging.FileHandler(_log_path))
+    except (OSError, PermissionError):
+        # Fall back to console-only logging if the file isn't writable
+        pass
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(os.path.expanduser("~/.novasystem.log")),
-    ],
+    handlers=_log_handlers,
 )
 logger = logging.getLogger(__name__)
 

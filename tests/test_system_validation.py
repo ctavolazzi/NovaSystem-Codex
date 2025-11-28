@@ -143,7 +143,8 @@ class SystemValidator:
         print_header("Testing CLI Functionality")
 
         # Get CLI help output
-        output, return_code = run_command("python -m novasystem.cli --help")
+        python_cmd = sys.executable or "python3"
+        output, return_code = run_command(f"{python_cmd} -m novasystem.cli --help")
 
         if return_code == 0:
             print_success("CLI help command executed successfully")
@@ -179,7 +180,7 @@ class SystemValidator:
         print_header("Testing Package Installation")
 
         # Check if package is in pip list
-        output, return_code = run_command("pip list | grep novasystem")
+        output, return_code = run_command(f"{sys.executable or 'python3'} -m pip list | grep novasystem")
 
         if return_code == 0 and "novasystem" in output:
             print_success("Package is installed via pip")
@@ -253,7 +254,10 @@ class SystemValidator:
             return
 
         # Check pytest collection ignores archive
-        output, return_code = run_command("python -m pytest --collect-only -v | grep -i archive", silent=True)
+        python_cmd = sys.executable or "python3"
+        output, return_code = run_command(
+            f"{python_cmd} -m pytest --collect-only -v | grep -i archive", silent=True
+        )
 
         if return_code != 0 or not output:
             print_success("pytest correctly ignores archive directory in collection")
@@ -427,11 +431,14 @@ def test_module_structure(validator):
     validator.check_module_structure()
     assert validator.tests_failed == 0
 
-def test_full_test_suite(validator):
-    """Run specific test files, excluding the system validation tests."""
-    # Run only specific test files to avoid recursion
-    output, return_code = run_command("python -m pytest tests/test_novasystem_pytest.py tests/test_core_utils.py -v")
-    assert return_code == 0, f"Test suite failed with output:\n{output}"
+    def test_full_test_suite(validator):
+        """Run specific test files, excluding the system validation tests."""
+        # Run only specific test files to avoid recursion
+        python_cmd = sys.executable or "python3"
+        output, return_code = run_command(
+            f"{python_cmd} -m pytest tests/test_novasystem_pytest.py tests/test_core_utils.py -v"
+        )
+        assert return_code == 0, f"Test suite failed with output:\n{output}"
 
 if __name__ == "__main__":
     validator = SystemValidator()
