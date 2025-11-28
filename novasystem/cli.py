@@ -27,6 +27,19 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+
+def _create_nova(args: argparse.Namespace) -> Nova:
+    """Instantiate ``Nova`` honoring optional ``db_path`` arguments.
+
+    Some test doubles for ``Nova`` do not accept a ``db_path`` keyword. When no
+    database path is provided we fall back to calling ``Nova()`` without
+    arguments to keep those stubs compatible while still supporting custom
+    database locations when requested.
+    """
+
+    db_path = getattr(args, "db_path", None)
+    return Nova(db_path=db_path) if db_path is not None else Nova()
+
 def configure_parser() -> argparse.ArgumentParser:
     """
     Configure the argument parser for the CLI.
@@ -114,7 +127,7 @@ def install_repository(args: argparse.Namespace) -> int:
         logger.info(f"Installing repository: {args.repository}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = _create_nova(args)
 
         # Process repository
         result = nova.process_repository(
@@ -184,7 +197,7 @@ def list_runs(args: argparse.Namespace) -> int:
         logger.info("Listing runs")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = _create_nova(args)
 
         # Get runs
         runs = nova.list_runs(
@@ -243,7 +256,7 @@ def show_run(args: argparse.Namespace) -> int:
         logger.info(f"Showing run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = _create_nova(args)
 
         # Get run details
         result = nova.get_run_details(args.run_id)
@@ -346,7 +359,7 @@ def delete_run(args: argparse.Namespace) -> int:
         logger.info(f"Deleting run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = _create_nova(args)
 
         # Delete run
         result = nova.delete_run(args.run_id)
@@ -381,7 +394,7 @@ def cleanup_runs(args: argparse.Namespace) -> int:
         logger.info(f"Cleaning up runs older than {args.days} days")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = _create_nova(args)
 
         # Cleanup runs
         count = nova.cleanup_old_runs(args.days)
