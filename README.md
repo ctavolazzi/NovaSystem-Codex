@@ -123,6 +123,9 @@ novasystem list-runs
 
 # See detailed information about a specific run
 novasystem show-run 1
+
+# Store NovaSystem history in a custom database location
+novasystem --db-path ~/.cache/novasystem/demo.db list-runs
 ```
 
 For development and contribution to the NovaSystem project:

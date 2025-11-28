@@ -52,6 +52,9 @@ def configure_parser() -> argparse.ArgumentParser:
     # Add verbose argument
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
 
+    # Add database path argument
+    parser.add_argument('--db-path', default=None, help='Path to the NovaSystem database file')
+
     # Create subparsers for commands
     subparsers = parser.add_subparsers(dest='command', help='Command to execute')
 
@@ -111,7 +114,7 @@ def install_repository(args: argparse.Namespace) -> int:
         logger.info(f"Installing repository: {args.repository}")
 
         # Initialize Nova
-        nova = Nova()
+        nova = Nova(db_path=args.db_path)
 
         # Process repository
         result = nova.process_repository(
@@ -181,7 +184,7 @@ def list_runs(args: argparse.Namespace) -> int:
         logger.info("Listing runs")
 
         # Initialize Nova
-        nova = Nova()
+        nova = Nova(db_path=args.db_path)
 
         # Get runs
         runs = nova.list_runs(
@@ -240,7 +243,7 @@ def show_run(args: argparse.Namespace) -> int:
         logger.info(f"Showing run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova()
+        nova = Nova(db_path=args.db_path)
 
         # Get run details
         result = nova.get_run_details(args.run_id)
@@ -343,7 +346,7 @@ def delete_run(args: argparse.Namespace) -> int:
         logger.info(f"Deleting run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova()
+        nova = Nova(db_path=args.db_path)
 
         # Delete run
         result = nova.delete_run(args.run_id)
@@ -378,7 +381,7 @@ def cleanup_runs(args: argparse.Namespace) -> int:
         logger.info(f"Cleaning up runs older than {args.days} days")
 
         # Initialize Nova
-        nova = Nova()
+        nova = Nova(db_path=args.db_path)
 
         # Cleanup runs
         count = nova.cleanup_old_runs(args.days)
