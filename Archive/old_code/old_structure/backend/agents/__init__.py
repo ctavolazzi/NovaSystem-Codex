@@ -1,3 +1,0 @@
-"""
-Agent framework for NovaSystem.
-"""
