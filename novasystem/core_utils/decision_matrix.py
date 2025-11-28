@@ -38,6 +38,7 @@ class DecisionResult:
     normalized_scores: Dict[str, float] = field(default_factory=dict)
     confidence_score: float = 0.0
     recommendation: str = ""
+    warnings: List[str] = field(default_factory=list)
     strengths: Dict[str, List[Tuple[str, float]]] = field(default_factory=dict)
     weaknesses: Dict[str, List[Tuple[str, float]]] = field(default_factory=dict)
     why_winner_won: str = ""
@@ -52,6 +53,11 @@ class DecisionResult:
             f"\n🏆 WINNER: {self.winner}",
             f"   Confidence: {self.confidence_score:.1f}%",
         ]
+
+        if self.warnings:
+            lines.append("\n⚠️  Warnings:")
+            for warning in self.warnings:
+                lines.append(f"   - {warning}")
 
         # Add "why winner won" explanation if available
         if self.why_winner_won:
@@ -150,17 +156,27 @@ class DecisionResult:
         """Convert to dictionary for serialization."""
         return {
             "winner": self.winner,
-            "rankings": [(opt, float(score)) for opt, score in self.rankings],
-            "scores_breakdown": self.scores_breakdown,
+            "rankings": [(opt, round(float(score), 2)) for opt, score in self.rankings],
+            "scores_breakdown": {
+                opt: {crit: round(float(score), 2) for crit, score in crit_scores.items()}
+                for opt, crit_scores in self.scores_breakdown.items()
+            },
             "analysis_method": self.analysis_method,
-            "total_score": self.total_score,
-            "normalized_scores": self.normalized_scores,
-            "confidence_score": self.confidence_score,
+            "total_score": {opt: round(float(score), 2) for opt, score in self.total_score.items()},
+            "normalized_scores": {
+                opt: round(float(score), 2) for opt, score in self.normalized_scores.items()
+            },
+            "confidence_score": round(self.confidence_score, 2),
             "recommendation": self.recommendation,
-            "strengths": {opt: [(c, float(s)) for c, s in strengths]
-                         for opt, strengths in self.strengths.items()},
-            "weaknesses": {opt: [(c, float(w)) for c, w in weaknesses]
-                          for opt, weaknesses in self.weaknesses.items()},
+            "warnings": self.warnings,
+            "strengths": {
+                opt: [(c, round(float(s), 2)) for c, s in strengths]
+                for opt, strengths in self.strengths.items()
+            },
+            "weaknesses": {
+                opt: [(c, round(float(w), 2)) for c, w in weaknesses]
+                for opt, weaknesses in self.weaknesses.items()
+            },
             "why_winner_won": self.why_winner_won,
             "top_n": self.top_n,
         }
@@ -310,6 +326,7 @@ class DecisionMatrix:
         recommendation = self._generate_recommendation(
             rankings, normalized, confidence
         )
+        warnings = self._generate_warnings(rankings, normalized)
 
         return DecisionResult(
             winner=rankings[0][0],
@@ -320,6 +337,7 @@ class DecisionMatrix:
             normalized_scores=normalized,
             confidence_score=confidence,
             recommendation=recommendation,
+            warnings=warnings,
             strengths=strengths,
             weaknesses=weaknesses,
             why_winner_won=why_winner_won,
@@ -385,6 +403,7 @@ class DecisionMatrix:
         recommendation = self._generate_recommendation(
             rankings, normalized, confidence
         )
+        warnings = self._generate_warnings(rankings, normalized)
 
         return DecisionResult(
             winner=rankings[0][0],
@@ -395,6 +414,7 @@ class DecisionMatrix:
             normalized_scores=normalized,
             confidence_score=confidence,
             recommendation=recommendation,
+            warnings=warnings,
         )
 
     def _analyze_ranking(self) -> DecisionResult:
@@ -440,6 +460,7 @@ class DecisionMatrix:
             normalized,
             confidence,
         )
+        warnings = self._generate_warnings(rankings, normalized)
 
         return DecisionResult(
             winner=rankings[0][0],
@@ -450,6 +471,7 @@ class DecisionMatrix:
             normalized_scores=normalized,
             confidence_score=confidence,
             recommendation=recommendation,
+            warnings=warnings,
         )
 
     def _analyze_best_worst(self) -> DecisionResult:
@@ -508,6 +530,7 @@ class DecisionMatrix:
         recommendation = self._generate_recommendation(
             rankings, normalized, confidence
         )
+        warnings = self._generate_warnings(rankings, normalized)
 
         return DecisionResult(
             winner=rankings[0][0],
@@ -518,6 +541,7 @@ class DecisionMatrix:
             normalized_scores=normalized,
             confidence_score=confidence,
             recommendation=recommendation,
+            warnings=warnings,
         )
 
     def _calculate_strengths_weaknesses(
@@ -538,9 +562,20 @@ class DecisionMatrix:
             # Sort by score
             criterion_scores.sort(key=lambda x: x[1], reverse=True)
 
-            # Top 3 are strengths, bottom 3 are weaknesses
-            strengths[option] = criterion_scores[:3]
-            weaknesses[option] = criterion_scores[-3:]
+            top_strengths = criterion_scores[:3]
+            strength_names = {name for name, _ in top_strengths}
+
+            bottom_candidates = list(reversed(criterion_scores))
+            filtered_weaknesses = []
+            for name, score in bottom_candidates:
+                if name in strength_names:
+                    continue
+                filtered_weaknesses.append((name, score))
+                if len(filtered_weaknesses) == 3:
+                    break
+
+            strengths[option] = top_strengths
+            weaknesses[option] = filtered_weaknesses
 
         return strengths, weaknesses
 
@@ -652,6 +687,29 @@ class DecisionMatrix:
                 f"Top choices: {', '.join(top_3)}. "
                 f"Consider additional criteria or stakeholder input."
             )
+
+    def _generate_warnings(
+        self,
+        rankings: List[Tuple[str, float]],
+        normalized: Dict[str, float],
+    ) -> List[str]:
+        """Create human-readable warnings for borderline scenarios."""
+        warnings: List[str] = []
+
+        if len(rankings) > 1:
+            winner = rankings[0][0]
+            runner_up = rankings[1][0]
+            winner_score = normalized.get(winner, rankings[0][1])
+            runner_score = normalized.get(runner_up, rankings[1][1])
+            gap = winner_score - runner_score
+
+            if gap < 5:
+                warnings.append(
+                    f"Scores are within {gap:.1f} points between '{winner}' and "
+                    f"'{runner_up}' — treat as a statistical tie."
+                )
+
+        return warnings
 
 
 def make_decision(

@@ -207,9 +207,15 @@ Input JSON format:
         create_example_file(args.example)
         return 0
 
-    # Require input if not creating example
+    # Require input if not creating example, but auto-read stdin when piped
     if not args.input:
-        parser.error("Input file required (or use --example to create a sample file)")
+        if not sys.stdin.isatty():
+            args.input = '-'
+        else:
+            parser.error(
+                "Input file required (or pipe JSON via stdin, e.g. "
+                "'cat input.json | python -m novasystem.core_utils.decision_matrix_cli')"
+            )
 
     try:
         # Load input
