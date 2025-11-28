@@ -1,0 +1,11 @@
+{
+  "options": ["Python", "JavaScript", "Go", "Rust"],
+  "criteria": ["Learning Curve", "Performance", "Community", "Job Market"],
+  "scores": {
+    "Python": [9, 7, 10, 10],
+    "JavaScript": [8, 6, 9, 10],
+    "Go": [6, 9, 7, 8],
+    "Rust": [4, 10, 6, 7]
+  },
+  "weights": [0.2, 0.3, 0.2, 0.3]
+}

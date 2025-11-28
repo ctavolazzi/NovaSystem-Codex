@@ -46,6 +46,26 @@ print(result)  # Beautiful formatted output with recommendations
 - Support for any number of options and criteria
 - Validation and helpful error messages
 
+### 💻 Command-Line Interface
+
+Use the decision matrix from the terminal, scripts, or CI/CD pipelines:
+
+```bash
+# Create example input file
+python -m novasystem.core_utils.decision_matrix_cli --example my_decision.json
+
+# Run analysis
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json
+
+# Compare all methods
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json --compare
+
+# JSON output for piping
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json --json
+```
+
+**See:** `DECISION_MATRIX_CLI.md` for complete CLI documentation and examples.
+
 ## Usage Examples
 
 ### Basic Usage

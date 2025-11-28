@@ -23,6 +23,22 @@ result = make_decision(
 print(result)
 ```
 
+### 💻 CLI Quick Start
+
+```bash
+# Create example input
+python -m novasystem.core_utils.decision_matrix_cli --example my_decision.json
+
+# Run analysis
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json
+
+# Compare methods or output JSON
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json --compare
+python -m novasystem.core_utils.decision_matrix_cli my_decision.json --json
+```
+
+**See:** `DECISION_MATRIX_CLI.md` for complete CLI reference.
+
 ---
 
 ## 📋 Parameters
