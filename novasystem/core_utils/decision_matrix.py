@@ -38,6 +38,10 @@ class DecisionResult:
     normalized_scores: Dict[str, float] = field(default_factory=dict)
     confidence_score: float = 0.0
     recommendation: str = ""
+    strengths: Dict[str, List[Tuple[str, float]]] = field(default_factory=dict)
+    weaknesses: Dict[str, List[Tuple[str, float]]] = field(default_factory=dict)
+    why_winner_won: str = ""
+    top_n: Optional[int] = None
 
     def __str__(self) -> str:
         """Format results for display."""
@@ -47,15 +51,38 @@ class DecisionResult:
             "=" * 70,
             f"\n🏆 WINNER: {self.winner}",
             f"   Confidence: {self.confidence_score:.1f}%",
-            f"\n📊 RANKINGS:",
         ]
 
-        for i, (option, score) in enumerate(self.rankings, 1):
+        # Add "why winner won" explanation if available
+        if self.why_winner_won:
+            lines.append(f"\n✨ WHY {self.winner.upper()} WON:")
+            lines.append(f"   {self.why_winner_won}")
+
+        lines.append(f"\n📊 RANKINGS:")
+
+        # Show top N if specified, otherwise show all
+        display_rankings = self.rankings[:self.top_n] if self.top_n else self.rankings
+
+        for i, (option, score) in enumerate(display_rankings, 1):
             normalized = self.normalized_scores.get(option, 0)
             lines.append(
                 f"   {i}. {option:20s} "
                 f"Score: {score:6.2f} ({normalized:5.1f}%)"
             )
+
+            # Show strengths and weaknesses if available
+            if option in self.strengths and self.strengths[option]:
+                top_strengths = self.strengths[option][:2]
+                strength_str = ", ".join([f"{c} ({s:.1f})" for c, s in top_strengths])
+                lines.append(f"      💪 Strengths: {strength_str}")
+
+            if option in self.weaknesses and self.weaknesses[option]:
+                top_weaknesses = self.weaknesses[option][:2]
+                weakness_str = ", ".join([f"{c} ({w:.1f})" for c, w in top_weaknesses])
+                lines.append(f"      ⚠️  Weaknesses: {weakness_str}")
+
+        if self.top_n and len(self.rankings) > self.top_n:
+            lines.append(f"   ... and {len(self.rankings) - self.top_n} more options")
 
         lines.extend(
             [
@@ -73,6 +100,52 @@ class DecisionResult:
         lines.append("=" * 70)
         return "\n".join(lines)
 
+    def comparison_table(self) -> str:
+        """Generate a side-by-side comparison table."""
+        if not self.scores_breakdown:
+            return "No breakdown available for comparison table."
+
+        # Get all criteria from the first option
+        first_option = list(self.scores_breakdown.keys())[0]
+        criteria = list(self.scores_breakdown[first_option].keys())
+
+        # Determine column widths
+        option_width = max(len(opt) for opt in self.scores_breakdown.keys()) + 2
+        criterion_width = max(len(c) for c in criteria) + 2
+
+        # Build table
+        lines = ["\n📊 COMPARISON TABLE:", "=" * 70]
+
+        # Header row
+        header = f"{'Criterion':<{criterion_width}} | "
+        for option in self.scores_breakdown.keys():
+            header += f"{option:^{option_width}} | "
+        header += "Winner"
+        lines.append(header)
+        lines.append("-" * len(header))
+
+        # Data rows
+        for criterion in criteria:
+            # Extract just the criterion name (remove weight info)
+            clean_criterion = criterion.split(" (")[0]
+
+            row = f"{clean_criterion:<{criterion_width}} | "
+
+            # Get scores for this criterion across all options
+            scores = {}
+            for option in self.scores_breakdown.keys():
+                score = self.scores_breakdown[option].get(criterion, 0)
+                scores[option] = score
+                row += f"{score:^{option_width}.1f} | "
+
+            # Find winner for this criterion
+            winner = max(scores, key=scores.get)
+            row += f"{winner}"
+            lines.append(row)
+
+        lines.append("=" * 70)
+        return "\n".join(lines)
+
     def to_dict(self) -> dict:
         """Convert to dictionary for serialization."""
         return {
@@ -84,6 +157,12 @@ class DecisionResult:
             "normalized_scores": self.normalized_scores,
             "confidence_score": self.confidence_score,
             "recommendation": self.recommendation,
+            "strengths": {opt: [(c, float(s)) for c, s in strengths]
+                         for opt, strengths in self.strengths.items()},
+            "weaknesses": {opt: [(c, float(w)) for c, w in weaknesses]
+                          for opt, weaknesses in self.weaknesses.items()},
+            "why_winner_won": self.why_winner_won,
+            "top_n": self.top_n,
         }
 
     def to_json(self, indent: int = 2) -> str:
@@ -209,12 +288,23 @@ class DecisionMatrix:
             opt: (score / max_score * 100) for opt, score in total_scores.items()
         }
 
-        # Calculate confidence (gap between 1st and 2nd)
+        # Calculate improved confidence (gap between 1st and 2nd)
         if len(rankings) > 1:
             gap = rankings[0][1] - rankings[1][1]
-            confidence = min(100, (gap / rankings[0][1]) * 100)
+            normalized_gap = normalized[rankings[0][0]] - normalized[rankings[1][0]]
+            confidence = self._improve_confidence_score(
+                gap, rankings[0][1], normalized_gap
+            )
         else:
             confidence = 100.0
+
+        # Calculate strengths and weaknesses
+        strengths, weaknesses = self._calculate_strengths_weaknesses(breakdown)
+
+        # Calculate why winner won
+        why_winner_won = self._calculate_why_winner_won(
+            rankings[0][0], rankings, breakdown
+        )
 
         # Generate recommendation
         recommendation = self._generate_recommendation(
@@ -230,6 +320,9 @@ class DecisionMatrix:
             normalized_scores=normalized,
             confidence_score=confidence,
             recommendation=recommendation,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            why_winner_won=why_winner_won,
         )
 
     def _analyze_normalized(self) -> DecisionResult:
@@ -427,6 +520,105 @@ class DecisionMatrix:
             recommendation=recommendation,
         )
 
+    def _calculate_strengths_weaknesses(
+        self, breakdown: Dict[str, Dict[str, float]]
+    ) -> Tuple[Dict[str, List[Tuple[str, float]]], Dict[str, List[Tuple[str, float]]]]:
+        """Calculate top strengths and weaknesses for each option."""
+        strengths = {}
+        weaknesses = {}
+
+        for option in breakdown:
+            # Get scores for this option
+            criterion_scores = []
+            for criterion, score in breakdown[option].items():
+                # Extract clean criterion name
+                clean_criterion = criterion.split(" (")[0]
+                criterion_scores.append((clean_criterion, score))
+
+            # Sort by score
+            criterion_scores.sort(key=lambda x: x[1], reverse=True)
+
+            # Top 3 are strengths, bottom 3 are weaknesses
+            strengths[option] = criterion_scores[:3]
+            weaknesses[option] = criterion_scores[-3:]
+
+        return strengths, weaknesses
+
+    def _calculate_why_winner_won(
+        self,
+        winner: str,
+        rankings: List[Tuple[str, float]],
+        breakdown: Dict[str, Dict[str, float]],
+    ) -> str:
+        """Generate explanation for why the winner won."""
+        if len(rankings) < 2:
+            return f"Only option available."
+
+        runner_up = rankings[1][0]
+
+        # Find criteria where winner significantly outperformed runner-up
+        winner_scores = breakdown[winner]
+        runner_up_scores = breakdown[runner_up]
+
+        advantages = []
+        for criterion in winner_scores:
+            clean_criterion = criterion.split(" (")[0]
+            winner_score = winner_scores[criterion]
+            runner_up_score = runner_up_scores.get(criterion, 0)
+
+            if winner_score > runner_up_score * 1.1:  # 10% better
+                advantage = winner_score - runner_up_score
+                # Extract weight if present
+                weight = None
+                if "(w=" in criterion:
+                    weight_str = criterion.split("(w=")[1].split(")")[0]
+                    weight = float(weight_str)
+
+                advantages.append((clean_criterion, advantage, weight))
+
+        if not advantages:
+            return f"Marginally better overall performance across all criteria."
+
+        # Sort by advantage
+        advantages.sort(key=lambda x: x[1], reverse=True)
+
+        # Generate explanation
+        top_advantages = advantages[:2]
+        parts = []
+        for criterion, adv, weight in top_advantages:
+            if weight:
+                parts.append(f"{criterion} ({weight:.0%} weight, +{adv:.1f} points)")
+            else:
+                parts.append(f"{criterion} (+{adv:.1f} points)")
+
+        return f"Excelled in {' and '.join(parts)}"
+
+    def _improve_confidence_score(
+        self,
+        gap: float,
+        winner_score: float,
+        normalized_gap: float = None
+    ) -> float:
+        """
+        Calculate improved confidence score.
+
+        Uses both absolute gap and relative gap for better calibration.
+        """
+        # Relative gap (original method, but scaled up)
+        relative_conf = (gap / winner_score) * 100
+
+        # Normalized gap (if provided, from normalized scores)
+        if normalized_gap is not None:
+            # For normalized scores, a 20 point gap should be high confidence
+            normalized_conf = min(100, normalized_gap * 2.5)
+            # Blend the two approaches
+            confidence = (relative_conf * 0.4) + (normalized_conf * 0.6)
+        else:
+            # Scale up relative confidence by 1.5x to be less conservative
+            confidence = min(100, relative_conf * 1.5)
+
+        return confidence
+
     def _generate_recommendation(
         self,
         rankings: List[Tuple[str, float]],
@@ -437,12 +629,13 @@ class DecisionMatrix:
         winner = rankings[0][0]
         winner_score = normalized[winner]
 
-        if confidence > 70:
+        # Adjusted thresholds (lowered from 70/40 to 55/30)
+        if confidence > 55:
             return (
                 f"Strong recommendation: '{winner}' clearly outperforms "
                 f"other options with {winner_score:.1f}% score."
             )
-        elif confidence > 40:
+        elif confidence > 30:
             if len(rankings) > 1:
                 runner_up = rankings[1][0]
                 return (
@@ -468,6 +661,7 @@ def make_decision(
     weights: Optional[List[float]] = None,
     method: str = "weighted",
     show_all_methods: bool = False,
+    top_n: Optional[int] = None,
 ) -> Union[DecisionResult, Dict[str, DecisionResult]]:
     """
     Make a decision using a decision matrix.
@@ -479,6 +673,7 @@ def make_decision(
         weights: Optional weights for each criterion (defaults to equal)
         method: Analysis method - 'weighted', 'normalized', 'ranking', 'best_worst'
         show_all_methods: If True, run all methods and return comparison
+        top_n: Optional limit on number of options to display (shows top N only)
 
     Returns:
         DecisionResult with rankings and analysis, or dict of all methods if
@@ -503,11 +698,15 @@ def make_decision(
             matrix = DecisionMatrix(
                 options, criteria, scores, weights, method_name
             )
-            results[method_name] = matrix.analyze()
+            result = matrix.analyze()
+            result.top_n = top_n
+            results[method_name] = result
         return results
     else:
         matrix = DecisionMatrix(options, criteria, scores, weights, method)
-        return matrix.analyze()
+        result = matrix.analyze()
+        result.top_n = top_n
+        return result
 
 
 def compare_methods(
