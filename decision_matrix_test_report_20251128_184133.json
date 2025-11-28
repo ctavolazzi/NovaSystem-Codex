@@ -1,0 +1,107 @@
+{
+  "timestamp": "2025-11-28T18:41:33.455014",
+  "total_tests": 8,
+  "passed": 8,
+  "failed": 0,
+  "success_rate": 100.0,
+  "tests": [
+    {
+      "test": "Basic Functionality",
+      "status": "PASSED",
+      "winner": "Option C",
+      "confidence": 8.695652173913036,
+      "method": "Weighted Score"
+    },
+    {
+      "test": "Weighted Criteria",
+      "status": "PASSED",
+      "winner": "Vendor C",
+      "confidence": 5.128205128205131,
+      "export_json_length": 1342
+    },
+    {
+      "test": "All Methods Comparison",
+      "status": "PASSED",
+      "method_winners": {
+        "weighted": "Python",
+        "normalized": "Python",
+        "ranking": "Python",
+        "best_worst": "Python"
+      },
+      "consensus": "Found"
+    },
+    {
+      "test": "Real-World Hiring",
+      "status": "PASSED",
+      "winner": "Bob (Senior)",
+      "recommendation_length": 162
+    },
+    {
+      "test": "Edge Cases",
+      "status": "PASSED",
+      "subtests": [
+        [
+          "Single option",
+          "PASSED"
+        ],
+        [
+          "Tied scores",
+          "PASSED"
+        ],
+        [
+          "Extreme difference",
+          "PASSED"
+        ],
+        [
+          "Weight normalization",
+          "PASSED"
+        ],
+        [
+          "Missing option validation",
+          "PASSED"
+        ],
+        [
+          "Score count validation",
+          "PASSED"
+        ]
+      ]
+    },
+    {
+      "test": "Performance",
+      "status": "PASSED",
+      "timings_ms": {
+        "weighted": 0.058650970458984375,
+        "normalized": 0.05745887756347656,
+        "ranking": 0.050067901611328125,
+        "best_worst": 0.11467933654785156
+      },
+      "average_ms": 0.07021427154541016
+    },
+    {
+      "test": "Method Consistency",
+      "status": "PASSED",
+      "winners": {
+        "weighted": "Clear Winner",
+        "normalized": "Clear Winner",
+        "ranking": "Clear Winner",
+        "best_worst": "Clear Winner"
+      },
+      "consistent": true
+    },
+    {
+      "test": "Export Formats",
+      "status": "PASSED",
+      "dict_keys": [
+        "winner",
+        "rankings",
+        "scores_breakdown",
+        "analysis_method",
+        "total_score",
+        "normalized_scores",
+        "confidence_score",
+        "recommendation"
+      ],
+      "json_valid": true
+    }
+  ]
+}
