@@ -92,7 +92,7 @@ def test_cli_show_run_outputs_documentation(monkeypatch, capsys):
             return dummy_result
 
     dummy_nova = DummyNova()
-    monkeypatch.setattr(cli, "Nova", lambda: dummy_nova)
+    monkeypatch.setattr(cli, "Nova", lambda **kwargs: dummy_nova)
 
     args = argparse.Namespace(run_id=7, verbose=False, output="text")
     exit_code = cli.show_run(args)

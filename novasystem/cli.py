@@ -114,7 +114,7 @@ def install_repository(args: argparse.Namespace) -> int:
         logger.info(f"Installing repository: {args.repository}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = Nova(db_path=getattr(args, 'db_path', None))
 
         # Process repository
         result = nova.process_repository(
@@ -184,7 +184,7 @@ def list_runs(args: argparse.Namespace) -> int:
         logger.info("Listing runs")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = Nova(db_path=getattr(args, 'db_path', None))
 
         # Get runs
         runs = nova.list_runs(
@@ -243,7 +243,7 @@ def show_run(args: argparse.Namespace) -> int:
         logger.info(f"Showing run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = Nova(db_path=getattr(args, 'db_path', None))
 
         # Get run details
         result = nova.get_run_details(args.run_id)
@@ -346,7 +346,7 @@ def delete_run(args: argparse.Namespace) -> int:
         logger.info(f"Deleting run: {args.run_id}")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = Nova(db_path=getattr(args, 'db_path', None))
 
         # Delete run
         result = nova.delete_run(args.run_id)
@@ -381,7 +381,7 @@ def cleanup_runs(args: argparse.Namespace) -> int:
         logger.info(f"Cleaning up runs older than {args.days} days")
 
         # Initialize Nova
-        nova = Nova(db_path=args.db_path)
+        nova = Nova(db_path=getattr(args, 'db_path', None))
 
         # Cleanup runs
         count = nova.cleanup_old_runs(args.days)
