@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { XPCard } from '../ui/XPCard';
 import { XPButton } from '../ui/XPButton';
-import { XPInput, XPTextArea } from '../ui/XPInput';
+import { XPTextArea } from '../ui/XPInput';
 import { XPAgentResponseStream } from '../streaming/XPAgentResponseStream';
 import { useStreaming } from '../streaming/SimpleStreamingProvider';
+import { WorkflowCanvas, Connection as WorkflowConnection } from './WorkflowCanvas/WorkflowCanvas';
+import { WorkflowNodeData } from './WorkflowNode/WorkflowNode';
+import { executeWorkflow, WorkflowConnectionPayload, WorkflowNodePayload } from '@/services/workflowApi';
+import { useWorkflowPolling } from '@/hooks/useWorkflowPolling';
 import { cn } from '@/lib/utils';
 
 interface Agent {
@@ -27,12 +31,44 @@ const MOCK_AGENTS: Agent[] = [
   { id: 'agent-6', name: 'Optimizer', type: 'optimization', description: 'Optimizes processes', version: '1.3.0', status: 'idle', icon: '⚡' }
 ];
 
+const mapBackendStateToNodeStatus = (state?: string): WorkflowNodeData['status'] => {
+  switch (state) {
+    case 'processing':
+      return 'processing';
+    case 'completed':
+      return 'complete';
+    case 'error':
+      return 'error';
+    default:
+      return 'idle';
+  }
+};
+
+const mapBackendStateToConnectionStatus = (state?: string): WorkflowConnection['status'] => {
+  switch (state) {
+    case 'processing':
+      return 'active';
+    case 'completed':
+      return 'success';
+    case 'error':
+      return 'error';
+    default:
+      return 'idle';
+  }
+};
+
 export const XPWorkflowSystem: React.FC = () => {
   const [problemStatement, setProblemStatement] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<Agent[]>([]);
   const [workflowStatus, setWorkflowStatus] = useState<'idle' | 'running' | 'paused' | 'completed' | 'error'>('idle');
   const [activeTab, setActiveTab] = useState<'status' | 'responses' | 'results'>('status');
+  const [canvasNodes, setCanvasNodes] = useState<WorkflowNodeData[]>([]);
+  const [canvasConnections, setCanvasConnections] = useState<WorkflowConnection[]>([]);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const { addResponse, setIsStreaming, clearResponses } = useStreaming();
+  const { nodeStates, nodeOutputs, isComplete, error: pollingError, sessionStatus } = useWorkflowPolling(sessionId);
+  const previousOutputsRef = useRef<Record<string, string>>({});
 
   const handleAgentToggle = useCallback((agent: Agent) => {
     setSelectedAgents(prev =>
@@ -42,7 +78,72 @@ export const XPWorkflowSystem: React.FC = () => {
     );
   }, []);
 
-  const startWorkflow = useCallback(() => {
+  const buildCanvasNodes = useCallback((): WorkflowNodeData[] => {
+    const timestamp = Date.now();
+
+    return selectedAgents.map((agent, index) => {
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+
+      return {
+        id: `node-${agent.id}-${timestamp}-${index}`,
+        type: agent.type,
+        name: agent.name,
+        description: agent.description,
+        status: 'idle',
+        position: {
+          x: 60 + column * 220,
+          y: 60 + row * 160
+        },
+        inputs: ['input'],
+        outputs: ['output'],
+        data: { agentId: agent.id }
+      };
+    });
+  }, [selectedAgents]);
+
+  const generateConnections = useCallback((nodes: WorkflowNodeData[]): WorkflowConnection[] => (
+    nodes.slice(0, -1).map((node, index) => ({
+      id: `conn-${node.id}-${nodes[index + 1].id}`,
+      fromNodeId: node.id,
+      toNodeId: nodes[index + 1].id,
+      fromPort: node.outputs[0] || 'output',
+      toPort: nodes[index + 1].inputs[0] || 'input',
+      status: 'idle'
+    }))
+  ), []);
+
+  const handleNodePositionChange = useCallback((nodeId: string, position: { x: number; y: number }) => {
+    setCanvasNodes(prev => prev.map(node =>
+      node.id === nodeId ? { ...node, position } : node
+    ));
+  }, []);
+
+  const handleConnectionCreate = useCallback((fromNodeId: string, toNodeId: string, fromPort: string, toPort: string) => {
+    setCanvasConnections(prev => {
+      if (prev.some(conn => conn.fromNodeId === fromNodeId && conn.toNodeId === toNodeId)) {
+        return prev;
+      }
+
+      return [
+        ...prev,
+        {
+          id: `conn-${fromNodeId}-${toNodeId}`,
+          fromNodeId,
+          toNodeId,
+          fromPort,
+          toPort,
+          status: 'idle'
+        }
+      ];
+    });
+  }, []);
+
+  const handleConnectionDelete = useCallback((connectionId: string) => {
+    setCanvasConnections(prev => prev.filter(conn => conn.id !== connectionId));
+  }, []);
+
+  const startWorkflow = useCallback(async () => {
     if (!problemStatement.trim()) {
       alert('Please enter a problem statement.');
       return;
@@ -53,70 +154,58 @@ export const XPWorkflowSystem: React.FC = () => {
     }
 
     setWorkflowStatus('running');
+    setActiveTab('status');
     setIsStreaming(true);
     clearResponses();
-    setActiveTab('responses');
+    setIsStarting(true);
+    previousOutputsRef.current = {};
 
-    let step = 0;
-    const totalSteps = selectedAgents.length * 2;
+    const nodes = buildCanvasNodes();
+    const connections = generateConnections(nodes);
 
-    const interval = setInterval(() => {
-      if (step >= totalSteps) {
-        clearInterval(interval);
-        setWorkflowStatus('completed');
-        setIsStreaming(false);
-        addResponse({
-          agentId: 'System',
-          content: 'Workflow completed successfully!',
-          timestamp: Date.now(),
-          status: 'complete',
-        });
-        return;
+    setCanvasNodes(nodes);
+    setCanvasConnections(connections);
+
+    const nodePayloads: WorkflowNodePayload[] = nodes.map(node => ({
+      id: node.id,
+      type: node.type,
+      title: problemStatement,
+      agent: node.name,
+      metadata: {
+        description: node.description,
+        agentId: node.data?.agentId
       }
+    }));
 
-      const currentAgentIndex = Math.floor(step / 2);
-      const currentAgent = selectedAgents[currentAgentIndex];
+    const connectionPayloads: WorkflowConnectionPayload[] = connections.map(conn => ({
+      from: conn.fromNodeId,
+      to: conn.toNodeId
+    }));
 
-      if (step % 2 === 0) {
-        const analysisMessages = [
-          `🔍 Analyzing problem statement: "${problemStatement.substring(0, 50)}${problemStatement.length > 50 ? '...' : ''}"`,
-          `📊 Breaking down the problem into key components and identifying potential approaches...`,
-          `🧠 Evaluating different solution strategies and their feasibility...`,
-          `⚡ Processing requirements and constraints for optimal solution design...`,
-          `🎯 Identifying critical success factors and potential challenges...`,
-          `💡 Generating initial insights and preliminary analysis...`
-        ];
-
-        addResponse({
-          agentId: currentAgent.name,
-          content: analysisMessages[Math.floor(Math.random() * analysisMessages.length)],
-          timestamp: Date.now(),
-          status: 'streaming',
-        });
-      } else {
-        const solutionMessages = [
-          `✅ Analysis complete! Generated comprehensive solution framework with ${Math.floor(Math.random() * 5) + 3} key components.`,
-          `🎯 Solution strategy developed: Implemented ${Math.floor(Math.random() * 3) + 2}-phase approach with clear milestones.`,
-          `📈 Delivered actionable recommendations with ${Math.floor(Math.random() * 4) + 2} implementation steps.`,
-          `🔧 Created detailed technical specification with performance metrics and success criteria.`,
-          `💼 Business case analysis complete with ROI projections and risk assessment.`,
-          `🚀 Solution ready for implementation with comprehensive documentation and next steps.`
-        ];
-
-        addResponse({
-          agentId: currentAgent.name,
-          content: solutionMessages[Math.floor(Math.random() * solutionMessages.length)],
-          timestamp: Date.now(),
-          status: 'complete',
-        });
-      }
-      step++;
-    }, 1500);
-  }, [problemStatement, selectedAgents, addResponse, clearResponses, setIsStreaming]);
+    try {
+      const response = await executeWorkflow(nodePayloads, connectionPayloads);
+      setSessionId(response.session_id);
+    } catch (error) {
+      console.error('Failed to start workflow', error);
+      setWorkflowStatus('error');
+      setIsStreaming(false);
+      setSessionId(null);
+      const message = error instanceof Error ? error.message : 'Failed to start workflow';
+      addResponse({
+        agentId: 'System',
+        content: message,
+        timestamp: Date.now(),
+        status: 'error'
+      });
+    } finally {
+      setIsStarting(false);
+    }
+  }, [addResponse, buildCanvasNodes, clearResponses, generateConnections, problemStatement, selectedAgents.length, setIsStreaming]);
 
   const stopWorkflow = useCallback(() => {
     setWorkflowStatus('idle');
     setIsStreaming(false);
+    setSessionId(null);
     addResponse({
       agentId: 'System',
       content: 'Workflow stopped by user.',
@@ -129,9 +218,85 @@ export const XPWorkflowSystem: React.FC = () => {
     setProblemStatement('');
     setSelectedAgents([]);
     setWorkflowStatus('idle');
+    setSessionId(null);
+    setCanvasNodes([]);
+    setCanvasConnections([]);
+    previousOutputsRef.current = {};
     clearResponses();
     setIsStreaming(false);
+    setActiveTab('status');
   }, [clearResponses, setIsStreaming]);
+
+  const getAgentNodeStatus = useCallback((agentId: string): WorkflowNodeData['status'] => {
+    const node = canvasNodes.find(n => n.data?.agentId === agentId);
+    return node?.status || 'idle';
+  }, [canvasNodes]);
+
+  useEffect(() => {
+    if (!canvasNodes.length) return;
+
+    setCanvasNodes(prev => prev.map(node => {
+      const backendState = nodeStates[node.id];
+      if (!backendState) return node;
+
+      return {
+        ...node,
+        status: mapBackendStateToNodeStatus(backendState)
+      };
+    }));
+  }, [nodeStates, canvasNodes.length]);
+
+  useEffect(() => {
+    if (!canvasConnections.length) return;
+
+    setCanvasConnections(prev => prev.map(conn => ({
+      ...conn,
+      status: mapBackendStateToConnectionStatus(nodeStates[conn.fromNodeId])
+    })));
+  }, [nodeStates, canvasConnections.length]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    if (pollingError) {
+      setWorkflowStatus('error');
+      setIsStreaming(false);
+      return;
+    }
+
+    const nodeStateValues = Object.values(nodeStates);
+    const hasErrors = nodeStateValues.some(state => state === 'error') || sessionStatus === 'error';
+    const allFinished = nodeStateValues.length > 0 && nodeStateValues.every(
+      state => state === 'completed' || state === 'error'
+    );
+
+    if (isComplete || allFinished) {
+      setWorkflowStatus(hasErrors ? 'error' : 'completed');
+      setIsStreaming(false);
+    } else {
+      setWorkflowStatus('running');
+    }
+  }, [isComplete, nodeStates, pollingError, sessionId, sessionStatus, setIsStreaming]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+
+    Object.entries(nodeOutputs).forEach(([nodeId, output]) => {
+      if (!output || previousOutputsRef.current[nodeId] === output) {
+        return;
+      }
+
+      previousOutputsRef.current[nodeId] = output;
+      const node = canvasNodes.find(n => n.id === nodeId);
+
+      addResponse({
+        agentId: node?.name || nodeId,
+        content: output,
+        timestamp: Date.now(),
+        status: 'complete'
+      });
+    });
+  }, [addResponse, canvasNodes, nodeOutputs, sessionId]);
 
   return (
     <div className="flex h-full gap-4 p-4 bg-[#ece9d8]">
@@ -150,7 +315,7 @@ export const XPWorkflowSystem: React.FC = () => {
               placeholder="Describe the problem you want to solve..."
               value={problemStatement}
               onChange={(e) => setProblemStatement(e.target.value)}
-              disabled={workflowStatus === 'running'}
+              disabled={workflowStatus === 'running' || isStarting}
               rows={4}
             />
           </div>
@@ -181,7 +346,7 @@ export const XPWorkflowSystem: React.FC = () => {
           </div>
         </XPCard.Content>
         <XPCard.Footer>
-          <XPButton variant="default" onClick={resetWorkflow} disabled={workflowStatus === 'running'}>
+          <XPButton variant="default" onClick={resetWorkflow} disabled={workflowStatus === 'running' || isStarting}>
             Reset
           </XPButton>
           {workflowStatus === 'running' ? (
@@ -192,9 +357,9 @@ export const XPWorkflowSystem: React.FC = () => {
             <XPButton
               variant="primary"
               onClick={startWorkflow}
-              disabled={!problemStatement.trim() || selectedAgents.length === 0}
+              disabled={!problemStatement.trim() || selectedAgents.length === 0 || isStarting}
             >
-              Start Workflow
+              {isStarting ? 'Starting...' : 'Start Workflow'}
             </XPButton>
           )}
         </XPCard.Footer>
@@ -233,55 +398,97 @@ export const XPWorkflowSystem: React.FC = () => {
             </div>
           </div>
         </XPCard.Header>
-        <XPCard.Content className="flex-1 overflow-hidden">
-          {activeTab === 'status' && (
-            <div className="h-full flex flex-col space-y-4 overflow-y-auto">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-black">Current Status:</span>
-                <span className={cn(
-                  "text-sm font-bold capitalize",
-                  workflowStatus === 'running' && "text-[#0054e3]",
-                  workflowStatus === 'completed' && "text-[#6bbf44]",
-                  workflowStatus === 'error' && "text-[#ff4444]"
-                )}>
-                  {workflowStatus}
-                </span>
+        <XPCard.Content className="flex-1 overflow-hidden flex flex-col gap-3">
+          <div className="flex-1 overflow-hidden">
+            {activeTab === 'status' && (
+              <div className="h-full flex flex-col space-y-4 overflow-y-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-bold text-black">Current Status:</span>
+                  <span className={cn(
+                    "text-sm font-bold capitalize",
+                    workflowStatus === 'running' && "text-[#0054e3]",
+                    workflowStatus === 'completed' && "text-[#6bbf44]",
+                    workflowStatus === 'error' && "text-[#ff4444]"
+                  )}>
+                    {workflowStatus}
+                  </span>
+                  {sessionId && (
+                    <span className="text-[11px] text-[#3a3a3a] ml-2">Session {sessionId.slice(0, 8)}</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {selectedAgents.map(agent => {
+                    const nodeStatus = getAgentNodeStatus(agent.id);
+                    const statusText = nodeStatus === 'processing'
+                      ? 'Processing...'
+                      : nodeStatus === 'complete'
+                        ? 'Complete'
+                        : nodeStatus === 'error'
+                          ? 'Error'
+                          : 'Idle';
+
+                    const dotClass = nodeStatus === 'processing'
+                      ? "bg-[#0054e3] animate-pulse"
+                      : nodeStatus === 'complete'
+                        ? "bg-[#6bbf44]"
+                        : nodeStatus === 'error'
+                          ? "bg-[#ff4444]"
+                          : "bg-[#808080]";
+
+                    return (
+                      <XPCard key={agent.id} className="p-2" variant="inset">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm">{agent.icon}</span>
+                          <span className="font-medium text-black text-xs">{agent.name}</span>
+                        </div>
+                        <p className="text-xs text-[#666666] mb-2">{agent.description}</p>
+                        <div className="flex items-center gap-2">
+                          <span className={cn("w-2 h-2 rounded-full", dotClass)}></span>
+                          <span className="text-xs text-[#666666]">
+                            {statusText}
+                          </span>
+                        </div>
+                      </XPCard>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                {selectedAgents.map(agent => (
-                  <XPCard key={agent.id} className="p-2" variant="inset">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-sm">{agent.icon}</span>
-                      <span className="font-medium text-black text-xs">{agent.name}</span>
-                    </div>
-                    <p className="text-xs text-[#666666] mb-2">{agent.description}</p>
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        workflowStatus === 'running' ? "bg-[#0054e3] animate-pulse" : "bg-[#808080]"
-                      )}></span>
-                      <span className="text-xs text-[#666666]">
-                        {workflowStatus === 'running' ? 'Processing...' : 'Idle'}
-                      </span>
-                    </div>
-                  </XPCard>
-                ))}
+            )}
+            {activeTab === 'responses' && (
+              <div className="h-full">
+                <XPAgentResponseStream className="h-full" />
               </div>
-            </div>
-          )}
-          {activeTab === 'responses' && (
-            <div className="h-full">
-              <XPAgentResponseStream className="h-full" />
-            </div>
-          )}
-          {activeTab === 'results' && (
-            <div className="h-full flex items-center justify-center text-[#666666]">
-              <div className="text-center">
-                <div className="text-4xl mb-2">📊</div>
-                <p className="text-sm">Workflow results will appear here after completion.</p>
+            )}
+            {activeTab === 'results' && (
+              <div className="h-full flex items-center justify-center text-[#666666]">
+                <div className="text-center">
+                  <div className="text-4xl mb-2">📊</div>
+                  <p className="text-sm">Workflow results will appear here after completion.</p>
+                </div>
               </div>
+            )}
+          </div>
+
+          <div className="h-[360px] border border-[#c0c0c0] bg-white shadow-inner rounded-sm overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-[#c0c0c0] bg-[#f3f3f3] text-xs text-black">
+              <div className="font-bold">Workflow Canvas</div>
+              {sessionId && (
+                <div className="text-[#0054e3] font-semibold text-[11px]">
+                  Live from session {sessionId.slice(0, 8)}
+                </div>
+              )}
             </div>
-          )}
+            <div className="h-[300px]">
+              <WorkflowCanvas
+                nodes={canvasNodes}
+                connections={canvasConnections}
+                onNodePositionChange={handleNodePositionChange}
+                onConnectionCreate={handleConnectionCreate}
+                onConnectionDelete={handleConnectionDelete}
+                className="h-full"
+              />
+            </div>
+          </div>
         </XPCard.Content>
       </XPCard>
     </div>
