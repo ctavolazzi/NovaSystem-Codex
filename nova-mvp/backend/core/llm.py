@@ -6,15 +6,19 @@ Supports:
 - Mock (for testing without API keys)
 
 Designed for easy swapping to Ollama or other providers later.
+Includes usage tracking for cost reconciliation.
 """
 
 import os
+import time
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 
 from .traffic import traffic_controller, estimate_tokens
+from .pricing import CostEstimator
+from .usage import get_usage_ledger, Transaction
 
 
 @dataclass
@@ -29,8 +33,14 @@ class LLMConfig:
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
-    def __init__(self, config: Optional[LLMConfig] = None):
+    # Override in subclasses
+    PROVIDER_NAME: str = "unknown"
+
+    def __init__(self, config: Optional[LLMConfig] = None, track_usage: bool = True):
         self.config = config or self._default_config()
+        self._track_usage = track_usage
+        self._cost_estimator = CostEstimator()
+        self._ledger = get_usage_ledger() if track_usage else None
 
     @abstractmethod
     def _default_config(self) -> LLMConfig:
@@ -39,9 +49,11 @@ class LLMProvider(ABC):
 
     def _enforce_limits(
         self, system_prompt: str, user_message: str, **kwargs: Any
-    ) -> None:
-        """Estimate token usage and enforce local RPM/TPM ceilings."""
-
+    ) -> Tuple[int, int]:
+        """Estimate token usage and enforce local RPM/TPM ceilings.
+        
+        Returns (input_tokens, estimated_output_tokens) for usage tracking.
+        """
         model_name = kwargs.get("model", self.config.model)
         input_tokens = estimate_tokens(system_prompt) + estimate_tokens(user_message)
         estimated_output_tokens = kwargs.get("max_tokens", self.config.max_tokens)
@@ -50,6 +62,53 @@ class LLMProvider(ABC):
             input_tokens,
             estimated_output_tokens=estimated_output_tokens,
         )
+        return input_tokens, estimated_output_tokens
+
+    def _record_usage(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        actual_input: Optional[int] = None,
+        actual_output: Optional[int] = None,
+        context: str = "general",
+    ) -> None:
+        """Record a transaction to the usage ledger."""
+        if not self._ledger:
+            return
+
+        # Estimate cost
+        try:
+            estimate = self._cost_estimator.estimate(
+                model, " " * (input_tokens * 4), output_tokens
+            )
+            estimated_cost = estimate.projected_cost
+        except ValueError:
+            # Model not in pricing table - estimate zero
+            estimated_cost = 0.0
+
+        # Calculate actual cost if we have actual token counts
+        actual_cost = None
+        if actual_input is not None and actual_output is not None:
+            try:
+                actual_estimate = self._cost_estimator.estimate(
+                    model, " " * (actual_input * 4), actual_output
+                )
+                actual_cost = actual_estimate.projected_cost
+            except ValueError:
+                pass
+
+        txn = Transaction(
+            timestamp=time.time(),
+            model=model,
+            provider=self.PROVIDER_NAME,
+            input_tokens=actual_input or input_tokens,
+            output_tokens=actual_output or output_tokens,
+            estimated_cost=estimated_cost,
+            actual_cost=actual_cost,
+            context=context,
+        )
+        self._ledger.record(txn)
 
     @abstractmethod
     async def chat(
@@ -83,8 +142,10 @@ class LLMProvider(ABC):
 class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
-        super().__init__(config)
+    PROVIDER_NAME = "claude"
+
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, track_usage: bool = True):
+        super().__init__(config, track_usage)
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self._client = None
 
@@ -113,19 +174,33 @@ class ClaudeProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
-        self._enforce_limits(system_prompt, user_message, **kwargs)
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
+        model = kwargs.get("model", self.config.model)
 
         # Run in thread pool since anthropic client is sync
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
             lambda: client.messages.create(
-                model=kwargs.get("model", self.config.model),
+                model=model,
                 max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
             )
+        )
+
+        # Extract actual usage from Claude response
+        actual_in = getattr(response.usage, 'input_tokens', None)
+        actual_out = getattr(response.usage, 'output_tokens', None)
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=actual_in,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
         )
 
         return response.content[0].text
@@ -134,8 +209,10 @@ class ClaudeProvider(LLMProvider):
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
-        super().__init__(config)
+    PROVIDER_NAME = "openai"
+
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, track_usage: bool = True):
+        super().__init__(config, track_usage)
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._client = None
 
@@ -164,15 +241,16 @@ class OpenAIProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
-        self._enforce_limits(system_prompt, user_message, **kwargs)
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
+        model = kwargs.get("model", self.config.model)
 
         # Run in thread pool since openai client is sync
         loop = asyncio.get_event_loop()
         response = await loop.run_in_executor(
             None,
             lambda: client.chat.completions.create(
-                model=kwargs.get("model", self.config.model),
+                model=model,
                 max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
                 temperature=kwargs.get("temperature", self.config.temperature),
                 messages=[
@@ -182,14 +260,29 @@ class OpenAIProvider(LLMProvider):
             )
         )
 
+        # Extract actual usage from OpenAI response
+        actual_in = getattr(response.usage, 'prompt_tokens', None) if response.usage else None
+        actual_out = getattr(response.usage, 'completion_tokens', None) if response.usage else None
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=actual_in,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
+        )
+
         return response.choices[0].message.content
 
 
 class MockProvider(LLMProvider):
     """Mock provider for testing without API keys."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5):
-        super().__init__(config)
+    PROVIDER_NAME = "mock"
+
+    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5, track_usage: bool = True):
+        super().__init__(config, track_usage)
         self.delay = delay
 
     def _default_config(self) -> LLMConfig:
@@ -197,25 +290,6 @@ class MockProvider(LLMProvider):
 
     def is_available(self) -> bool:
         return True  # Always available
-
-    async def chat(
-        self,
-        system_prompt: str,
-        user_message: str,
-        **kwargs
-    ) -> str:
-        self._enforce_limits(system_prompt, user_message, **kwargs)
-        await asyncio.sleep(self.delay)
-
-        # Generate a structured mock response based on system prompt
-        if "DCE" in system_prompt or "Discussion Continuity" in system_prompt:
-            return self._mock_dce_response(user_message)
-        elif "CAE" in system_prompt or "Critical Analysis" in system_prompt:
-            return self._mock_cae_response(user_message)
-        elif "Expert" in system_prompt:
-            return self._mock_domain_response(system_prompt, user_message)
-        else:
-            return self._mock_generic_response(user_message)
 
     def _mock_dce_response(self, problem: str) -> str:
         return f"""## Problem Analysis
@@ -325,6 +399,36 @@ Next steps:
 - Gather additional context
 - Consult relevant stakeholders
 - Develop detailed plan"""
+
+    async def chat(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> str:
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        model = kwargs.get("model", self.config.model)
+        await asyncio.sleep(self.delay)
+
+        # Generate response
+        if "DCE" in system_prompt or "Discussion Continuity" in system_prompt:
+            response = self._mock_dce_response(user_message)
+        elif "CAE" in system_prompt or "Critical Analysis" in system_prompt:
+            response = self._mock_cae_response(user_message)
+        elif "Expert" in system_prompt:
+            response = self._mock_domain_response(system_prompt, user_message)
+        else:
+            response = self._mock_generic_response(user_message)
+
+        # Mock providers don't have actual token counts, use estimates
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            context=kwargs.get("context", "general"),
+        )
+
+        return response
 
 
 def get_llm(

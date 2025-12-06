@@ -1,191 +1,242 @@
-"""Usage Tracking Module - Reconciliation between estimates and actuals.
+"""Usage tracking with SQLite persistence - The Accountant.
 
-Building blocks for tracking actual API usage vs estimates.
-Simple, composable, no over-engineering.
+Records all LLM transactions to enable:
+- Actual vs estimated cost tracking (drift analysis)
+- Spend summaries by model, provider, time period
+- Budget alerts and usage analytics
 """
 
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-import json
+import sqlite3
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional
+
+# Database file location (relative to working directory)
+DEFAULT_DB_FILE = ".nova_usage.db"
 
 
 @dataclass
-class UsageRecord:
-    """A single API usage record."""
-    timestamp: datetime
+class Transaction:
+    """A single LLM API transaction."""
+    timestamp: float
     model: str
-    estimated_tokens: int
-    actual_tokens: Optional[int] = None
-    estimated_cost: float = 0.0
-    actual_cost: Optional[float] = None
-    
+    provider: str
+    input_tokens: int
+    output_tokens: int
+    estimated_cost: float
+    actual_cost: Optional[float] = None  # Filled if API returns usage
+    context: str = "general"
+
     @property
-    def drift(self) -> Optional[int]:
-        """How far off was the estimate? (actual - estimated)"""
-        if self.actual_tokens is None:
+    def cost(self) -> float:
+        """Best available cost (actual if known, else estimated)."""
+        return self.actual_cost if self.actual_cost is not None else self.estimated_cost
+
+    @property
+    def drift(self) -> Optional[float]:
+        """Cost drift: actual - estimated. Positive = underestimated."""
+        if self.actual_cost is None:
             return None
-        return self.actual_tokens - self.estimated_tokens
-    
+        return self.actual_cost - self.estimated_cost
+
     @property
     def drift_pct(self) -> Optional[float]:
-        """Drift as percentage of estimate."""
-        if self.drift is None or self.estimated_tokens == 0:
+        """Drift as percentage of estimated cost."""
+        if self.drift is None or self.estimated_cost == 0:
             return None
-        return (self.drift / self.estimated_tokens) * 100
-    
-    def to_dict(self) -> dict:
-        return {
-            "timestamp": self.timestamp.isoformat(),
-            "model": self.model,
-            "estimated_tokens": self.estimated_tokens,
-            "actual_tokens": self.actual_tokens,
-            "estimated_cost": self.estimated_cost,
-            "actual_cost": self.actual_cost,
-            "drift": self.drift,
-            "drift_pct": self.drift_pct,
-        }
+        return (self.drift / self.estimated_cost) * 100
 
 
-class UsageTracker:
+class UsageLedger:
+    """SQLite-backed ledger for tracking LLM spend.
+    
+    Records every transaction with estimated and actual costs,
+    enabling drift analysis and spend reporting.
     """
-    Tracks API usage with reconciliation support.
-    
-    Simple in-memory tracker. Can be extended for persistence later.
-    """
-    
-    def __init__(self, max_records: int = 1000):
-        self._records: List[UsageRecord] = []
-        self._max_records = max_records
-    
-    def record(
-        self,
-        model: str,
-        estimated_tokens: int,
-        actual_tokens: Optional[int] = None,
-        estimated_cost: float = 0.0,
-        actual_cost: Optional[float] = None,
-    ) -> UsageRecord:
-        """Record a usage event."""
-        rec = UsageRecord(
-            timestamp=datetime.now(),
-            model=model,
-            estimated_tokens=estimated_tokens,
-            actual_tokens=actual_tokens,
-            estimated_cost=estimated_cost,
-            actual_cost=actual_cost,
-        )
-        self._records.append(rec)
-        
-        # Trim if over limit
-        if len(self._records) > self._max_records:
-            self._records = self._records[-self._max_records:]
-        
-        return rec
-    
-    def update_actual(self, record: UsageRecord, actual_tokens: int, actual_cost: Optional[float] = None):
-        """Update a record with actual usage (reconciliation)."""
-        record.actual_tokens = actual_tokens
-        if actual_cost is not None:
-            record.actual_cost = actual_cost
-    
-    @property
-    def total_estimated(self) -> int:
-        """Total estimated tokens across all records."""
-        return sum(r.estimated_tokens for r in self._records)
-    
-    @property
-    def total_actual(self) -> int:
-        """Total actual tokens (only records with actuals)."""
-        return sum(r.actual_tokens for r in self._records if r.actual_tokens)
-    
-    @property
+
+    def __init__(self, db_file: str | None = None):
+        self._db_file = db_file or DEFAULT_DB_FILE
+        self._init_db()
+
+    def _init_db(self) -> None:
+        """Create tables if they don't exist."""
+        with sqlite3.connect(self._db_file) as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS transactions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    timestamp REAL NOT NULL,
+                    model TEXT NOT NULL,
+                    provider TEXT NOT NULL,
+                    input_tokens INTEGER NOT NULL,
+                    output_tokens INTEGER NOT NULL,
+                    estimated_cost REAL NOT NULL,
+                    actual_cost REAL,
+                    context TEXT DEFAULT 'general'
+                )
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_timestamp 
+                ON transactions(timestamp)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_model 
+                ON transactions(model)
+            """)
+
+    def record(self, txn: Transaction) -> int:
+        """Record a transaction. Returns the transaction ID."""
+        with sqlite3.connect(self._db_file) as conn:
+            cursor = conn.execute("""
+                INSERT INTO transactions 
+                (timestamp, model, provider, input_tokens, output_tokens, 
+                 estimated_cost, actual_cost, context)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                txn.timestamp, txn.model, txn.provider,
+                txn.input_tokens, txn.output_tokens,
+                txn.estimated_cost, txn.actual_cost, txn.context
+            ))
+            return cursor.lastrowid
+
+    def update_actual(self, txn_id: int, actual_cost: float) -> None:
+        """Update a transaction with actual cost (reconciliation)."""
+        with sqlite3.connect(self._db_file) as conn:
+            conn.execute("""
+                UPDATE transactions SET actual_cost = ? WHERE id = ?
+            """, (actual_cost, txn_id))
+
+    def total_spend(self, since: Optional[float] = None) -> float:
+        """Total spend (using best available cost per transaction)."""
+        query = """
+            SELECT SUM(COALESCE(actual_cost, estimated_cost)) 
+            FROM transactions
+        """
+        params = []
+        if since:
+            query += " WHERE timestamp > ?"
+            params.append(since)
+
+        with sqlite3.connect(self._db_file) as conn:
+            result = conn.execute(query, params).fetchone()[0]
+            return result or 0.0
+
+    def total_estimated(self, since: Optional[float] = None) -> float:
+        """Total estimated spend."""
+        query = "SELECT SUM(estimated_cost) FROM transactions"
+        params = []
+        if since:
+            query += " WHERE timestamp > ?"
+            params.append(since)
+
+        with sqlite3.connect(self._db_file) as conn:
+            result = conn.execute(query, params).fetchone()[0]
+            return result or 0.0
+
+    def total_actual(self, since: Optional[float] = None) -> float:
+        """Total actual spend (only transactions with actual_cost)."""
+        query = "SELECT SUM(actual_cost) FROM transactions WHERE actual_cost IS NOT NULL"
+        params = []
+        if since:
+            query += " AND timestamp > ?"
+            params.append(since)
+
+        with sqlite3.connect(self._db_file) as conn:
+            result = conn.execute(query, params).fetchone()[0]
+            return result or 0.0
+
     def average_drift_pct(self) -> Optional[float]:
-        """Average drift percentage across all reconciled records."""
-        drifts = [r.drift_pct for r in self._records if r.drift_pct is not None]
-        if not drifts:
-            return None
-        return sum(drifts) / len(drifts)
-    
+        """Average drift percentage across reconciled transactions."""
+        with sqlite3.connect(self._db_file) as conn:
+            result = conn.execute("""
+                SELECT AVG((actual_cost - estimated_cost) / estimated_cost * 100)
+                FROM transactions
+                WHERE actual_cost IS NOT NULL AND estimated_cost > 0
+            """).fetchone()[0]
+            return result
+
+    def spend_by_model(self, since: Optional[float] = None) -> dict:
+        """Spend breakdown by model."""
+        query = """
+            SELECT model, SUM(COALESCE(actual_cost, estimated_cost))
+            FROM transactions
+        """
+        params = []
+        if since:
+            query += " WHERE timestamp > ?"
+            params.append(since)
+        query += " GROUP BY model"
+
+        with sqlite3.connect(self._db_file) as conn:
+            rows = conn.execute(query, params).fetchall()
+            return {row[0]: row[1] or 0.0 for row in rows}
+
+    def spend_by_provider(self, since: Optional[float] = None) -> dict:
+        """Spend breakdown by provider."""
+        query = """
+            SELECT provider, SUM(COALESCE(actual_cost, estimated_cost))
+            FROM transactions
+        """
+        params = []
+        if since:
+            query += " WHERE timestamp > ?"
+            params.append(since)
+        query += " GROUP BY provider"
+
+        with sqlite3.connect(self._db_file) as conn:
+            rows = conn.execute(query, params).fetchall()
+            return {row[0]: row[1] or 0.0 for row in rows}
+
+    def recent(self, limit: int = 10) -> List[Transaction]:
+        """Get recent transactions."""
+        with sqlite3.connect(self._db_file) as conn:
+            rows = conn.execute("""
+                SELECT timestamp, model, provider, input_tokens, output_tokens,
+                       estimated_cost, actual_cost, context
+                FROM transactions
+                ORDER BY timestamp DESC
+                LIMIT ?
+            """, (limit,)).fetchall()
+
+        return [
+            Transaction(
+                timestamp=row[0], model=row[1], provider=row[2],
+                input_tokens=row[3], output_tokens=row[4],
+                estimated_cost=row[5], actual_cost=row[6], context=row[7]
+            )
+            for row in rows
+        ]
+
+    def count(self) -> int:
+        """Total transaction count."""
+        with sqlite3.connect(self._db_file) as conn:
+            return conn.execute("SELECT COUNT(*) FROM transactions").fetchone()[0]
+
     def summary(self) -> dict:
-        """Get usage summary."""
+        """Full usage summary."""
         return {
-            "total_records": len(self._records),
-            "total_estimated_tokens": self.total_estimated,
-            "total_actual_tokens": self.total_actual,
-            "average_drift_pct": self.average_drift_pct,
-            "records_with_actuals": sum(1 for r in self._records if r.actual_tokens),
+            "total_transactions": self.count(),
+            "total_spend": round(self.total_spend(), 6),
+            "total_estimated": round(self.total_estimated(), 6),
+            "total_actual": round(self.total_actual(), 6),
+            "average_drift_pct": self.average_drift_pct(),
+            "by_model": self.spend_by_model(),
+            "by_provider": self.spend_by_provider(),
         }
-    
-    def recent(self, n: int = 10) -> List[UsageRecord]:
-        """Get n most recent records."""
-        return self._records[-n:]
-    
-    def clear(self):
-        """Clear all records."""
-        self._records.clear()
+
+    def clear(self) -> None:
+        """Clear all transactions (use with caution)."""
+        with sqlite3.connect(self._db_file) as conn:
+            conn.execute("DELETE FROM transactions")
 
 
-def extract_usage(response: Any, provider: str = "auto") -> Optional[Dict[str, int]]:
-    """
-    Extract usage data from API response.
-    
-    Returns dict with 'input_tokens', 'output_tokens', 'total_tokens' if available.
-    
-    Supports:
-    - Claude (Anthropic): response.usage
-    - OpenAI: response.usage
-    - Gemini: response.usage_metadata
-    """
-    try:
-        # Claude / Anthropic
-        if hasattr(response, 'usage') and hasattr(response.usage, 'input_tokens'):
-            return {
-                "input_tokens": response.usage.input_tokens,
-                "output_tokens": response.usage.output_tokens,
-                "total_tokens": response.usage.input_tokens + response.usage.output_tokens,
-            }
-        
-        # OpenAI
-        if hasattr(response, 'usage') and hasattr(response.usage, 'prompt_tokens'):
-            return {
-                "input_tokens": response.usage.prompt_tokens,
-                "output_tokens": response.usage.completion_tokens,
-                "total_tokens": response.usage.total_tokens,
-            }
-        
-        # Gemini (via google.generativeai)
-        if hasattr(response, 'usage_metadata'):
-            meta = response.usage_metadata
-            return {
-                "input_tokens": getattr(meta, 'prompt_token_count', 0),
-                "output_tokens": getattr(meta, 'candidates_token_count', 0),
-                "total_tokens": getattr(meta, 'total_token_count', 0),
-            }
-        
-        # Dict-like response (some APIs return dicts)
-        if isinstance(response, dict):
-            if 'usage' in response:
-                usage = response['usage']
-                return {
-                    "input_tokens": usage.get('prompt_tokens') or usage.get('input_tokens', 0),
-                    "output_tokens": usage.get('completion_tokens') or usage.get('output_tokens', 0),
-                    "total_tokens": usage.get('total_tokens', 0),
-                }
-        
-        return None
-        
-    except Exception:
-        return None
+# Global ledger instance
+_ledger: Optional[UsageLedger] = None
 
 
-# Global tracker instance
-_usage_tracker: Optional[UsageTracker] = None
-
-
-def get_usage_tracker() -> UsageTracker:
-    """Get the global usage tracker."""
-    global _usage_tracker
-    if _usage_tracker is None:
-        _usage_tracker = UsageTracker()
-    return _usage_tracker
+def get_usage_ledger() -> UsageLedger:
+    """Get the global usage ledger."""
+    global _ledger
+    if _ledger is None:
+        _ledger = UsageLedger()
+    return _ledger
