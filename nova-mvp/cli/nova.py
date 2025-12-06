@@ -45,7 +45,9 @@ from backend.core import (
     NovaProcess,
     ProcessPhase,
     RateLimitExceeded,
+    UsageLedger,
     get_llm,
+    get_usage_ledger,
     traffic_controller,
 )
 from backend.agents.base import AgentResponse
@@ -124,7 +126,80 @@ def print_agent_response(response: AgentResponse):
         for line in response.content.split('\n'):
             print(f"  {line}")
     else:
-        print(f"  {Colors.RED}Error: {response.error}{Colors.RESET}")
+            print(f"  {Colors.RED}Error: {response.error}{Colors.RESET}")
+
+
+def _get_ledger(db_path: str | None) -> UsageLedger:
+    """Return a usage ledger, optionally pointing at a custom database file."""
+    return UsageLedger(db_path) if db_path else get_usage_ledger()
+
+
+def _format_money(value: float) -> str:
+    """Format currency for small spend amounts."""
+    return f"${value:,.6f}"
+
+
+def usage_report(db_path: str | None = None, limit: int = 5) -> int:
+    """Print a usage/cost report from the SQLite ledger."""
+    print_header()
+    limit = max(limit, 1)
+    ledger = _get_ledger(db_path)
+    db_label = Path(getattr(ledger, "_db_file", db_path or ".nova_usage.db")).resolve()
+    total_txn = ledger.count()
+
+    print(f"{Colors.BOLD}Usage Ledger Report{Colors.RESET}")
+    print(f"{Colors.DIM}Database: {db_label}{Colors.RESET}")
+
+    if total_txn == 0:
+        print(f"\n{Colors.YELLOW}No usage records found yet. Run a solve to generate data.{Colors.RESET}")
+        return 0
+
+    summary = ledger.summary()
+    by_model = summary.get("by_model", {})
+    top_model = max(by_model.items(), key=lambda item: item[1]) if by_model else None
+    avg_drift = summary.get("average_drift_pct")
+
+    print(f"\n{Colors.GREEN}Totals{Colors.RESET}")
+    print(f"  Spend: {_format_money(summary['total_spend'])}")
+    print(f"  Estimated: {_format_money(summary['total_estimated'])}")
+    print(f"  Actual: {_format_money(summary['total_actual'])}")
+    print(f"  Transactions: {summary['total_transactions']}")
+
+    print(f"\n{Colors.CYAN}Top Model by Spend{Colors.RESET}")
+    if top_model:
+        model, spend = top_model
+        print(f"  {model} → {_format_money(spend)}")
+    else:
+        print("  No model spend recorded yet.")
+
+    print(f"\n{Colors.CYAN}Average Drift (actual vs. estimate){Colors.RESET}")
+    if avg_drift is None:
+        print("  N/A (no reconciled usage yet)")
+    else:
+        drift_color = Colors.GREEN if avg_drift <= 5 else Colors.YELLOW if avg_drift <= 20 else Colors.RED
+        print(f"  {drift_color}{avg_drift:+.2f}%{Colors.RESET}")
+
+    print(f"\n{Colors.CYAN}Last {limit} Transactions{Colors.RESET}")
+    recent = ledger.recent(limit)
+    for txn in recent:
+        ts = datetime.fromtimestamp(txn.timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        drift = txn.drift_pct
+        drift_display = "n/a" if drift is None else f"{drift:+.1f}%"
+        actual_display = "n/a" if txn.actual_cost is None else _format_money(txn.actual_cost)
+        print(
+            f"  {Colors.DIM}{ts}{Colors.RESET} | "
+            f"{txn.provider}/{txn.model} | "
+            f"est {_format_money(txn.estimated_cost)} | "
+            f"act {actual_display} | "
+            f"drift {drift_display} | "
+            f"{txn.input_tokens}/{txn.output_tokens} tokens | "
+            f"context: {txn.context}"
+        )
+
+    if total_txn > limit:
+        print(f"{Colors.DIM}  …and {total_txn - limit} more rows (use --limit to see more){Colors.RESET}")
+
+    return 0
 
 
 async def solve_command(problem: str, domains: list, provider: str, verbose: bool):
@@ -336,6 +411,19 @@ Environment variables:
     # Interactive command
     subparsers.add_parser("interactive", help="Start interactive mode")
 
+    # Usage report command
+    report_parser = subparsers.add_parser("report", help="Show usage/cost report from the ledger")
+    report_parser.add_argument(
+        "--db",
+        help="Path to a usage database (default: .nova_usage.db in current working directory)"
+    )
+    report_parser.add_argument(
+        "--limit", "-n",
+        type=int,
+        default=5,
+        help="Number of recent transactions to display (default: 5)"
+    )
+
     # Parse args
     args = parser.parse_args()
 
@@ -349,6 +437,8 @@ Environment variables:
         ))
     elif args.command == "interactive":
         return asyncio.run(interactive_mode())
+    elif args.command == "report":
+        return usage_report(args.db, args.limit)
     else:
         print_header()
         parser.print_help()

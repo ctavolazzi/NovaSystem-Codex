@@ -50,7 +50,7 @@ class Transaction:
 
 class UsageLedger:
     """SQLite-backed ledger for tracking LLM spend.
-    
+
     Records every transaction with estimated and actual costs,
     enabling drift analysis and spend reporting.
     """
@@ -76,11 +76,11 @@ class UsageLedger:
                 )
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_timestamp 
+                CREATE INDEX IF NOT EXISTS idx_timestamp
                 ON transactions(timestamp)
             """)
             conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_model 
+                CREATE INDEX IF NOT EXISTS idx_model
                 ON transactions(model)
             """)
 
@@ -88,8 +88,8 @@ class UsageLedger:
         """Record a transaction. Returns the transaction ID."""
         with sqlite3.connect(self._db_file) as conn:
             cursor = conn.execute("""
-                INSERT INTO transactions 
-                (timestamp, model, provider, input_tokens, output_tokens, 
+                INSERT INTO transactions
+                (timestamp, model, provider, input_tokens, output_tokens,
                  estimated_cost, actual_cost, context)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
@@ -109,7 +109,7 @@ class UsageLedger:
     def total_spend(self, since: Optional[float] = None) -> float:
         """Total spend (using best available cost per transaction)."""
         query = """
-            SELECT SUM(COALESCE(actual_cost, estimated_cost)) 
+            SELECT SUM(COALESCE(actual_cost, estimated_cost))
             FROM transactions
         """
         params = []

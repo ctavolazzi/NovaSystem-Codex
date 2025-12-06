@@ -51,7 +51,7 @@ class LLMProvider(ABC):
         self, system_prompt: str, user_message: str, **kwargs: Any
     ) -> Tuple[int, int]:
         """Estimate token usage and enforce local RPM/TPM ceilings.
-        
+
         Returns (input_tokens, estimated_output_tokens) for usage tracking.
         """
         model_name = kwargs.get("model", self.config.model)
