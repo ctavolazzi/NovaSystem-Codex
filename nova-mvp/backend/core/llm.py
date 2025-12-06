@@ -7,17 +7,27 @@ Supports:
 
 Designed for easy swapping to Ollama or other providers later.
 
-Includes Traffic Control integration to prevent 429 errors.
+Includes Traffic Control integration with Smart Retry:
+- Pre-flight rate limit checks
+- Exponential backoff with jitter on rate limit hits
+- Automatic retry (no crashes during multi-agent debates)
 """
 
 import os
 import asyncio
+import random
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from dataclasses import dataclass
 
 from .traffic import get_traffic_controller, RateLimitExceeded
 from .pricing import CostEstimator, estimate_tokens_from_text
+
+
+# Default retry configuration
+DEFAULT_MAX_RETRIES = 5
+DEFAULT_BASE_DELAY = 1.0  # seconds
+DEFAULT_MAX_DELAY = 60.0  # seconds
 
 
 @dataclass
@@ -27,6 +37,10 @@ class LLMConfig:
     max_tokens: int = 4096
     temperature: float = 0.7
     timeout: int = 60
+    # Retry configuration
+    max_retries: int = DEFAULT_MAX_RETRIES
+    base_delay: float = DEFAULT_BASE_DELAY
+    max_delay: float = DEFAULT_MAX_DELAY
 
 
 class LLMProvider(ABC):
@@ -37,6 +51,8 @@ class LLMProvider(ABC):
         self.enable_traffic_control = enable_traffic_control
         self._traffic_controller = get_traffic_controller() if enable_traffic_control else None
         self.cost_estimator = CostEstimator()
+        # Callback for logging/UI updates during retry
+        self.on_retry: Optional[Callable[[int, float], None]] = None
 
     @abstractmethod
     def _default_config(self) -> LLMConfig:
@@ -44,21 +60,16 @@ class LLMProvider(ABC):
         pass
 
     @abstractmethod
-    async def chat(
+    async def _execute_chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
         """
-        Send a chat message and get a response.
-
-        Args:
-            system_prompt: The system prompt for the conversation
-            user_message: The user's message
-
-        Returns:
-            The assistant's response text
+        Execute the actual API call (implemented by subclasses).
+        
+        This is the "raw" call without retry logic.
         """
         pass
 
@@ -73,36 +84,108 @@ class LLMProvider(ABC):
 
     def estimate_cost(self, input_text: str, estimated_output_tokens: int = 1000):
         """Estimate cost for a request before making it."""
-        return self.cost_estimator.estimate(
-            model=self.config.model,
-            input_text=input_text,
-            estimated_output_tokens=estimated_output_tokens
-        )
+        try:
+            return self.cost_estimator.estimate(
+                model=self.config.model,
+                input_text=input_text,
+                estimated_output_tokens=estimated_output_tokens
+            )
+        except ValueError:
+            # Model not in pricing table - return None
+            return None
 
-    def _check_rate_limit(
+    def _estimate_tokens(self, system_prompt: str, user_message: str, max_tokens: int) -> int:
+        """Estimate total tokens for a request."""
+        input_tokens = estimate_tokens_from_text(system_prompt) + estimate_tokens_from_text(user_message)
+        return input_tokens + max(0, max_tokens or 0)
+
+    def _calculate_backoff(self, attempt: int, retry_after: float) -> float:
+        """
+        Calculate backoff time with exponential increase and jitter.
+        
+        Formula: min(max_delay, max(retry_after, base_delay * 2^attempt) + jitter)
+        """
+        base = self.config.base_delay * (2 ** attempt)
+        # Use the larger of retry_after or calculated backoff
+        delay = max(retry_after, base)
+        # Cap at max_delay
+        delay = min(delay, self.config.max_delay)
+        # Add jitter (±20%) to prevent thundering herd
+        jitter = delay * random.uniform(-0.2, 0.2)
+        return delay + jitter
+
+    async def chat(
         self,
-        model: str,
         system_prompt: str,
         user_message: str,
-        estimated_output_tokens: int = 1000
-    ):
+        **kwargs
+    ) -> str:
         """
-        Check if request is allowed under rate limits.
-
+        Send a chat message with Smart Retry on rate limits.
+        
+        This is the main entry point that wraps _execute_chat with:
+        1. Pre-flight rate limit check
+        2. Exponential backoff retry on RateLimitExceeded
+        3. Usage registration after success
+        
+        Args:
+            system_prompt: The system prompt for the conversation
+            user_message: The user's message
+            
+        Returns:
+            The assistant's response text
+            
         Raises:
-            RateLimitExceeded: If limits would be exceeded
+            Exception: After max_retries exceeded
         """
-        if not self._traffic_controller:
-            return
-
-        input_tokens = estimate_tokens_from_text(system_prompt) + estimate_tokens_from_text(user_message)
-        estimated_tokens = input_tokens + max(0, estimated_output_tokens or 0)
-        self._traffic_controller.check_allowance(model, estimated_tokens)
-
-    async def _handle_rate_limit(self, retry_after: float, max_retries: int = 3):
-        """Handle rate limit by waiting and retrying."""
-        if retry_after > 0:
-            await asyncio.sleep(retry_after)
+        model = kwargs.get("model", self.config.model)
+        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        estimated_tokens = self._estimate_tokens(system_prompt, user_message, max_tokens)
+        
+        attempt = 0
+        last_error = None
+        
+        while attempt <= self.config.max_retries:
+            try:
+                # 1. PRE-FLIGHT CHECK: Verify rate limits before calling
+                if self._traffic_controller:
+                    self._traffic_controller.check_allowance(model, estimated_tokens)
+                
+                # 2. EXECUTE: Make the actual API call
+                response = await self._execute_chat(system_prompt, user_message, **kwargs)
+                
+                # 3. SUCCESS: We got a response
+                # TODO (Fix #1 - Reconciliation): If API returns actual token count,
+                # update the ledger here instead of using estimated_tokens
+                # actual_tokens = response.usage.total_tokens  # If available
+                
+                return response
+                
+            except RateLimitExceeded as e:
+                last_error = e
+                attempt += 1
+                
+                if attempt > self.config.max_retries:
+                    break
+                
+                # 4. SMART RETRY: Calculate backoff and wait
+                wait_time = self._calculate_backoff(attempt - 1, e.retry_after)
+                
+                # Notify callback if registered (for UI/logging)
+                if self.on_retry:
+                    self.on_retry(attempt, wait_time)
+                else:
+                    # Default logging
+                    print(f"🚦 Traffic Control: Rate limit hit. "
+                          f"Retry {attempt}/{self.config.max_retries} in {wait_time:.1f}s...")
+                
+                await asyncio.sleep(wait_time)
+        
+        # All retries exhausted
+        raise Exception(
+            f"Rate limit exceeded after {self.config.max_retries} retries. "
+            f"Last error: {last_error}"
+        )
 
 
 class ClaudeProvider(LLMProvider):
@@ -132,22 +215,15 @@ class ClaudeProvider(LLMProvider):
                 raise ImportError("anthropic package required. Install with: pip install anthropic")
         return self._client
 
-    async def chat(
+    async def _execute_chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
+        """Execute the actual Claude API call."""
         max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
         model = kwargs.get("model", self.config.model)
-
-        # Traffic Control: Check rate limits before making request
-        try:
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
-        except RateLimitExceeded as e:
-            # Wait and retry once
-            await self._handle_rate_limit(e.retry_after)
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
 
         client = self._get_client()
 
@@ -193,22 +269,15 @@ class OpenAIProvider(LLMProvider):
                 raise ImportError("openai package required. Install with: pip install openai")
         return self._client
 
-    async def chat(
+    async def _execute_chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
+        """Execute the actual OpenAI API call."""
         max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
         model = kwargs.get("model", self.config.model)
-
-        # Traffic Control: Check rate limits before making request
-        try:
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
-        except RateLimitExceeded as e:
-            # Wait and retry once
-            await self._handle_rate_limit(e.retry_after)
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
 
         client = self._get_client()
 
@@ -243,35 +312,24 @@ class MockProvider(LLMProvider):
     def is_available(self) -> bool:
         return True  # Always available
 
-    async def chat(
+    async def _execute_chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
-        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
-        model = kwargs.get("model", self.config.model)
-
-        # Traffic Control: Check rate limits (even for mock)
-        try:
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
-        except RateLimitExceeded as e:
-            await self._handle_rate_limit(e.retry_after)
-            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
-
+        """Execute the mock response generation."""
         await asyncio.sleep(self.delay)
 
         # Generate a structured mock response based on system prompt
         if "DCE" in system_prompt or "Discussion Continuity" in system_prompt:
-            response_text = self._mock_dce_response(user_message)
+            return self._mock_dce_response(user_message)
         elif "CAE" in system_prompt or "Critical Analysis" in system_prompt:
-            response_text = self._mock_cae_response(user_message)
+            return self._mock_cae_response(user_message)
         elif "Expert" in system_prompt:
-            response_text = self._mock_domain_response(system_prompt, user_message)
+            return self._mock_domain_response(system_prompt, user_message)
         else:
-            response_text = self._mock_generic_response(user_message)
-
-        return response_text
+            return self._mock_generic_response(user_message)
 
     def _mock_dce_response(self, problem: str) -> str:
         return f"""## Problem Analysis

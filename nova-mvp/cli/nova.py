@@ -137,6 +137,8 @@ def print_preflight_check(problem: str, model: str, domains: list) -> bool:
     total_estimated_output = estimated_output_per_agent * num_agents
 
     # Get cost estimate (handle unknown models gracefully)
+    from backend.core.pricing import estimate_tokens_from_text
+    
     try:
         estimate = cost_estimator.estimate(
             model=model,
@@ -144,15 +146,13 @@ def print_preflight_check(problem: str, model: str, domains: list) -> bool:
             estimated_output_tokens=total_estimated_output
         )
         cost = estimate.projected_cost
+        est_input_tokens = estimate.input_tokens
+        est_output_tokens = estimate.output_tokens
     except ValueError:
-        # Model not in pricing table - use zero estimate
-        from backend.core.pricing import estimate_tokens_from_text
+        # Model not in pricing table - use zero estimate with token count only
         cost = 0.0
-        input_tokens = estimate_tokens_from_text(estimated_input)
-        class FakeEstimate:
-            input_tokens = input_tokens
-            output_tokens = total_estimated_output
-        estimate = FakeEstimate()
+        est_input_tokens = estimate_tokens_from_text(estimated_input)
+        est_output_tokens = total_estimated_output
 
     # Format cost for display
     if cost < 0.01:
@@ -165,12 +165,12 @@ def print_preflight_check(problem: str, model: str, domains: list) -> bool:
     # Display cost estimate
     print(f"\n{Colors.CYAN}📊 Pre-Flight Check{Colors.RESET}")
     print(f"{Colors.DIM}{'─' * 40}{Colors.RESET}")
-    print(f"  💰 Est. Cost: {Colors.YELLOW}{cost_str}{Colors.RESET} | Tokens: ~{estimate.input_tokens + estimate.output_tokens:,}")
+    print(f"  💰 Est. Cost: {Colors.YELLOW}{cost_str}{Colors.RESET} | Tokens: ~{est_input_tokens + est_output_tokens:,}")
     print(f"  🤖 Agents: {num_agents} ({', '.join(['DCE', 'CAE'] + [d[:8] for d in domains])})")
 
     # Check rate limits (consume=False for dry run)
     try:
-        projected_tokens = estimate.input_tokens + estimate.output_tokens
+        projected_tokens = est_input_tokens + est_output_tokens
         traffic_controller.check_allowance(model, projected_tokens, consume=False)
         print(f"  ✅ Rate Limit: {Colors.GREEN}OK{Colors.RESET}")
         print(f"{Colors.DIM}{'─' * 40}{Colors.RESET}")
