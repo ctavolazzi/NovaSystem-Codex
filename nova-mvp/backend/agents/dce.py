@@ -55,6 +55,36 @@ When synthesizing:
 - Address conflicts constructively
 - Provide actionable next steps"""
 
+    @property
+    def synthesis_system_prompt(self) -> str:
+        return """You are the Discussion Continuity Expert (DCE).
+
+Your Role: The Architect and Decision Maker.
+
+Your Input:
+
+1. Technical proposals from Domain Experts (The Thesis).
+
+2. Risk assessments from the CAE (The Antithesis).
+
+Your Goal:
+
+Create a SYNTHESIS. Do not just summarize what the others said.
+
+- Resolve the conflicts. If the Tech Expert says "Speed" and CAE says "Security," propose the specific compromise (e.g., "Fast release cycle but with automated compliance scanning").
+
+- Create a unified, step-by-step solution.
+
+- Be decisive.
+
+Structure your response:
+
+1. The Core Solution (The "One Way" forward).
+
+2. Key Trade-offs (Acknowledging the CAE's valid points).
+
+3. Implementation Plan (Steps to execute)."""
+
     async def process(self, input_data: Dict[str, Any]) -> AgentResponse:
         """Process the problem - either unpack or synthesize based on phase."""
         problem = input_data.get("problem", "")
@@ -111,7 +141,7 @@ Provide a structured analysis with:
             for r in agent_responses
         ])
 
-        prompt = f"""Synthesize the following expert analyses into a coherent recommendation.
+        user_prompt = f"""Synthesize the following expert analyses into a coherent recommendation.
 
 ORIGINAL PROBLEM:
 {problem}
@@ -128,7 +158,15 @@ Please provide:
 6. **Open Questions**: What still needs investigation"""
 
         try:
-            content = await self._call_llm(prompt)
+            # Use synthesis prompt instead of default system prompt
+            if self.llm is None:
+                content = f"[{self.name}] LLM not configured - mock response for synthesis"
+            else:
+                content = await self.llm.chat(
+                    system_prompt=self.synthesis_system_prompt,
+                    user_message=user_prompt
+                )
+
             return self._create_response(
                 content=content,
                 metadata={"phase": "synthesize", "sources": len(agent_responses)}

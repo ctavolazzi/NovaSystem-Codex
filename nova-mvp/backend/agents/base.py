@@ -14,6 +14,7 @@ class AgentResponse:
     agent_type: str
     agent_name: str
     content: str
+    model: str = "unknown"
     timestamp: str = field(default_factory=lambda: datetime.utcnow().isoformat())
     metadata: Dict[str, Any] = field(default_factory=dict)
     success: bool = True
@@ -74,11 +75,17 @@ class BaseAgent(ABC):
         metadata: Optional[Dict[str, Any]] = None
     ) -> AgentResponse:
         """Helper to create a standardized response."""
+        # Get model name from LLM provider if available
+        model_name = "unknown"
+        if self.llm:
+            model_name = self.llm.get_model_name()
+
         return AgentResponse(
             agent_id=self.id,
             agent_type=self.agent_type,
             agent_name=self.name,
             content=content,
+            model=model_name,
             success=success,
             error=error,
             metadata=metadata or {}
