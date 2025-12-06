@@ -10,8 +10,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import api_router
-from api.websocket import websocket_endpoint
+from backend.api import api_router
+from backend.api.websocket import websocket_endpoint
 
 
 @asynccontextmanager
