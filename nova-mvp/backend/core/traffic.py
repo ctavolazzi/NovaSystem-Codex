@@ -33,7 +33,7 @@ class RateLimitExceeded(Exception):
 
 class TrafficController:
     """Track outgoing requests to avoid server-side 429 responses.
-    
+
     Persists state to JSON so rate limits survive restarts.
     """
 
@@ -57,7 +57,7 @@ class TrafficController:
         self._requests: Dict[str, Deque[Tuple[float, int]]] = {}
         self._state_file = state_file or DEFAULT_STATE_FILE
         self._persist = persist
-        
+
         # Load previous state on startup
         if persist:
             self._load_state()
@@ -146,7 +146,7 @@ class TrafficController:
         """Persist current window state to JSON."""
         if not self._persist:
             return
-            
+
         # Convert deques to lists for JSON serialization
         data = {
             "window_seconds": self.window_seconds,
@@ -155,7 +155,7 @@ class TrafficController:
                 for model, entries in self._requests.items()
             }
         }
-        
+
         try:
             with open(self._state_file, "w") as f:
                 json.dump(data, f, indent=2)
@@ -167,15 +167,15 @@ class TrafficController:
         """Load window state from JSON if it exists."""
         if not os.path.exists(self._state_file):
             return
-            
+
         try:
             with open(self._state_file, "r") as f:
                 data = json.load(f)
-            
+
             now = time.time()
             cutoff = now - self.window_seconds
             loaded_count = 0
-            
+
             for model, entries in data.get("requests", {}).items():
                 # Filter out expired entries on load
                 valid_entries = [
@@ -185,10 +185,10 @@ class TrafficController:
                 if valid_entries:
                     self._requests[model] = deque(valid_entries)
                     loaded_count += len(valid_entries)
-            
+
             if loaded_count > 0:
                 print(f"✅ Traffic state loaded ({loaded_count} active requests)")
-                
+
         except Exception as e:
             # Start fresh on error
             print(f"⚠️ Failed to load traffic state (starting fresh): {e}")
