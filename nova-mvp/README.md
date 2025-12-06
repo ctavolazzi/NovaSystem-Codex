@@ -1,8 +1,17 @@
 # Nova MVP
 
-**Multi-Agent Problem Solving System**
+**Multi-Agent Problem Solving System with Financial Observability**
 
-Nova MVP orchestrates multiple AI agents to analyze problems from different perspectives and synthesize comprehensive solutions.
+Nova MVP orchestrates multiple AI agents to analyze problems from different perspectives and synthesize comprehensive solutions. Version 0.2.0 adds full cost tracking and rate limit protection.
+
+## 🚀 Features (v0.2.0)
+
+- **Multi-Provider Support:** Seamlessly switch between Claude, OpenAI, and Mock providers
+- **🛡️ Traffic Control:** Automatic rate limiting (RPM/TPM) that survives restarts—prevents 429 errors
+- **💰 Financial Ledger:** SQLite-backed tracking of every token and cent spent
+- **📊 Analytics Dashboard:** Built-in CLI `report` command to view spend, drift, and usage by model
+- **📋 Pre-flight Checks:** Cost estimation before running expensive queries
+- **🔄 Smart Architecture:** Modular "System of Systems" design for observability
 
 ## Architecture
 
@@ -16,14 +25,18 @@ nova-mvp/
 │   │   └── domain.py       # Domain Expert factory
 │   ├── core/
 │   │   ├── llm.py          # LLM providers (Claude/OpenAI/Mock)
-│   │   └── process.py      # NovaProcess orchestrator
+│   │   ├── process.py      # NovaProcess orchestrator
+│   │   ├── traffic.py      # Rate limiting (JSON persistence)   ← NEW
+│   │   ├── pricing.py      # Cost estimation                    ← NEW
+│   │   ├── usage.py        # Financial ledger (SQLite)          ← NEW
+│   │   └── memory.py       # VectorStore stub for RAG           ← NEW
 │   ├── api/
 │   │   ├── routes.py       # REST endpoints
 │   │   └── websocket.py    # Real-time streaming
 │   ├── main.py             # FastAPI entry point
 │   └── requirements.txt
 ├── cli/
-│   └── nova.py             # CLI with interactive mode
+│   └── nova.py             # CLI with interactive mode + report
 └── web/                    # Svelte Frontend
     ├── src/
     │   ├── App.svelte
@@ -52,18 +65,6 @@ export ANTHROPIC_API_KEY="your-key"  # or OPENAI_API_KEY
 uvicorn main:app --reload --port 8000
 ```
 
-**Offline / restricted environments**
-
-The `nova-mvp/start.sh` helper can skip virtualenv setup or dependency installation when internet access is blocked:
-
-```bash
-# Use system Python packages and skip venv creation
-NOVA_USE_SYSTEM_PYTHON=true ./start.sh
-
-# Keep the venv but skip pip installs (assumes deps already present)
-NOVA_SKIP_PIP_INSTALL=true ./start.sh
-```
-
 ### 2. CLI Usage
 
 ```bash
@@ -77,9 +78,42 @@ python cli/nova.py solve "What's our GTM strategy?" --domains business,ux -v
 
 # Interactive mode
 python cli/nova.py interactive
+
+# 📊 NEW: View usage report
+python cli/nova.py report
 ```
 
-### 3. Web Interface
+### 3. Financial Report (New in v0.2.0)
+
+View your usage costs, drift estimates, and top models:
+
+```bash
+python cli/nova.py report
+
+# Output:
+# Usage Ledger Report
+# Database: /path/to/.nova_usage.db
+#
+# Totals
+#   Spend: $0.004200
+#   Estimated: $0.003800
+#   Transactions: 15
+#
+# Top Model by Spend
+#   gemini-2.5-flash → $0.003500
+#
+# Average Drift (actual vs. estimate)
+#   +10.53%
+#
+# Last 5 Transactions
+#   2025-12-06 15:30:00 | claude/claude-sonnet-4 | est $0.001 | ...
+
+# Options:
+python cli/nova.py report --limit 20      # Show more transactions
+python cli/nova.py report --db custom.db  # Use custom database
+```
+
+### 4. Web Interface
 
 ```bash
 cd nova-mvp/web
@@ -92,6 +126,29 @@ npm run dev
 
 # Open http://localhost:3000
 ```
+
+## 🏗️ System Architecture (v0.2.0)
+
+Nova follows a modular "System of Systems" approach:
+
+| Module | Role | Persistence |
+|--------|------|-------------|
+| `traffic.py` | Rate limiting (RPM/TPM sliding window) | JSON |
+| `pricing.py` | Cost estimation before execution | — |
+| `usage.py` | Financial ledger for all transactions | SQLite |
+| `llm.py` | Coordinates providers, records usage | — |
+| `memory.py` | VectorStore stub for future RAG | — |
+
+### Data Files
+
+Nova creates these files automatically:
+
+| File | Purpose | Location |
+|------|---------|----------|
+| `.nova_usage.db` | Transaction history | Working directory |
+| `.nova_traffic_state.json` | Rate limit windows | Working directory |
+
+Both files are gitignored and should not be committed.
 
 ## Agents
 
@@ -118,6 +175,7 @@ npm run dev
 | `/api/ws/{id}` | WebSocket | Real-time streaming updates |
 | `/api/health` | GET | Health check |
 | `/api/providers` | GET | List available LLM providers |
+| `/api/check-status` | POST | Pre-flight cost + rate limit check ← NEW |
 
 ### Example Request
 
@@ -129,6 +187,24 @@ curl -X POST http://localhost:8000/api/solve/sync \
     "domains": ["technology", "security"],
     "provider": "auto"
   }'
+```
+
+### Pre-flight Check (New in v0.2.0)
+
+```bash
+curl -X POST http://localhost:8000/api/check-status \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Explain quantum computing",
+    "model": "gemini-2.5-flash"
+  }'
+
+# Response:
+# {
+#   "cost_estimate": {"input_tokens": 6, "projected_cost": 0.000024},
+#   "rate_limit_status": "ok",
+#   "retry_after": 0.0
+# }
 ```
 
 ## LLM Providers
@@ -153,17 +229,27 @@ Pre-defined domains:
 - `legal` - Regulatory compliance, contracts
 - `finance` - Budgeting, financial modeling
 
-Custom domains can be created by passing any string - the system will create a generic expert.
+Custom domains can be created by passing any string.
 
-## Design
+## Configuration
 
-The web interface features a **command center aesthetic**:
-- Dark theme with `#0a0a0f` background
-- Cyan accent (`#00ffaa`) for Nova brand
-- JetBrains Mono + Sora fonts
-- Subtle grid background
-- Agent-specific color coding
-- Real-time WebSocket updates with animations
+Create a `.env` file in the `nova-mvp/` directory:
+
+```ini
+# LLM API Keys (at least one recommended)
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+
+# Default provider: auto, claude, openai, mock
+NOVA_LLM_PROVIDER=auto
+
+# Server settings
+NOVA_API_HOST=0.0.0.0
+NOVA_API_PORT=8000
+
+# Debug mode
+NOVA_DEBUG=false
+```
 
 ## Development
 
@@ -176,6 +262,21 @@ cd web && npm run dev
 
 # Run CLI tests
 python cli/nova.py solve "test" --provider mock -v
+
+# Run release verification
+python verify_release.py
+```
+
+## Offline / Restricted Environments
+
+The `start.sh` helper can skip virtualenv setup when internet access is blocked:
+
+```bash
+# Use system Python packages
+NOVA_USE_SYSTEM_PYTHON=true ./start.sh
+
+# Skip pip installs (assumes deps present)
+NOVA_SKIP_PIP_INSTALL=true ./start.sh
 ```
 
 ## License

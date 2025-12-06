@@ -214,5 +214,10 @@ OAI_CONFIG_LIST
 # Standardization related
 /backups/
 /NovaSystem/
-/test_repo/.nova_traffic_state.json
+/test_repo/
+
+# Nova MVP persistence files (do not commit user data)
+.nova_traffic_state.json
 .nova_usage.db
+release_test_*.db
+release_test_*.json
