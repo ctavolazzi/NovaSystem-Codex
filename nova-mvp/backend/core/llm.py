@@ -14,6 +14,8 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
+from .traffic import traffic_controller, estimate_tokens
+
 
 @dataclass
 class LLMConfig:
@@ -34,6 +36,20 @@ class LLMProvider(ABC):
     def _default_config(self) -> LLMConfig:
         """Return default configuration for this provider."""
         pass
+
+    def _enforce_limits(
+        self, system_prompt: str, user_message: str, **kwargs: Any
+    ) -> None:
+        """Estimate token usage and enforce local RPM/TPM ceilings."""
+
+        model_name = kwargs.get("model", self.config.model)
+        input_tokens = estimate_tokens(system_prompt) + estimate_tokens(user_message)
+        estimated_output_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        traffic_controller.check_allowance(
+            model_name,
+            input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+        )
 
     @abstractmethod
     async def chat(
@@ -97,6 +113,7 @@ class ClaudeProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
 
         # Run in thread pool since anthropic client is sync
@@ -147,6 +164,7 @@ class OpenAIProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
 
         # Run in thread pool since openai client is sync
@@ -186,6 +204,7 @@ class MockProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         await asyncio.sleep(self.delay)
 
         # Generate a structured mock response based on system prompt

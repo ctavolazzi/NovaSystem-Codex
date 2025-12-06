@@ -40,7 +40,14 @@ except ImportError:
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.core import NovaProcess, get_llm, ProcessPhase
+from backend.core import (
+    CostEstimator,
+    NovaProcess,
+    ProcessPhase,
+    RateLimitExceeded,
+    get_llm,
+    traffic_controller,
+)
 from backend.agents.base import AgentResponse
 
 
@@ -136,6 +143,40 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
         print(f"  Falling back to mock provider{Colors.RESET}")
         llm = get_llm("mock")
 
+    # Pre-flight checks
+    estimator = CostEstimator()
+    model_name = llm.get_model_name()
+    estimated_output_tokens = 1000
+
+    try:
+        cost_estimate = estimator.estimate(
+            model_name, problem, estimated_output_tokens=estimated_output_tokens
+        )
+        total_tokens = cost_estimate.input_tokens + estimated_output_tokens
+        print(
+            f"\n💰 Est. Cost: ${cost_estimate.projected_cost:.4f} | "
+            f"Tokens: {total_tokens}"
+        )
+    except ValueError as exc:
+        print(f"\n{Colors.YELLOW}⚠ {exc}{Colors.RESET}")
+        cost_estimate = None
+
+    input_tokens = (
+        cost_estimate.input_tokens if cost_estimate else estimator._estimate_tokens(problem)
+    )
+
+    try:
+        traffic_controller.check_allowance(
+            model_name,
+            input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+            commit=False,
+        )
+    except RateLimitExceeded as exc:
+        cooldown = int(exc.retry_after) + (1 if exc.retry_after % 1 else 0)
+        print(f"{Colors.YELLOW}⏳ Rate Limit Reached. Cooldown: {cooldown}s...{Colors.RESET}")
+        return 1
+
     # Create callbacks for progress display
     def on_phase_change(state):
         print_phase(state.phase.value)
@@ -156,7 +197,12 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
     )
 
     print(f"\n{Colors.DIM}Starting Nova process...{Colors.RESET}")
-    result = await process.solve(problem, domains)
+    try:
+        result = await process.solve(problem, domains)
+    except RateLimitExceeded as exc:
+        cooldown = int(exc.retry_after) + (1 if exc.retry_after % 1 else 0)
+        print(f"{Colors.RED}Rate limit exceeded. Please retry in {cooldown}s{Colors.RESET}")
+        return 1
 
     # Print final synthesis if not verbose (verbose already shows it)
     if not verbose and result.synthesis_result:
