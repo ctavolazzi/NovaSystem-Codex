@@ -6,6 +6,8 @@ Supports:
 - Mock (for testing without API keys)
 
 Designed for easy swapping to Ollama or other providers later.
+
+Includes Traffic Control integration to prevent 429 errors.
 """
 
 import os
@@ -13,6 +15,9 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
+
+from .traffic import get_traffic_controller, RateLimitExceeded
+from .pricing import CostEstimator, estimate_tokens_from_text
 
 
 @dataclass
@@ -27,8 +32,11 @@ class LLMConfig:
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
-    def __init__(self, config: Optional[LLMConfig] = None):
+    def __init__(self, config: Optional[LLMConfig] = None, enable_traffic_control: bool = True):
         self.config = config or self._default_config()
+        self.enable_traffic_control = enable_traffic_control
+        self._traffic_controller = get_traffic_controller() if enable_traffic_control else None
+        self.cost_estimator = CostEstimator()
 
     @abstractmethod
     def _default_config(self) -> LLMConfig:
@@ -63,12 +71,45 @@ class LLMProvider(ABC):
         """Return the model name being used by this provider."""
         return self.config.model
 
+    def estimate_cost(self, input_text: str, estimated_output_tokens: int = 1000):
+        """Estimate cost for a request before making it."""
+        return self.cost_estimator.estimate(
+            model=self.config.model,
+            input_text=input_text,
+            estimated_output_tokens=estimated_output_tokens
+        )
+
+    def _check_rate_limit(
+        self,
+        model: str,
+        system_prompt: str,
+        user_message: str,
+        estimated_output_tokens: int = 1000
+    ):
+        """
+        Check if request is allowed under rate limits.
+
+        Raises:
+            RateLimitExceeded: If limits would be exceeded
+        """
+        if not self._traffic_controller:
+            return
+
+        input_tokens = estimate_tokens_from_text(system_prompt) + estimate_tokens_from_text(user_message)
+        estimated_tokens = input_tokens + max(0, estimated_output_tokens or 0)
+        self._traffic_controller.check_allowance(model, estimated_tokens)
+
+    async def _handle_rate_limit(self, retry_after: float, max_retries: int = 3):
+        """Handle rate limit by waiting and retrying."""
+        if retry_after > 0:
+            await asyncio.sleep(retry_after)
+
 
 class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
-        super().__init__(config)
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, enable_traffic_control: bool = True):
+        super().__init__(config, enable_traffic_control)
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self._client = None
 
@@ -97,6 +138,17 @@ class ClaudeProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        model = kwargs.get("model", self.config.model)
+
+        # Traffic Control: Check rate limits before making request
+        try:
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+        except RateLimitExceeded as e:
+            # Wait and retry once
+            await self._handle_rate_limit(e.retry_after)
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+
         client = self._get_client()
 
         # Run in thread pool since anthropic client is sync
@@ -104,8 +156,8 @@ class ClaudeProvider(LLMProvider):
         response = await loop.run_in_executor(
             None,
             lambda: client.messages.create(
-                model=kwargs.get("model", self.config.model),
-                max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+                model=model,
+                max_tokens=max_tokens,
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
             )
@@ -117,8 +169,8 @@ class ClaudeProvider(LLMProvider):
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
-        super().__init__(config)
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, enable_traffic_control: bool = True):
+        super().__init__(config, enable_traffic_control)
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._client = None
 
@@ -147,6 +199,17 @@ class OpenAIProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        model = kwargs.get("model", self.config.model)
+
+        # Traffic Control: Check rate limits before making request
+        try:
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+        except RateLimitExceeded as e:
+            # Wait and retry once
+            await self._handle_rate_limit(e.retry_after)
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+
         client = self._get_client()
 
         # Run in thread pool since openai client is sync
@@ -154,8 +217,8 @@ class OpenAIProvider(LLMProvider):
         response = await loop.run_in_executor(
             None,
             lambda: client.chat.completions.create(
-                model=kwargs.get("model", self.config.model),
-                max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+                model=model,
+                max_tokens=max_tokens,
                 temperature=kwargs.get("temperature", self.config.temperature),
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -170,8 +233,8 @@ class OpenAIProvider(LLMProvider):
 class MockProvider(LLMProvider):
     """Mock provider for testing without API keys."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5):
-        super().__init__(config)
+    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5, enable_traffic_control: bool = True):
+        super().__init__(config, enable_traffic_control)
         self.delay = delay
 
     def _default_config(self) -> LLMConfig:
@@ -186,17 +249,29 @@ class MockProvider(LLMProvider):
         user_message: str,
         **kwargs
     ) -> str:
+        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        model = kwargs.get("model", self.config.model)
+
+        # Traffic Control: Check rate limits (even for mock)
+        try:
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+        except RateLimitExceeded as e:
+            await self._handle_rate_limit(e.retry_after)
+            self._check_rate_limit(model, system_prompt, user_message, max_tokens)
+
         await asyncio.sleep(self.delay)
 
         # Generate a structured mock response based on system prompt
         if "DCE" in system_prompt or "Discussion Continuity" in system_prompt:
-            return self._mock_dce_response(user_message)
+            response_text = self._mock_dce_response(user_message)
         elif "CAE" in system_prompt or "Critical Analysis" in system_prompt:
-            return self._mock_cae_response(user_message)
+            response_text = self._mock_cae_response(user_message)
         elif "Expert" in system_prompt:
-            return self._mock_domain_response(system_prompt, user_message)
+            response_text = self._mock_domain_response(system_prompt, user_message)
         else:
-            return self._mock_generic_response(user_message)
+            response_text = self._mock_generic_response(user_message)
+
+        return response_text
 
     def _mock_dce_response(self, problem: str) -> str:
         return f"""## Problem Analysis

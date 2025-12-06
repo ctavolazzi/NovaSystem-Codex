@@ -5,10 +5,24 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
-from ..core import NovaProcess, SessionState, get_llm
+from ..core import (
+    NovaProcess,
+    SessionState,
+    get_llm,
+    CostEstimator,
+    get_traffic_controller,
+    RateLimitExceeded,
+)
+from ..core.pricing import PRICING
 
 # In-memory session storage (replace with database in production)
 sessions: dict[str, SessionState] = {}
+
+# Global traffic controller instance
+traffic_controller = get_traffic_controller()
+
+# Shared cost estimator instance
+cost_estimator = CostEstimator()
 
 router = APIRouter(prefix="/api", tags=["nova"])
 
@@ -31,6 +45,30 @@ class SolveResponse(BaseModel):
     session_id: str
     status: str
     message: str
+
+
+class CheckStatusRequest(BaseModel):
+    """Request body for pre-flight status check."""
+    prompt: str = Field(..., min_length=1, description="The prompt to check")
+    model: str = Field(default="gemini-2.5-flash", description="Target model")
+    estimated_output_tokens: int = Field(default=1000, description="Expected output tokens")
+
+
+class CostEstimateResponse(BaseModel):
+    """Cost estimate details."""
+    cost: float
+    currency: str
+    input_tokens: int
+    output_tokens: int
+    model: str
+
+
+class CheckStatusResponse(BaseModel):
+    """Response for pre-flight status check."""
+    cost_estimate: CostEstimateResponse
+    rate_limit_status: str  # "ok" | "blocked"
+    retry_after: Optional[float] = None
+    rate_limit_usage: Optional[dict] = None
 
 
 class SessionResponse(BaseModel):
@@ -173,4 +211,84 @@ async def list_providers():
                 "model": "mock-v1"
             }
         ]
+    }
+
+
+@router.post("/check-status", response_model=CheckStatusResponse)
+async def check_status(request: CheckStatusRequest):
+    """
+    Pre-flight check: Estimate cost and verify rate limits before execution.
+
+    Use this endpoint to:
+    - See exact cost projection before running expensive models
+    - Check if rate limits would block the request
+    - Plan request timing to avoid 429 errors
+    """
+    # 1. Estimate Cost
+    estimate = cost_estimator.estimate(
+        model=request.model,
+        input_text=request.prompt,
+        estimated_output_tokens=request.estimated_output_tokens
+    )
+
+    cost_response = CostEstimateResponse(
+        cost=estimate.projected_cost,
+        currency=estimate.currency,
+        input_tokens=estimate.input_tokens,
+        output_tokens=estimate.output_tokens,
+        model=estimate.model
+    )
+
+    # 2. Check Rate Limits (dry run - consume=False)
+    status = "ok"
+    retry_after = None
+    rate_limit_usage = None
+
+    try:
+        projected_tokens = estimate.input_tokens + estimate.output_tokens
+        # consume=False means just check, don't register usage
+        traffic_controller.check_allowance(request.model, projected_tokens, consume=False)
+        rate_limit_usage = {"status": "within_limits"}
+    except RateLimitExceeded as e:
+        status = "blocked"
+        retry_after = e.retry_after
+        rate_limit_usage = {"status": "exceeded", "message": str(e)}
+
+    return CheckStatusResponse(
+        cost_estimate=cost_response,
+        rate_limit_status=status,
+        retry_after=retry_after,
+        rate_limit_usage=rate_limit_usage
+    )
+
+
+@router.get("/rate-limits/{model}")
+async def get_rate_limits(model: str):
+    """Get current rate limit status for a specific model."""
+    from ..core.pricing import normalize_model_name
+    from ..core.traffic import DEFAULT_RATE_LIMITS
+
+    model_key = normalize_model_name(model)
+    limits = DEFAULT_RATE_LIMITS.get(model_key) or DEFAULT_RATE_LIMITS.get("default")
+
+    return {
+        "model": model_key,
+        "limits": {
+            "rpm": limits.rpm,
+            "tpm": limits.tpm
+        },
+        "notes": "Usage tracking is in-memory and resets on server restart"
+    }
+
+
+@router.get("/pricing")
+async def get_pricing():
+    """Get pricing information for all supported models."""
+    return {
+        "pricing": PRICING,
+        "notes": {
+            "unit": "per 1 million tokens",
+            "currency": "USD",
+            "heuristic": "1 token ≈ 4 characters"
+        }
     }

@@ -40,7 +40,7 @@ except ImportError:
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.core import NovaProcess, get_llm, ProcessPhase
+from backend.core import NovaProcess, get_llm, ProcessPhase, CostEstimator, get_traffic_controller, RateLimitExceeded
 from backend.agents.base import AgentResponse
 
 
@@ -120,7 +120,85 @@ def print_agent_response(response: AgentResponse):
         print(f"  {Colors.RED}Error: {response.error}{Colors.RESET}")
 
 
-async def solve_command(problem: str, domains: list, provider: str, verbose: bool):
+def print_preflight_check(problem: str, model: str, domains: list) -> bool:
+    """
+    Run pre-flight checks before executing a solve.
+
+    Returns True if OK to proceed, False if blocked.
+    """
+    traffic_controller = get_traffic_controller()
+    cost_estimator = CostEstimator()
+
+    # Estimate total input across all agents (DCE + CAE + domain experts)
+    # Rough estimate: problem is sent to each agent with system prompts
+    num_agents = 2 + len(domains)  # DCE + CAE + domain experts
+    estimated_input = problem * num_agents  # Conservative estimate
+    estimated_output_per_agent = 1000
+    total_estimated_output = estimated_output_per_agent * num_agents
+
+    # Get cost estimate (handle unknown models gracefully)
+    try:
+        estimate = cost_estimator.estimate(
+            model=model,
+            input_text=estimated_input,
+            estimated_output_tokens=total_estimated_output
+        )
+        cost = estimate.projected_cost
+    except ValueError:
+        # Model not in pricing table - use zero estimate
+        from backend.core.pricing import estimate_tokens_from_text
+        cost = 0.0
+        input_tokens = estimate_tokens_from_text(estimated_input)
+        class FakeEstimate:
+            input_tokens = input_tokens
+            output_tokens = total_estimated_output
+        estimate = FakeEstimate()
+
+    # Format cost for display
+    if cost < 0.01:
+        cost_str = f"${cost:.6f}"
+    elif cost < 1.00:
+        cost_str = f"${cost:.4f}"
+    else:
+        cost_str = f"${cost:.2f}"
+
+    # Display cost estimate
+    print(f"\n{Colors.CYAN}📊 Pre-Flight Check{Colors.RESET}")
+    print(f"{Colors.DIM}{'─' * 40}{Colors.RESET}")
+    print(f"  💰 Est. Cost: {Colors.YELLOW}{cost_str}{Colors.RESET} | Tokens: ~{estimate.input_tokens + estimate.output_tokens:,}")
+    print(f"  🤖 Agents: {num_agents} ({', '.join(['DCE', 'CAE'] + [d[:8] for d in domains])})")
+
+    # Check rate limits (consume=False for dry run)
+    try:
+        projected_tokens = estimate.input_tokens + estimate.output_tokens
+        traffic_controller.check_allowance(model, projected_tokens, consume=False)
+        print(f"  ✅ Rate Limit: {Colors.GREEN}OK{Colors.RESET}")
+        print(f"{Colors.DIM}{'─' * 40}{Colors.RESET}")
+        return True
+
+    except RateLimitExceeded as e:
+        print(f"  ⏳ Rate Limit: {Colors.YELLOW}BLOCKED{Colors.RESET}")
+        print(f"  ⏱️  Cooldown: {Colors.YELLOW}{e.retry_after:.1f}s{Colors.RESET}")
+        print(f"{Colors.DIM}{'─' * 40}{Colors.RESET}")
+
+        # Ask user if they want to wait
+        try:
+            user_input = input(f"  {Colors.CYAN}Wait {e.retry_after:.0f}s and retry? (y/n): {Colors.RESET}").strip().lower()
+            if user_input in ['y', 'yes']:
+                import time
+                print(f"  {Colors.DIM}Waiting {e.retry_after:.0f}s...{Colors.RESET}", end='', flush=True)
+                time.sleep(e.retry_after)
+                print(f" {Colors.GREEN}Done!{Colors.RESET}")
+                return True
+            else:
+                print(f"  {Colors.DIM}Skipped.{Colors.RESET}")
+                return False
+        except (KeyboardInterrupt, EOFError):
+            print(f"\n  {Colors.DIM}Cancelled.{Colors.RESET}")
+            return False
+
+
+async def solve_command(problem: str, domains: list, provider: str, verbose: bool, skip_preflight: bool = False):
     """Execute the solve command."""
     print_header()
 
@@ -135,6 +213,12 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
         print(f"\n{Colors.YELLOW}⚠ Provider '{provider}' not available (no API key)")
         print(f"  Falling back to mock provider{Colors.RESET}")
         llm = get_llm("mock")
+
+    # Pre-flight check (cost estimate + rate limit)
+    if not skip_preflight:
+        model_name = llm.get_model_name()
+        if not print_preflight_check(problem, model_name, domains):
+            return 1  # Exit if user declined to wait
 
     # Create callbacks for progress display
     def on_phase_change(state):
@@ -187,12 +271,15 @@ async def interactive_mode():
     print("  /domains <list>  - Set domains (e.g., /domains tech,security)")
     print("  /provider <name> - Set provider (claude, openai, mock)")
     print("  /verbose         - Toggle verbose output")
+    print("  /preflight       - Toggle pre-flight checks")
+    print("  /cost <prompt>   - Estimate cost without running")
     print("  /help            - Show this help")
     print("  /quit            - Exit{Colors.RESET}\n")
 
     domains = ["technology", "business"]
     provider = "auto"
     verbose = True
+    skip_preflight = False
 
     while True:
         try:
@@ -227,18 +314,43 @@ async def interactive_mode():
                 elif cmd == "/verbose":
                     verbose = not verbose
                     print(f"{Colors.DIM}Verbose: {'on' if verbose else 'off'}{Colors.RESET}")
+                elif cmd == "/preflight":
+                    skip_preflight = not skip_preflight
+                    print(f"{Colors.DIM}Pre-flight checks: {'off' if skip_preflight else 'on'}{Colors.RESET}")
+                elif cmd == "/cost":
+                    if arg:
+                        # Quick cost estimate without running
+                        llm = get_llm(provider)
+                        model_name = llm.get_model_name()
+                        num_agents = 2 + len(domains)
+                        cost_estimator = CostEstimator()
+                        try:
+                            estimate = cost_estimator.estimate(
+                                model=model_name,
+                                input_text=arg * num_agents,
+                                estimated_output_tokens=1000 * num_agents
+                            )
+                            cost = estimate.projected_cost
+                            cost_str = f"${cost:.6f}" if cost < 0.01 else f"${cost:.4f}"
+                            print(f"{Colors.DIM}Est. Cost: {cost_str} | Tokens: ~{estimate.input_tokens + estimate.output_tokens:,}{Colors.RESET}")
+                        except ValueError as e:
+                            print(f"{Colors.DIM}Model not in pricing table: {model_name}{Colors.RESET}")
+                    else:
+                        print(f"{Colors.DIM}Usage: /cost <prompt text>{Colors.RESET}")
                 elif cmd == "/help":
                     print(f"{Colors.DIM}Commands:")
                     print("  /domains <list>  - Set domains")
                     print("  /provider <name> - Set provider")
-                    print("  /verbose         - Toggle verbose")
+                    print("  /verbose         - Toggle verbose output")
+                    print("  /preflight       - Toggle pre-flight checks")
+                    print("  /cost <prompt>   - Estimate cost without running")
                     print(f"  /quit            - Exit{Colors.RESET}")
                 else:
                     print(f"{Colors.YELLOW}Unknown command: {cmd}{Colors.RESET}")
                 continue
 
             # Solve the problem
-            await solve_command(user_input, domains, provider, verbose)
+            await solve_command(user_input, domains, provider, verbose, skip_preflight)
             print()  # Extra newline after result
 
         except KeyboardInterrupt:
@@ -286,6 +398,11 @@ Environment variables:
         action="store_true",
         help="Show full agent responses"
     )
+    solve_parser.add_argument(
+        "--skip-preflight", "-s",
+        action="store_true",
+        help="Skip pre-flight cost/rate-limit check"
+    )
 
     # Interactive command
     subparsers.add_parser("interactive", help="Start interactive mode")
@@ -299,7 +416,8 @@ Environment variables:
             args.problem,
             domains,
             args.provider,
-            args.verbose
+            args.verbose,
+            args.skip_preflight
         ))
     elif args.command == "interactive":
         return asyncio.run(interactive_mode())
