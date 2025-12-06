@@ -50,12 +50,14 @@ else
     echo "   ⚠️  No API keys found - using mock provider"
 fi
 
+cd "$SCRIPT_DIR"
+
 echo ""
 echo "🚀 Starting backend server on http://localhost:8000..."
-uvicorn main:app --host 0.0.0.0 --port 8000 &
+# Run from nova-mvp directory so backend is recognized as a package
+source backend/venv/bin/activate
+uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload &
 BACKEND_PID=$!
-
-cd ..
 
 # Setup and start frontend if available
 if [ "$WEB_AVAILABLE" = true ]; then

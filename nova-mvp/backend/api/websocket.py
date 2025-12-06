@@ -77,6 +77,7 @@ async def websocket_endpoint(
                     "agent_type": response.agent_type,
                     "agent_name": response.agent_name,
                     "content": response.content,
+                    "model": response.model,
                     "success": response.success,
                     "error": response.error,
                     "timestamp": response.timestamp
@@ -140,6 +141,7 @@ async def websocket_endpoint(
                                 "agent_name": response.agent_name,
                                 "agent_type": response.agent_type,
                                 "content": response.content,
+                                "model": response.model,
                                 "success": response.success
                             }))
 

@@ -59,6 +59,10 @@ class LLMProvider(ABC):
         """Check if this provider is available (API key configured)."""
         pass
 
+    def get_model_name(self) -> str:
+        """Return the model name being used by this provider."""
+        return self.config.model
+
 
 class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider."""

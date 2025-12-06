@@ -6,12 +6,36 @@ Run with: uvicorn main:app --reload --port 8000
 """
 
 import os
+from pathlib import Path
 from contextlib import asynccontextmanager
+
+# Load environment variables from .env files before any other imports
+try:
+    from dotenv import load_dotenv
+
+    # Get paths
+    backend_dir = Path(__file__).parent
+    nova_mvp_dir = backend_dir.parent
+    root_dir = nova_mvp_dir.parent
+
+    # Load root .env first (lower priority)
+    root_env = root_dir / ".env"
+    if root_env.exists():
+        load_dotenv(root_env)
+
+    # Load local .env second (higher priority, overrides root)
+    local_env = nova_mvp_dir / ".env"
+    if local_env.exists():
+        load_dotenv(local_env, override=True)
+
+except ImportError:
+    pass  # dotenv not installed, rely on system environment
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api import api_router
-from api.websocket import websocket_endpoint
+from .api import api_router
+from .api.websocket import websocket_endpoint
 
 
 @asynccontextmanager

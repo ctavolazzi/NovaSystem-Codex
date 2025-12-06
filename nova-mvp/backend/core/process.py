@@ -189,6 +189,7 @@ class NovaProcess:
                         agent_type="error",
                         agent_name="Error",
                         content="",
+                        model="unknown",
                         success=False,
                         error=str(response)
                     )
@@ -252,6 +253,7 @@ class NovaProcess:
                 "agent_name": response.agent_name,
                 "agent_type": response.agent_type,
                 "content": response.content,
+                "model": response.model,
                 "success": response.success
             })
 

@@ -12,6 +12,30 @@ import asyncio
 import os
 import sys
 from datetime import datetime
+from pathlib import Path
+
+# Load environment variables from .env files
+# Priority: local .env > root .env > system environment
+try:
+    from dotenv import load_dotenv
+
+    # Get paths
+    cli_dir = Path(__file__).parent
+    nova_mvp_dir = cli_dir.parent
+    root_dir = nova_mvp_dir.parent
+
+    # Load root .env first (lower priority)
+    root_env = root_dir / ".env"
+    if root_env.exists():
+        load_dotenv(root_env)
+
+    # Load local .env second (higher priority, overrides root)
+    local_env = nova_mvp_dir / ".env"
+    if local_env.exists():
+        load_dotenv(local_env, override=True)
+
+except ImportError:
+    pass  # dotenv not installed, rely on system environment
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -85,7 +109,7 @@ def print_agent_response(response: AgentResponse):
         col = Colors.CYAN
 
     print(f"\n{col}{'─' * 60}")
-    print(f"  {Colors.BOLD}{response.agent_name}{Colors.RESET}")
+    print(f"  {Colors.BOLD}{response.agent_name}{Colors.RESET} {Colors.DIM}({response.model}){Colors.RESET}")
     print(f"{col}{'─' * 60}{Colors.RESET}")
 
     if response.success:
@@ -122,7 +146,7 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
         else:
             status = "✓" if response.success else "✗"
             col = Colors.GREEN if response.success else Colors.RED
-            print(f"  {col}{status}{Colors.RESET} {response.agent_name}")
+            print(f"  {col}{status}{Colors.RESET} {response.agent_name} {Colors.DIM}({response.model}){Colors.RESET}")
 
     # Run the process
     process = NovaProcess(
