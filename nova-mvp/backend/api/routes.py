@@ -5,7 +5,14 @@ from typing import List, Optional
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
-from ..core import NovaProcess, SessionState, get_llm
+from ..core import (
+    CostEstimator,
+    NovaProcess,
+    RateLimitExceeded,
+    SessionState,
+    get_llm,
+    traffic_controller,
+)
 
 # In-memory session storage (replace with database in production)
 sessions: dict[str, SessionState] = {}
@@ -48,6 +55,21 @@ class SessionResponse(BaseModel):
     execution_time: float = 0.0
 
 
+class StatusRequest(BaseModel):
+    """Request body for checking cost and rate limit status."""
+
+    prompt: str = Field(..., description="Prompt to evaluate")
+    model: str = Field(..., description="Model identifier")
+
+
+class StatusResponse(BaseModel):
+    """Response describing projected cost and rate limit status."""
+
+    cost_estimate: dict
+    rate_limit_status: str
+    retry_after: float = 0.0
+
+
 @router.post("/solve", response_model=SolveResponse)
 async def start_solve(request: SolveRequest, background_tasks: BackgroundTasks):
     """
@@ -59,13 +81,19 @@ async def start_solve(request: SolveRequest, background_tasks: BackgroundTasks):
     llm = get_llm(request.provider)
     process = NovaProcess(llm_provider=llm)
 
-    # Create placeholder session
-    result = await asyncio.wait_for(
-        asyncio.create_task(
-            process.solve(request.problem, request.domains)
-        ),
-        timeout=300  # 5 minute timeout
-    )
+    try:
+        result = await asyncio.wait_for(
+            asyncio.create_task(
+                process.solve(request.problem, request.domains)
+            ),
+            timeout=300  # 5 minute timeout
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Retry after {exc.retry_after:.0f}s",
+            headers={"Retry-After": str(int(exc.retry_after))},
+        )
 
     sessions[result.session_id] = result
 
@@ -96,6 +124,12 @@ async def solve_sync(request: SolveRequest):
 
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Request timed out")
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Retry after {exc.retry_after:.0f}s",
+            headers={"Retry-After": str(int(exc.retry_after))},
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -174,3 +208,40 @@ async def list_providers():
             }
         ]
     }
+
+
+@router.post("/check-status", response_model=StatusResponse)
+async def check_status(request: StatusRequest):
+    """Return projected cost and current rate limit posture for a prompt."""
+
+    estimator = CostEstimator()
+    estimated_output_tokens = 1000
+
+    try:
+        cost_estimate = estimator.estimate(
+            request.model,
+            request.prompt,
+            estimated_output_tokens=estimated_output_tokens,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    rate_limit_status = "ok"
+    retry_after = 0.0
+
+    try:
+        traffic_controller.check_allowance(
+            request.model,
+            cost_estimate.input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+            commit=False,
+        )
+    except RateLimitExceeded as exc:
+        rate_limit_status = "blocked"
+        retry_after = exc.retry_after
+
+    return StatusResponse(
+        cost_estimate=cost_estimate.__dict__,
+        rate_limit_status=rate_limit_status,
+        retry_after=retry_after,
+    )
