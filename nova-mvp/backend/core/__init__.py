@@ -10,6 +10,7 @@ from .traffic import (
     get_traffic_controller
 )
 from .memory import VectorStore, MemoryStub, get_memory_store, Document, SearchResult
+from .usage import UsageRecord, UsageTracker, extract_usage, get_usage_tracker
 
 __all__ = [
     # LLM Providers
@@ -32,6 +33,11 @@ __all__ = [
     "RateLimitExceeded",
     "RateLimit",
     "get_traffic_controller",
+    # Usage Tracking (Reconciliation)
+    "UsageRecord",
+    "UsageTracker",
+    "extract_usage",
+    "get_usage_tracker",
     # Memory/Embeddings
     "VectorStore",
     "MemoryStub",

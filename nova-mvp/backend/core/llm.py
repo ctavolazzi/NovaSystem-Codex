@@ -22,6 +22,7 @@ from dataclasses import dataclass
 
 from .traffic import get_traffic_controller, RateLimitExceeded
 from .pricing import CostEstimator, estimate_tokens_from_text
+from .usage import get_usage_tracker, extract_usage, UsageRecord
 
 
 # Default retry configuration
@@ -46,13 +47,17 @@ class LLMConfig:
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, enable_traffic_control: bool = True):
+    def __init__(self, config: Optional[LLMConfig] = None, enable_traffic_control: bool = True, enable_usage_tracking: bool = True):
         self.config = config or self._default_config()
         self.enable_traffic_control = enable_traffic_control
+        self.enable_usage_tracking = enable_usage_tracking
         self._traffic_controller = get_traffic_controller() if enable_traffic_control else None
+        self._usage_tracker = get_usage_tracker() if enable_usage_tracking else None
         self.cost_estimator = CostEstimator()
         # Callback for logging/UI updates during retry
         self.on_retry: Optional[Callable[[int, float], None]] = None
+        # Last raw API response (for usage extraction)
+        self._last_raw_response: Any = None
 
     @abstractmethod
     def _default_config(self) -> LLMConfig:
@@ -68,7 +73,7 @@ class LLMProvider(ABC):
     ) -> str:
         """
         Execute the actual API call (implemented by subclasses).
-        
+
         This is the "raw" call without retry logic.
         """
         pass
@@ -102,7 +107,7 @@ class LLMProvider(ABC):
     def _calculate_backoff(self, attempt: int, retry_after: float) -> float:
         """
         Calculate backoff time with exponential increase and jitter.
-        
+
         Formula: min(max_delay, max(retry_after, base_delay * 2^attempt) + jitter)
         """
         base = self.config.base_delay * (2 ** attempt)
@@ -122,55 +127,76 @@ class LLMProvider(ABC):
     ) -> str:
         """
         Send a chat message with Smart Retry on rate limits.
-        
+
         This is the main entry point that wraps _execute_chat with:
         1. Pre-flight rate limit check
         2. Exponential backoff retry on RateLimitExceeded
-        3. Usage registration after success
-        
+        3. Usage tracking with reconciliation (actual vs estimated)
+
         Args:
             system_prompt: The system prompt for the conversation
             user_message: The user's message
-            
+
         Returns:
             The assistant's response text
-            
+
         Raises:
             Exception: After max_retries exceeded
         """
         model = kwargs.get("model", self.config.model)
         max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
         estimated_tokens = self._estimate_tokens(system_prompt, user_message, max_tokens)
-        
+
+        # Get estimated cost (if model is in pricing table)
+        estimated_cost = 0.0
+        try:
+            cost_estimate = self.cost_estimator.estimate(model, system_prompt + user_message, max_tokens)
+            estimated_cost = cost_estimate.projected_cost
+        except ValueError:
+            pass  # Model not in pricing table
+
         attempt = 0
         last_error = None
-        
+        usage_record: Optional[UsageRecord] = None
+
         while attempt <= self.config.max_retries:
             try:
                 # 1. PRE-FLIGHT CHECK: Verify rate limits before calling
                 if self._traffic_controller:
                     self._traffic_controller.check_allowance(model, estimated_tokens)
-                
+
                 # 2. EXECUTE: Make the actual API call
                 response = await self._execute_chat(system_prompt, user_message, **kwargs)
-                
-                # 3. SUCCESS: We got a response
-                # TODO (Fix #1 - Reconciliation): If API returns actual token count,
-                # update the ledger here instead of using estimated_tokens
-                # actual_tokens = response.usage.total_tokens  # If available
-                
+
+                # 3. USAGE TRACKING: Record usage with reconciliation
+                if self._usage_tracker:
+                    usage_record = self._usage_tracker.record(
+                        model=model,
+                        estimated_tokens=estimated_tokens,
+                        estimated_cost=estimated_cost,
+                    )
+                    
+                    # RECONCILIATION: Try to extract actual usage from last response
+                    if self._last_raw_response:
+                        actual_usage = extract_usage(self._last_raw_response)
+                        if actual_usage:
+                            self._usage_tracker.update_actual(
+                                usage_record,
+                                actual_tokens=actual_usage["total_tokens"]
+                            )
+
                 return response
-                
+
             except RateLimitExceeded as e:
                 last_error = e
                 attempt += 1
-                
+
                 if attempt > self.config.max_retries:
                     break
-                
+
                 # 4. SMART RETRY: Calculate backoff and wait
                 wait_time = self._calculate_backoff(attempt - 1, e.retry_after)
-                
+
                 # Notify callback if registered (for UI/logging)
                 if self.on_retry:
                     self.on_retry(attempt, wait_time)
@@ -178,9 +204,9 @@ class LLMProvider(ABC):
                     # Default logging
                     print(f"🚦 Traffic Control: Rate limit hit. "
                           f"Retry {attempt}/{self.config.max_retries} in {wait_time:.1f}s...")
-                
+
                 await asyncio.sleep(wait_time)
-        
+
         # All retries exhausted
         raise Exception(
             f"Rate limit exceeded after {self.config.max_retries} retries. "
@@ -239,6 +265,9 @@ class ClaudeProvider(LLMProvider):
             )
         )
 
+        # Store raw response for usage extraction (reconciliation)
+        self._last_raw_response = response
+
         return response.content[0].text
 
 
@@ -295,6 +324,9 @@ class OpenAIProvider(LLMProvider):
                 ]
             )
         )
+
+        # Store raw response for usage extraction (reconciliation)
+        self._last_raw_response = response
 
         return response.choices[0].message.content
 

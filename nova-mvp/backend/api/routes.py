@@ -292,3 +292,26 @@ async def get_pricing():
             "heuristic": "1 token ≈ 4 characters"
         }
     }
+
+
+@router.get("/usage")
+async def get_usage_summary():
+    """
+    Get usage tracking summary with reconciliation stats.
+    
+    Shows estimated vs actual token usage to track drift.
+    """
+    from ..core.usage import get_usage_tracker
+    
+    tracker = get_usage_tracker()
+    summary = tracker.summary()
+    recent = [r.to_dict() for r in tracker.recent(10)]
+    
+    return {
+        "summary": summary,
+        "recent_records": recent,
+        "notes": {
+            "drift_pct": "Positive = underestimated, Negative = overestimated",
+            "storage": "In-memory, resets on server restart"
+        }
+    }

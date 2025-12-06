@@ -138,7 +138,7 @@ def print_preflight_check(problem: str, model: str, domains: list) -> bool:
 
     # Get cost estimate (handle unknown models gracefully)
     from backend.core.pricing import estimate_tokens_from_text
-    
+
     try:
         estimate = cost_estimator.estimate(
             model=model,
