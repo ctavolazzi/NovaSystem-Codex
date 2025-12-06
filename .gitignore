@@ -214,4 +214,4 @@ OAI_CONFIG_LIST
 # Standardization related
 /backups/
 /NovaSystem/
-/test_repo/
+/test_repo/.nova_traffic_state.json

@@ -1,11 +1,18 @@
-"""Local rate limit tracking and enforcement."""
+"""Local rate limit tracking and enforcement with JSON persistence."""
 
+import atexit
+import json
+import os
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque, Dict, Tuple
+from typing import Deque, Dict, List, Tuple
 
 from .pricing import CostEstimator
+
+
+# Default state file location (relative to working directory)
+DEFAULT_STATE_FILE = ".nova_traffic_state.json"
 
 
 @dataclass
@@ -25,7 +32,10 @@ class RateLimitExceeded(Exception):
 
 
 class TrafficController:
-    """Track outgoing requests to avoid server-side 429 responses."""
+    """Track outgoing requests to avoid server-side 429 responses.
+    
+    Persists state to JSON so rate limits survive restarts.
+    """
 
     DEFAULT_LIMITS: Dict[str, ModelLimits] = {
         # Tier 1 defaults (sliding 60-second window)
@@ -39,10 +49,19 @@ class TrafficController:
         self,
         limits: Dict[str, ModelLimits] | None = None,
         window_seconds: int = 60,
+        state_file: str | None = None,
+        persist: bool = True,
     ):
         self.window_seconds = window_seconds
         self.limits = limits or self.DEFAULT_LIMITS
         self._requests: Dict[str, Deque[Tuple[float, int]]] = {}
+        self._state_file = state_file or DEFAULT_STATE_FILE
+        self._persist = persist
+        
+        # Load previous state on startup
+        if persist:
+            self._load_state()
+            atexit.register(self._save_state)
 
     def check_allowance(
         self,
@@ -122,6 +141,64 @@ class TrafficController:
             if tokens_accumulated > limits.tpm:
                 return max(0, self.window_seconds - (now - timestamp))
         return self.window_seconds
+
+    def _save_state(self) -> None:
+        """Persist current window state to JSON."""
+        if not self._persist:
+            return
+            
+        # Convert deques to lists for JSON serialization
+        data = {
+            "window_seconds": self.window_seconds,
+            "requests": {
+                model: list(entries)
+                for model, entries in self._requests.items()
+            }
+        }
+        
+        try:
+            with open(self._state_file, "w") as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            # Fail silently - persistence is nice-to-have, not critical
+            print(f"⚠️ Failed to save traffic state: {e}")
+
+    def _load_state(self) -> None:
+        """Load window state from JSON if it exists."""
+        if not os.path.exists(self._state_file):
+            return
+            
+        try:
+            with open(self._state_file, "r") as f:
+                data = json.load(f)
+            
+            now = time.time()
+            cutoff = now - self.window_seconds
+            loaded_count = 0
+            
+            for model, entries in data.get("requests", {}).items():
+                # Filter out expired entries on load
+                valid_entries = [
+                    (ts, tokens) for ts, tokens in entries
+                    if ts > cutoff
+                ]
+                if valid_entries:
+                    self._requests[model] = deque(valid_entries)
+                    loaded_count += len(valid_entries)
+            
+            if loaded_count > 0:
+                print(f"✅ Traffic state loaded ({loaded_count} active requests)")
+                
+        except Exception as e:
+            # Start fresh on error
+            print(f"⚠️ Failed to load traffic state (starting fresh): {e}")
+            self._requests = {}
+
+    def clear(self) -> None:
+        """Clear all tracked requests and remove state file."""
+        self._requests.clear()
+        if self._persist and os.path.exists(self._state_file):
+            os.remove(self._state_file)
 
 
 def estimate_tokens(text: str) -> int:
