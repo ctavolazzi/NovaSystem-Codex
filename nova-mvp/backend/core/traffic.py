@@ -143,24 +143,74 @@ class TrafficController:
         return self.window_seconds
 
     def _save_state(self) -> None:
-        """Persist current window state to JSON."""
+        """Persist current window state to JSON using atomic write + merge.
+        
+        Security fixes:
+        - Atomic write: Write to temp file, then rename (prevents corruption)
+        - Merge strategy: Load existing state and merge (prevents race condition data loss)
+        """
         if not self._persist:
             return
 
-        # Convert deques to lists for JSON serialization
+        now = time.time()
+        cutoff = now - self.window_seconds
+
+        # MERGE STRATEGY: Load existing state from disk and merge with in-memory
+        existing_requests: Dict[str, List[Tuple[float, int]]] = {}
+        if os.path.exists(self._state_file):
+            try:
+                with open(self._state_file, "r") as f:
+                    disk_data = json.load(f)
+                for model, entries in disk_data.get("requests", {}).items():
+                    # Only keep non-expired entries from disk
+                    valid = [(ts, tok) for ts, tok in entries if ts > cutoff]
+                    if valid:
+                        existing_requests[model] = valid
+            except Exception:
+                pass  # If we can't read disk, just use in-memory
+
+        # Merge in-memory requests with disk requests
+        merged: Dict[str, List[Tuple[float, int]]] = {}
+        all_models = set(existing_requests.keys()) | set(self._requests.keys())
+        
+        for model in all_models:
+            # Combine entries from both sources
+            disk_entries = existing_requests.get(model, [])
+            mem_entries = list(self._requests.get(model, []))
+            
+            # Deduplicate by timestamp (same request shouldn't appear twice)
+            seen_timestamps = set()
+            combined = []
+            for ts, tok in disk_entries + mem_entries:
+                if ts > cutoff and ts not in seen_timestamps:
+                    combined.append((ts, tok))
+                    seen_timestamps.add(ts)
+            
+            if combined:
+                # Sort by timestamp
+                combined.sort(key=lambda x: x[0])
+                merged[model] = combined
+
+        # Build final data
         data = {
             "window_seconds": self.window_seconds,
-            "requests": {
-                model: list(entries)
-                for model, entries in self._requests.items()
-            }
+            "requests": merged
         }
 
+        # ATOMIC WRITE: Write to temp file, then rename
+        temp_file = f"{self._state_file}.tmp"
         try:
-            with open(self._state_file, "w") as f:
+            with open(temp_file, "w") as f:
                 json.dump(data, f, indent=2)
+            # Atomic rename (prevents corruption on crash)
+            os.replace(temp_file, self._state_file)
         except Exception as e:
-            # Fail silently - persistence is nice-to-have, not critical
+            # Clean up temp file if it exists
+            if os.path.exists(temp_file):
+                try:
+                    os.remove(temp_file)
+                except Exception:
+                    pass
             print(f"⚠️ Failed to save traffic state: {e}")
 
     def _load_state(self) -> None:

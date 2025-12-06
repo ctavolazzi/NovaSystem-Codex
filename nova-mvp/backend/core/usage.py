@@ -4,6 +4,7 @@ Records all LLM transactions to enable:
 - Actual vs estimated cost tracking (drift analysis)
 - Spend summaries by model, provider, time period
 - Budget alerts and usage analytics
+- Circuit breaker for runaway costs
 """
 
 import sqlite3
@@ -14,6 +15,20 @@ from typing import List, Optional
 
 # Database file location (relative to working directory)
 DEFAULT_DB_FILE = ".nova_usage.db"
+
+# Default budget limits (can be overridden)
+DEFAULT_DAILY_BUDGET = 10.00  # USD
+DEFAULT_HOURLY_BUDGET = 2.00  # USD
+
+
+class BudgetExceededError(Exception):
+    """Raised when spending would exceed configured budget limits."""
+    
+    def __init__(self, message: str, current_spend: float, budget: float, period: str):
+        super().__init__(message)
+        self.current_spend = current_spend
+        self.budget = budget
+        self.period = period
 
 
 @dataclass
@@ -53,10 +68,19 @@ class UsageLedger:
 
     Records every transaction with estimated and actual costs,
     enabling drift analysis and spend reporting.
+    
+    Includes circuit breaker to prevent runaway costs.
     """
 
-    def __init__(self, db_file: str | None = None):
+    def __init__(
+        self,
+        db_file: str | None = None,
+        daily_budget: float | None = DEFAULT_DAILY_BUDGET,
+        hourly_budget: float | None = DEFAULT_HOURLY_BUDGET,
+    ):
         self._db_file = db_file or DEFAULT_DB_FILE
+        self._daily_budget = daily_budget
+        self._hourly_budget = hourly_budget
         self._init_db()
 
     def _init_db(self) -> None:
@@ -228,6 +252,63 @@ class UsageLedger:
         """Clear all transactions (use with caution)."""
         with sqlite3.connect(self._db_file) as conn:
             conn.execute("DELETE FROM transactions")
+
+    def check_budget(self, estimated_cost: float = 0.0) -> None:
+        """Check if spending is within budget limits.
+        
+        Call this BEFORE making an API request to prevent overspending.
+        
+        Args:
+            estimated_cost: The estimated cost of the upcoming request.
+            
+        Raises:
+            BudgetExceededError: If budget would be exceeded.
+        """
+        now = time.time()
+        
+        # Check hourly budget
+        if self._hourly_budget is not None:
+            hour_ago = now - 3600
+            hourly_spend = self.total_spend(since=hour_ago)
+            if hourly_spend + estimated_cost > self._hourly_budget:
+                raise BudgetExceededError(
+                    f"Hourly budget exceeded: ${hourly_spend:.4f} spent + "
+                    f"${estimated_cost:.4f} request > ${self._hourly_budget:.2f} limit",
+                    current_spend=hourly_spend,
+                    budget=self._hourly_budget,
+                    period="hourly"
+                )
+        
+        # Check daily budget
+        if self._daily_budget is not None:
+            day_ago = now - 86400
+            daily_spend = self.total_spend(since=day_ago)
+            if daily_spend + estimated_cost > self._daily_budget:
+                raise BudgetExceededError(
+                    f"Daily budget exceeded: ${daily_spend:.4f} spent + "
+                    f"${estimated_cost:.4f} request > ${self._daily_budget:.2f} limit",
+                    current_spend=daily_spend,
+                    budget=self._daily_budget,
+                    period="daily"
+                )
+
+    def budget_status(self) -> dict:
+        """Get current budget status."""
+        now = time.time()
+        hour_ago = now - 3600
+        day_ago = now - 86400
+        
+        hourly_spend = self.total_spend(since=hour_ago)
+        daily_spend = self.total_spend(since=day_ago)
+        
+        return {
+            "hourly_spend": hourly_spend,
+            "hourly_budget": self._hourly_budget,
+            "hourly_remaining": (self._hourly_budget - hourly_spend) if self._hourly_budget else None,
+            "daily_spend": daily_spend,
+            "daily_budget": self._daily_budget,
+            "daily_remaining": (self._daily_budget - daily_spend) if self._daily_budget else None,
+        }
 
 
 # Global ledger instance

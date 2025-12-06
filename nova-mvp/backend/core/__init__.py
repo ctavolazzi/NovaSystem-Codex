@@ -11,7 +11,7 @@ from .traffic import (
     estimate_tokens,
     traffic_controller,
 )
-from .usage import UsageLedger, Transaction, get_usage_ledger
+from .usage import UsageLedger, Transaction, get_usage_ledger, BudgetExceededError
 
 __all__ = [
     "get_llm",
@@ -33,4 +33,5 @@ __all__ = [
     "UsageLedger",
     "Transaction",
     "get_usage_ledger",
+    "BudgetExceededError",
 ]
