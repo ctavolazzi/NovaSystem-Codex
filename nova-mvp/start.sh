@@ -31,15 +31,23 @@ fi
 echo "📦 Setting up backend..."
 cd backend
 
-if [ ! -d "venv" ]; then
-    echo "   Creating virtual environment..."
-    python3 -m venv venv
+if [ "${NOVA_USE_SYSTEM_PYTHON:-false}" = true ]; then
+    echo "   ⚠️  Using system Python environment (skipping venv setup)"
+else
+    if [ ! -d "venv" ]; then
+        echo "   Creating virtual environment..."
+        python3 -m venv venv
+    fi
+
+    source venv/bin/activate
+
+    if [ "${NOVA_SKIP_PIP_INSTALL:-false}" = true ]; then
+        echo "   ⚠️  NOVA_SKIP_PIP_INSTALL set - skipping dependency installation"
+    else
+        echo "   Installing dependencies..."
+        pip install -q -r requirements.txt
+    fi
 fi
-
-source venv/bin/activate
-
-echo "   Installing dependencies..."
-pip install -q -r requirements.txt
 
 # Check for API keys
 if [ -n "$ANTHROPIC_API_KEY" ]; then

@@ -52,6 +52,18 @@ export ANTHROPIC_API_KEY="your-key"  # or OPENAI_API_KEY
 uvicorn main:app --reload --port 8000
 ```
 
+**Offline / restricted environments**
+
+The `nova-mvp/start.sh` helper can skip virtualenv setup or dependency installation when internet access is blocked:
+
+```bash
+# Use system Python packages and skip venv creation
+NOVA_USE_SYSTEM_PYTHON=true ./start.sh
+
+# Keep the venv but skip pip installs (assumes deps already present)
+NOVA_SKIP_PIP_INSTALL=true ./start.sh
+```
+
 ### 2. CLI Usage
 
 ```bash
