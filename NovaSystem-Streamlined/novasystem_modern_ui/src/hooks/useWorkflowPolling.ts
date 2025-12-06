@@ -27,7 +27,7 @@ const initialState: PollingState = {
 
 /**
  * Custom hook for polling workflow status from the backend
- * 
+ *
  * @param sessionId - The workflow session ID to poll (null to stop polling)
  * @param interval - Polling interval in milliseconds (default: 2000ms)
  * @returns PollingState with node states, outputs, and completion status
