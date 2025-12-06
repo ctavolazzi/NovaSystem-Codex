@@ -6,23 +6,16 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 from ..core import (
+    CostEstimator,
     NovaProcess,
+    RateLimitExceeded,
     SessionState,
     get_llm,
-    CostEstimator,
-    get_traffic_controller,
-    RateLimitExceeded,
+    traffic_controller,
 )
-from ..core.pricing import PRICING
 
 # In-memory session storage (replace with database in production)
 sessions: dict[str, SessionState] = {}
-
-# Global traffic controller instance
-traffic_controller = get_traffic_controller()
-
-# Shared cost estimator instance
-cost_estimator = CostEstimator()
 
 router = APIRouter(prefix="/api", tags=["nova"])
 
@@ -47,30 +40,6 @@ class SolveResponse(BaseModel):
     message: str
 
 
-class CheckStatusRequest(BaseModel):
-    """Request body for pre-flight status check."""
-    prompt: str = Field(..., min_length=1, description="The prompt to check")
-    model: str = Field(default="gemini-2.5-flash", description="Target model")
-    estimated_output_tokens: int = Field(default=1000, description="Expected output tokens")
-
-
-class CostEstimateResponse(BaseModel):
-    """Cost estimate details."""
-    cost: float
-    currency: str
-    input_tokens: int
-    output_tokens: int
-    model: str
-
-
-class CheckStatusResponse(BaseModel):
-    """Response for pre-flight status check."""
-    cost_estimate: CostEstimateResponse
-    rate_limit_status: str  # "ok" | "blocked"
-    retry_after: Optional[float] = None
-    rate_limit_usage: Optional[dict] = None
-
-
 class SessionResponse(BaseModel):
     """Full session state response."""
     session_id: str
@@ -86,6 +55,21 @@ class SessionResponse(BaseModel):
     execution_time: float = 0.0
 
 
+class StatusRequest(BaseModel):
+    """Request body for checking cost and rate limit status."""
+
+    prompt: str = Field(..., description="Prompt to evaluate")
+    model: str = Field(..., description="Model identifier")
+
+
+class StatusResponse(BaseModel):
+    """Response describing projected cost and rate limit status."""
+
+    cost_estimate: dict
+    rate_limit_status: str
+    retry_after: float = 0.0
+
+
 @router.post("/solve", response_model=SolveResponse)
 async def start_solve(request: SolveRequest, background_tasks: BackgroundTasks):
     """
@@ -97,13 +81,19 @@ async def start_solve(request: SolveRequest, background_tasks: BackgroundTasks):
     llm = get_llm(request.provider)
     process = NovaProcess(llm_provider=llm)
 
-    # Create placeholder session
-    result = await asyncio.wait_for(
-        asyncio.create_task(
-            process.solve(request.problem, request.domains)
-        ),
-        timeout=300  # 5 minute timeout
-    )
+    try:
+        result = await asyncio.wait_for(
+            asyncio.create_task(
+                process.solve(request.problem, request.domains)
+            ),
+            timeout=300  # 5 minute timeout
+        )
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Retry after {exc.retry_after:.0f}s",
+            headers={"Retry-After": str(int(exc.retry_after))},
+        )
 
     sessions[result.session_id] = result
 
@@ -134,6 +124,12 @@ async def solve_sync(request: SolveRequest):
 
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="Request timed out")
+    except RateLimitExceeded as exc:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Retry after {exc.retry_after:.0f}s",
+            headers={"Retry-After": str(int(exc.retry_after))},
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -214,104 +210,38 @@ async def list_providers():
     }
 
 
-@router.post("/check-status", response_model=CheckStatusResponse)
-async def check_status(request: CheckStatusRequest):
-    """
-    Pre-flight check: Estimate cost and verify rate limits before execution.
+@router.post("/check-status", response_model=StatusResponse)
+async def check_status(request: StatusRequest):
+    """Return projected cost and current rate limit posture for a prompt."""
 
-    Use this endpoint to:
-    - See exact cost projection before running expensive models
-    - Check if rate limits would block the request
-    - Plan request timing to avoid 429 errors
-    """
-    # 1. Estimate Cost
-    estimate = cost_estimator.estimate(
-        model=request.model,
-        input_text=request.prompt,
-        estimated_output_tokens=request.estimated_output_tokens
-    )
-
-    cost_response = CostEstimateResponse(
-        cost=estimate.projected_cost,
-        currency=estimate.currency,
-        input_tokens=estimate.input_tokens,
-        output_tokens=estimate.output_tokens,
-        model=estimate.model
-    )
-
-    # 2. Check Rate Limits (dry run - consume=False)
-    status = "ok"
-    retry_after = None
-    rate_limit_usage = None
+    estimator = CostEstimator()
+    estimated_output_tokens = 1000
 
     try:
-        projected_tokens = estimate.input_tokens + estimate.output_tokens
-        # consume=False means just check, don't register usage
-        traffic_controller.check_allowance(request.model, projected_tokens, consume=False)
-        rate_limit_usage = {"status": "within_limits"}
-    except RateLimitExceeded as e:
-        status = "blocked"
-        retry_after = e.retry_after
-        rate_limit_usage = {"status": "exceeded", "message": str(e)}
+        cost_estimate = estimator.estimate(
+            request.model,
+            request.prompt,
+            estimated_output_tokens=estimated_output_tokens,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
-    return CheckStatusResponse(
-        cost_estimate=cost_response,
-        rate_limit_status=status,
+    rate_limit_status = "ok"
+    retry_after = 0.0
+
+    try:
+        traffic_controller.check_allowance(
+            request.model,
+            cost_estimate.input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+            commit=False,
+        )
+    except RateLimitExceeded as exc:
+        rate_limit_status = "blocked"
+        retry_after = exc.retry_after
+
+    return StatusResponse(
+        cost_estimate=cost_estimate.__dict__,
+        rate_limit_status=rate_limit_status,
         retry_after=retry_after,
-        rate_limit_usage=rate_limit_usage
     )
-
-
-@router.get("/rate-limits/{model}")
-async def get_rate_limits(model: str):
-    """Get current rate limit status for a specific model."""
-    from ..core.pricing import normalize_model_name
-    from ..core.traffic import DEFAULT_RATE_LIMITS
-
-    model_key = normalize_model_name(model)
-    limits = DEFAULT_RATE_LIMITS.get(model_key) or DEFAULT_RATE_LIMITS.get("default")
-
-    return {
-        "model": model_key,
-        "limits": {
-            "rpm": limits.rpm,
-            "tpm": limits.tpm
-        },
-        "notes": "Usage tracking is in-memory and resets on server restart"
-    }
-
-
-@router.get("/pricing")
-async def get_pricing():
-    """Get pricing information for all supported models."""
-    return {
-        "pricing": PRICING,
-        "notes": {
-            "unit": "per 1 million tokens",
-            "currency": "USD",
-            "heuristic": "1 token ≈ 4 characters"
-        }
-    }
-
-
-@router.get("/usage")
-async def get_usage_summary():
-    """
-    Get usage tracking summary with reconciliation stats.
-    
-    Shows estimated vs actual token usage to track drift.
-    """
-    from ..core.usage import get_usage_tracker
-    
-    tracker = get_usage_tracker()
-    summary = tracker.summary()
-    recent = [r.to_dict() for r in tracker.recent(10)]
-    
-    return {
-        "summary": summary,
-        "recent_records": recent,
-        "notes": {
-            "drift_pct": "Positive = underestimated, Negative = overestimated",
-            "storage": "In-memory, resets on server restart"
-        }
-    }

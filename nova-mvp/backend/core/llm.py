@@ -6,29 +6,15 @@ Supports:
 - Mock (for testing without API keys)
 
 Designed for easy swapping to Ollama or other providers later.
-
-Includes Traffic Control integration with Smart Retry:
-- Pre-flight rate limit checks
-- Exponential backoff with jitter on rate limit hits
-- Automatic retry (no crashes during multi-agent debates)
 """
 
 import os
 import asyncio
-import random
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Callable
+from typing import Optional, Dict, Any
 from dataclasses import dataclass
 
-from .traffic import get_traffic_controller, RateLimitExceeded
-from .pricing import CostEstimator, estimate_tokens_from_text
-from .usage import get_usage_tracker, extract_usage, UsageRecord
-
-
-# Default retry configuration
-DEFAULT_MAX_RETRIES = 5
-DEFAULT_BASE_DELAY = 1.0  # seconds
-DEFAULT_MAX_DELAY = 60.0  # seconds
+from .traffic import traffic_controller, estimate_tokens
 
 
 @dataclass
@@ -38,43 +24,49 @@ class LLMConfig:
     max_tokens: int = 4096
     temperature: float = 0.7
     timeout: int = 60
-    # Retry configuration
-    max_retries: int = DEFAULT_MAX_RETRIES
-    base_delay: float = DEFAULT_BASE_DELAY
-    max_delay: float = DEFAULT_MAX_DELAY
 
 
 class LLMProvider(ABC):
     """Abstract base class for LLM providers."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, enable_traffic_control: bool = True, enable_usage_tracking: bool = True):
+    def __init__(self, config: Optional[LLMConfig] = None):
         self.config = config or self._default_config()
-        self.enable_traffic_control = enable_traffic_control
-        self.enable_usage_tracking = enable_usage_tracking
-        self._traffic_controller = get_traffic_controller() if enable_traffic_control else None
-        self._usage_tracker = get_usage_tracker() if enable_usage_tracking else None
-        self.cost_estimator = CostEstimator()
-        # Callback for logging/UI updates during retry
-        self.on_retry: Optional[Callable[[int, float], None]] = None
-        # Last raw API response (for usage extraction)
-        self._last_raw_response: Any = None
 
     @abstractmethod
     def _default_config(self) -> LLMConfig:
         """Return default configuration for this provider."""
         pass
 
+    def _enforce_limits(
+        self, system_prompt: str, user_message: str, **kwargs: Any
+    ) -> None:
+        """Estimate token usage and enforce local RPM/TPM ceilings."""
+
+        model_name = kwargs.get("model", self.config.model)
+        input_tokens = estimate_tokens(system_prompt) + estimate_tokens(user_message)
+        estimated_output_tokens = kwargs.get("max_tokens", self.config.max_tokens)
+        traffic_controller.check_allowance(
+            model_name,
+            input_tokens,
+            estimated_output_tokens=estimated_output_tokens,
+        )
+
     @abstractmethod
-    async def _execute_chat(
+    async def chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
         """
-        Execute the actual API call (implemented by subclasses).
+        Send a chat message and get a response.
 
-        This is the "raw" call without retry logic.
+        Args:
+            system_prompt: The system prompt for the conversation
+            user_message: The user's message
+
+        Returns:
+            The assistant's response text
         """
         pass
 
@@ -87,138 +79,12 @@ class LLMProvider(ABC):
         """Return the model name being used by this provider."""
         return self.config.model
 
-    def estimate_cost(self, input_text: str, estimated_output_tokens: int = 1000):
-        """Estimate cost for a request before making it."""
-        try:
-            return self.cost_estimator.estimate(
-                model=self.config.model,
-                input_text=input_text,
-                estimated_output_tokens=estimated_output_tokens
-            )
-        except ValueError:
-            # Model not in pricing table - return None
-            return None
-
-    def _estimate_tokens(self, system_prompt: str, user_message: str, max_tokens: int) -> int:
-        """Estimate total tokens for a request."""
-        input_tokens = estimate_tokens_from_text(system_prompt) + estimate_tokens_from_text(user_message)
-        return input_tokens + max(0, max_tokens or 0)
-
-    def _calculate_backoff(self, attempt: int, retry_after: float) -> float:
-        """
-        Calculate backoff time with exponential increase and jitter.
-
-        Formula: min(max_delay, max(retry_after, base_delay * 2^attempt) + jitter)
-        """
-        base = self.config.base_delay * (2 ** attempt)
-        # Use the larger of retry_after or calculated backoff
-        delay = max(retry_after, base)
-        # Cap at max_delay
-        delay = min(delay, self.config.max_delay)
-        # Add jitter (±20%) to prevent thundering herd
-        jitter = delay * random.uniform(-0.2, 0.2)
-        return delay + jitter
-
-    async def chat(
-        self,
-        system_prompt: str,
-        user_message: str,
-        **kwargs
-    ) -> str:
-        """
-        Send a chat message with Smart Retry on rate limits.
-
-        This is the main entry point that wraps _execute_chat with:
-        1. Pre-flight rate limit check
-        2. Exponential backoff retry on RateLimitExceeded
-        3. Usage tracking with reconciliation (actual vs estimated)
-
-        Args:
-            system_prompt: The system prompt for the conversation
-            user_message: The user's message
-
-        Returns:
-            The assistant's response text
-
-        Raises:
-            Exception: After max_retries exceeded
-        """
-        model = kwargs.get("model", self.config.model)
-        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
-        estimated_tokens = self._estimate_tokens(system_prompt, user_message, max_tokens)
-
-        # Get estimated cost (if model is in pricing table)
-        estimated_cost = 0.0
-        try:
-            cost_estimate = self.cost_estimator.estimate(model, system_prompt + user_message, max_tokens)
-            estimated_cost = cost_estimate.projected_cost
-        except ValueError:
-            pass  # Model not in pricing table
-
-        attempt = 0
-        last_error = None
-        usage_record: Optional[UsageRecord] = None
-
-        while attempt <= self.config.max_retries:
-            try:
-                # 1. PRE-FLIGHT CHECK: Verify rate limits before calling
-                if self._traffic_controller:
-                    self._traffic_controller.check_allowance(model, estimated_tokens)
-
-                # 2. EXECUTE: Make the actual API call
-                response = await self._execute_chat(system_prompt, user_message, **kwargs)
-
-                # 3. USAGE TRACKING: Record usage with reconciliation
-                if self._usage_tracker:
-                    usage_record = self._usage_tracker.record(
-                        model=model,
-                        estimated_tokens=estimated_tokens,
-                        estimated_cost=estimated_cost,
-                    )
-                    
-                    # RECONCILIATION: Try to extract actual usage from last response
-                    if self._last_raw_response:
-                        actual_usage = extract_usage(self._last_raw_response)
-                        if actual_usage:
-                            self._usage_tracker.update_actual(
-                                usage_record,
-                                actual_tokens=actual_usage["total_tokens"]
-                            )
-
-                return response
-
-            except RateLimitExceeded as e:
-                last_error = e
-                attempt += 1
-
-                if attempt > self.config.max_retries:
-                    break
-
-                # 4. SMART RETRY: Calculate backoff and wait
-                wait_time = self._calculate_backoff(attempt - 1, e.retry_after)
-
-                # Notify callback if registered (for UI/logging)
-                if self.on_retry:
-                    self.on_retry(attempt, wait_time)
-                else:
-                    # Default logging
-                    print(f"🚦 Traffic Control: Rate limit hit. "
-                          f"Retry {attempt}/{self.config.max_retries} in {wait_time:.1f}s...")
-
-                await asyncio.sleep(wait_time)
-
-        # All retries exhausted
-        raise Exception(
-            f"Rate limit exceeded after {self.config.max_retries} retries. "
-            f"Last error: {last_error}"
-        )
-
 
 class ClaudeProvider(LLMProvider):
     """Anthropic Claude provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, enable_traffic_control: bool = True):
-        super().__init__(config, enable_traffic_control)
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
+        super().__init__(config)
         self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
         self._client = None
 
@@ -241,16 +107,13 @@ class ClaudeProvider(LLMProvider):
                 raise ImportError("anthropic package required. Install with: pip install anthropic")
         return self._client
 
-    async def _execute_chat(
+    async def chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
-        """Execute the actual Claude API call."""
-        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
-        model = kwargs.get("model", self.config.model)
-
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
 
         # Run in thread pool since anthropic client is sync
@@ -258,15 +121,12 @@ class ClaudeProvider(LLMProvider):
         response = await loop.run_in_executor(
             None,
             lambda: client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
+                model=kwargs.get("model", self.config.model),
+                max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
                 system=system_prompt,
                 messages=[{"role": "user", "content": user_message}]
             )
         )
-
-        # Store raw response for usage extraction (reconciliation)
-        self._last_raw_response = response
 
         return response.content[0].text
 
@@ -274,8 +134,8 @@ class ClaudeProvider(LLMProvider):
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, enable_traffic_control: bool = True):
-        super().__init__(config, enable_traffic_control)
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None):
+        super().__init__(config)
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         self._client = None
 
@@ -298,16 +158,13 @@ class OpenAIProvider(LLMProvider):
                 raise ImportError("openai package required. Install with: pip install openai")
         return self._client
 
-    async def _execute_chat(
+    async def chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
-        """Execute the actual OpenAI API call."""
-        max_tokens = kwargs.get("max_tokens", self.config.max_tokens)
-        model = kwargs.get("model", self.config.model)
-
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         client = self._get_client()
 
         # Run in thread pool since openai client is sync
@@ -315,8 +172,8 @@ class OpenAIProvider(LLMProvider):
         response = await loop.run_in_executor(
             None,
             lambda: client.chat.completions.create(
-                model=model,
-                max_tokens=max_tokens,
+                model=kwargs.get("model", self.config.model),
+                max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
                 temperature=kwargs.get("temperature", self.config.temperature),
                 messages=[
                     {"role": "system", "content": system_prompt},
@@ -325,17 +182,14 @@ class OpenAIProvider(LLMProvider):
             )
         )
 
-        # Store raw response for usage extraction (reconciliation)
-        self._last_raw_response = response
-
         return response.choices[0].message.content
 
 
 class MockProvider(LLMProvider):
     """Mock provider for testing without API keys."""
 
-    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5, enable_traffic_control: bool = True):
-        super().__init__(config, enable_traffic_control)
+    def __init__(self, config: Optional[LLMConfig] = None, delay: float = 0.5):
+        super().__init__(config)
         self.delay = delay
 
     def _default_config(self) -> LLMConfig:
@@ -344,13 +198,13 @@ class MockProvider(LLMProvider):
     def is_available(self) -> bool:
         return True  # Always available
 
-    async def _execute_chat(
+    async def chat(
         self,
         system_prompt: str,
         user_message: str,
         **kwargs
     ) -> str:
-        """Execute the mock response generation."""
+        self._enforce_limits(system_prompt, user_message, **kwargs)
         await asyncio.sleep(self.delay)
 
         # Generate a structured mock response based on system prompt

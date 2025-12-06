@@ -1,142 +1,135 @@
-"""Rate limit tracking for outbound LLM calls."""
+"""Local rate limit tracking and enforcement."""
 
-import math
 import time
-import threading
-from collections import defaultdict, deque
+from collections import deque
 from dataclasses import dataclass
 from typing import Deque, Dict, Tuple
 
-from .pricing import normalize_model_name
+from .pricing import CostEstimator
 
 
 @dataclass
-class RateLimit:
+class ModelLimits:
+    """Per-model rate and token ceilings for a sliding window."""
+
     rpm: int  # Requests per minute
     tpm: int  # Tokens per minute
 
 
 class RateLimitExceeded(Exception):
-    """Raised when a model-specific rate limit is hit."""
+    """Raised when a request would exceed configured rate limits."""
 
     def __init__(self, message: str, retry_after: float):
         super().__init__(message)
-        self.retry_after = max(0, retry_after)
-
-
-DEFAULT_RATE_LIMITS: Dict[str, RateLimit] = {
-    # Tier 1 baseline values (configurable)
-    "gemini-2.5-flash": RateLimit(rpm=15, tpm=1_000_000),
-    "gemini-2.5-flash-lite": RateLimit(rpm=15, tpm=1_000_000),
-    "gemini-3-pro-preview": RateLimit(rpm=2, tpm=32_000),
-    "gemini-2.5-pro": RateLimit(rpm=10, tpm=1_000_000),
-    "default": RateLimit(rpm=60, tpm=1_000_000),
-}
+        self.retry_after = retry_after
 
 
 class TrafficController:
-    """
-    Sliding-window rate limiter with per-model tracking.
+    """Track outgoing requests to avoid server-side 429 responses."""
 
-    Uses a 60-second leaky bucket (deque-based) to enforce RPM + TPM.
-    """
+    DEFAULT_LIMITS: Dict[str, ModelLimits] = {
+        # Tier 1 defaults (sliding 60-second window)
+        "gemini-2.5-flash": ModelLimits(rpm=15, tpm=1_000_000),
+        "gemini-2.5-flash-lite": ModelLimits(rpm=20, tpm=750_000),
+        "gemini-3-pro": ModelLimits(rpm=2, tpm=32_000),
+        "gemini-2.5-pro": ModelLimits(rpm=5, tpm=512_000),
+    }
 
     def __init__(
         self,
-        limits: Dict[str, RateLimit] | None = None,
+        limits: Dict[str, ModelLimits] | None = None,
         window_seconds: int = 60,
     ):
-        self.limits = limits or DEFAULT_RATE_LIMITS
-        self.window = window_seconds
-        self._request_log: Dict[str, Deque[float]] = defaultdict(deque)
-        self._token_log: Dict[str, Deque[Tuple[float, int]]] = defaultdict(deque)
-        self._lock = threading.Lock()
+        self.window_seconds = window_seconds
+        self.limits = limits or self.DEFAULT_LIMITS
+        self._requests: Dict[str, Deque[Tuple[float, int]]] = {}
 
-    def _get_limit(self, model_key: str) -> RateLimit:
-        return self.limits.get(model_key) or self.limits.get("default") or RateLimit(rpm=60, tpm=1_000_000)
-
-    def _prune(self, model_key: str, now: float):
-        """Drop entries outside the sliding window."""
-        reqs = self._request_log[model_key]
-        tokens = self._token_log[model_key]
-
-        while reqs and (now - reqs[0]) > self.window:
-            reqs.popleft()
-
-        while tokens and (now - tokens[0][0]) > self.window:
-            tokens.popleft()
-
-    def _current_usage(self, model_key: str) -> tuple[int, int]:
-        """Return (rpm, tpm) usage inside the window."""
-        reqs = self._request_log[model_key]
-        tokens = self._token_log[model_key]
-        tpm = sum(entry[1] for entry in tokens)
-        return len(reqs), tpm
-
-    def _calculate_retry_after(self, model_key: str, limit: RateLimit, tokens: int, now: float) -> float:
-        """
-        Compute the earliest time (seconds) until a new request can fit.
-        Considers both RPM and TPM over a 60-second sliding window.
-        """
-        waits = []
-        reqs = self._request_log[model_key]
-        token_entries = self._token_log[model_key]
-
-        if len(reqs) >= limit.rpm and reqs:
-            waits.append(self.window - (now - reqs[0]))
-
-        current_tpm = sum(t for _, t in token_entries)
-        over_tokens = (current_tpm + tokens) - limit.tpm
-
-        if over_tokens > 0 and token_entries:
-            # Find the earliest point where enough tokens leak out
-            running = current_tpm
-            for ts, spent in token_entries:
-                running -= spent
-                if running + tokens <= limit.tpm:
-                    waits.append(self.window - (now - ts))
-                    break
-            else:
-                waits.append(self.window)
-
-        # Never return zero; 1s is a reasonable minimum backoff
-        positive_waits = [w for w in waits if w > 0]
-        return max(1, math.ceil(min(positive_waits))) if positive_waits else 1
-
-    def check_allowance(self, model: str, tokens: int, consume: bool = True):
-        """
-        Verify the request can proceed within RPM/TPM budgets.
+    def check_allowance(
+        self,
+        model: str,
+        tokens: int,
+        estimated_output_tokens: int = 0,
+        commit: bool = True,
+    ) -> None:
+        """Verify whether a request is allowed and optionally reserve capacity.
 
         Args:
-            model: Model identifier (normalized to Gemini keys)
-            tokens: Input + estimated output tokens
-            consume: When True, record usage; when False, only validate.
+            model: Target model identifier.
+            tokens: Estimated input tokens.
+            estimated_output_tokens: Anticipated output tokens for TPM tracking.
+            commit: If True, record the request; otherwise, perform a dry run.
+
+        Raises:
+            RateLimitExceeded: When RPM or TPM ceilings would be exceeded.
         """
+
+        normalized_model = model.lower()
+        limits = self.limits.get(normalized_model)
+        if limits is None:
+            # Unknown model defaults to the loosest Gemini flash tier
+            limits = ModelLimits(rpm=15, tpm=1_000_000)
+            self.limits[normalized_model] = limits
+
         now = time.time()
-        model_key = normalize_model_name(model)
-        limit = self._get_limit(model_key)
+        window = self._requests.setdefault(normalized_model, deque())
+        self._prune(window, now)
 
-        with self._lock:
-            self._prune(model_key, now)
-            rpm_used, tpm_used = self._current_usage(model_key)
+        total_tokens = tokens + estimated_output_tokens
 
-            if rpm_used >= limit.rpm or (tpm_used + tokens) > limit.tpm:
-                retry_after = self._calculate_retry_after(model_key, limit, tokens, now)
-                raise RateLimitExceeded(
-                    f"Rate limit exceeded for model '{model_key}' (rpm={limit.rpm}, tpm={limit.tpm})",
-                    retry_after,
-                )
+        if self._exceeds_rpm(window, limits):
+            retry_after = self._retry_after_for_rpm(window, now)
+            raise RateLimitExceeded("Requests per minute limit exceeded", retry_after)
 
-            if consume:
-                self._request_log[model_key].append(now)
-                self._token_log[model_key].append((now, tokens))
+        if self._exceeds_tpm(window, limits, total_tokens):
+            retry_after = self._retry_after_for_tpm(window, limits, total_tokens, now)
+            raise RateLimitExceeded("Tokens per minute limit exceeded", retry_after)
+
+        if commit:
+            window.append((now, total_tokens))
+
+    def _prune(self, window: Deque[Tuple[float, int]], now: float) -> None:
+        """Remove entries outside the sliding window."""
+
+        cutoff = now - self.window_seconds
+        while window and window[0][0] < cutoff:
+            window.popleft()
+
+    def _exceeds_rpm(self, window: Deque[Tuple[float, int]], limits: ModelLimits) -> bool:
+        return len(window) + 1 > limits.rpm
+
+    def _retry_after_for_rpm(self, window: Deque[Tuple[float, int]], now: float) -> float:
+        oldest_time = window[0][0]
+        return max(0, self.window_seconds - (now - oldest_time))
+
+    def _exceeds_tpm(
+        self, window: Deque[Tuple[float, int]], limits: ModelLimits, incoming_tokens: int
+    ) -> bool:
+        current_tokens = sum(tokens for _, tokens in window)
+        return current_tokens + incoming_tokens > limits.tpm
+
+    def _retry_after_for_tpm(
+        self,
+        window: Deque[Tuple[float, int]],
+        limits: ModelLimits,
+        incoming_tokens: int,
+        now: float,
+    ) -> float:
+        """Determine wait time until enough tokens expire to allow the request."""
+
+        tokens_accumulated = incoming_tokens
+        for timestamp, tokens in window:
+            tokens_accumulated += tokens
+            if tokens_accumulated > limits.tpm:
+                return max(0, self.window_seconds - (now - timestamp))
+        return self.window_seconds
 
 
-# Shared controller for the process
+def estimate_tokens(text: str) -> int:
+    """Helper to reuse the CostEstimator token heuristic."""
+
+    estimator = CostEstimator()
+    return estimator._estimate_tokens(text)
+
+
+# Shared controller for application-wide coordination
 traffic_controller = TrafficController()
-
-
-def get_traffic_controller() -> TrafficController:
-    """Return a shared TrafficController instance."""
-    return traffic_controller
-
