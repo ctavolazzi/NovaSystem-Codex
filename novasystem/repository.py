@@ -303,7 +303,7 @@ class RepositoryHandler:
         # Filter out None values
         return {k: v for k, v in config_files.items() if v is not None}
 
-    def read_documentation_content(self, doc_file: Union[str, os.PathLike[str]]) -> str:
+    def read_documentation_content(self, doc_file: Union[str, os.PathLike]) -> str:
         """Read and return the full contents of a documentation file."""
         try:
             with open(doc_file, "r", encoding="utf-8") as f:
