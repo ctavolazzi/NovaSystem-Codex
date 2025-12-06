@@ -48,13 +48,13 @@ def probe_corruption_resilience():
     Goal: The app should start with a fresh state, not crash.
     """
     print_header("Testing Resilience to Corrupted State Files")
-    
+
     from backend.core.traffic import TrafficController
-    
+
     # 1. Create a corrupted JSON file (half-written)
     with open(TEST_STATE, "w") as f:
         f.write('{"window_seconds": 60, "requests": {"model": [[123456.7, 100')  # Truncated
-    
+
     try:
         # 2. Attempt to initialize the controller with corrupted file
         tc = TrafficController(state_file=TEST_STATE, persist=True)
@@ -76,34 +76,34 @@ def probe_race_condition():
     Goal: Identify if data is overwritten.
     """
     print_header("Testing Concurrency / Race Conditions")
-    
+
     cleanup()
-    
+
     from backend.core.traffic import TrafficController
-    
+
     # Instance A loads state (empty)
     tc_A = TrafficController(state_file=TEST_STATE, persist=True)
-    
+
     # Instance B loads state (empty) - simulates second process
     tc_B = TrafficController(state_file=TEST_STATE, persist=True)
-    
+
     # A logs a request
     tc_A.check_allowance("test-model", 100, estimated_output_tokens=500, commit=True)
-    
+
     # B logs a request
     tc_B.check_allowance("test-model", 200, estimated_output_tokens=300, commit=True)
-    
+
     # A saves (writes its state)
     tc_A._save_state()
-    
+
     # B saves (writes its state) - DOES IT OVERWRITE A?
     tc_B._save_state()
-    
+
     # Reload to see what survived
     tc_final = TrafficController(state_file=TEST_STATE, persist=True)
     requests = tc_final._requests.get("test-model", [])
     count = len(requests)
-    
+
     if count == 2:
         print_result("PASS", "Both requests survived (Merging logic exists).")
         return True
@@ -119,16 +119,16 @@ def probe_sql_injection():
     Goal: Ensure parameterized queries are used.
     """
     print_header("Testing SQL Injection in Usage Ledger")
-    
+
     cleanup()
-    
+
     from backend.core.usage import UsageLedger, Transaction
-    
+
     ledger = UsageLedger(db_file=TEST_DB)
-    
+
     # The payload: Try to terminate the string and drop the table
     evil_context = "test'); DROP TABLE transactions; --"
-    
+
     t = Transaction(
         timestamp=time.time(),
         model="test-model",
@@ -139,7 +139,7 @@ def probe_sql_injection():
         context=evil_context
     )
     ledger.record(t)
-    
+
     # Check if table still exists
     try:
         with sqlite3.connect(TEST_DB) as conn:
@@ -162,14 +162,14 @@ def probe_pii_leak():
     Goal: Warn that the DB stores this in plain text.
     """
     print_header("Testing PII / Sensitive Data Leakage")
-    
+
     cleanup()
-    
+
     from backend.core.usage import UsageLedger, Transaction
-    
+
     ledger = UsageLedger(db_file=TEST_DB)
     secret = "MySuperSecretPassword123"
-    
+
     t = Transaction(
         timestamp=time.time(),
         model="test-model",
@@ -180,7 +180,7 @@ def probe_pii_leak():
         context=f"auth_check:{secret}"
     )
     ledger.record(t)
-    
+
     # Simulate an attacker reading the DB file
     with open(TEST_DB, "rb") as f:
         content = f.read()
@@ -200,13 +200,13 @@ def probe_budget_limit():
     Goal: Check if budget limits exist.
     """
     print_header("Testing Budget Limit / Circuit Breaker")
-    
+
     from backend.core.usage import UsageLedger
-    
+
     # Check if budget enforcement exists
     ledger = UsageLedger.__dict__
     has_budget_check = any('budget' in str(v).lower() for v in ledger.values())
-    
+
     if has_budget_check:
         print_result("PASS", "Budget enforcement logic detected.")
         return True
@@ -221,11 +221,11 @@ def run_probes():
     print("=" * 60)
     print("  🛑 NOVA v0.2.0 SECURITY PROBE")
     print("=" * 60)
-    
+
     cleanup()
-    
+
     results = []
-    
+
     try:
         results.append(("Corruption Resilience", probe_corruption_resilience()))
         cleanup()
@@ -242,12 +242,12 @@ def run_probes():
         traceback.print_exc()
     finally:
         cleanup()
-    
+
     # Summary
     print("\n" + "=" * 60)
     print("  VULNERABILITY SUMMARY")
     print("=" * 60)
-    
+
     for name, result in results:
         if result is True:
             status = "✅ SECURE"
@@ -256,7 +256,7 @@ def run_probes():
         else:
             status = "⚠️  WARNING"
         print(f"  {status}: {name}")
-    
+
     critical_fails = sum(1 for _, r in results if r is False)
     if critical_fails > 0:
         print(f"\n⚠️  {critical_fails} CRITICAL VULNERABILITY(S) FOUND")
