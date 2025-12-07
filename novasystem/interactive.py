@@ -230,15 +230,57 @@ class Spinner:
 # =============================================================================
 
 class Screensaver:
-    """Sleeping wizard screensaver - he's worked SO hard."""
+    """Sleeping wizard screensaver with floating dreams."""
 
-    # Clever messages about how hard the wizard worked
-    HARD_WORK_MESSAGES = [
+    # Detailed shaded wizard using ASCII density for depth
+    # Characters by density: ' .,-~:;=!*#$@' (light to dark)
+    WIZARD_ART = [
+        r"                          ..",
+        r"                        ,@@@@,",
+        r"                      ,@@@@@@@@,",
+        r"                    .@@@@@@@@@@@.",
+        r"                   @@@@@@@@@@@@@@'",
+        r"                  @@@@@@@*'@@@@@@@ ",
+        r"                 @@@@@@'    '@@@@@@",
+        r"                ,@@@@@   ☆   @@@@@,",
+        r"                @@@@@'       '@@@@@",
+        r"               .@@@@@  -   -  @@@@@.",
+        r"               @@@@@;    v    ;@@@@@",
+        r"               '@@@@@.       .@@@@@'",
+        r"                '@@@@@@@@@@@@@@@@@'",
+        r"                  '@@@@@@@@@@@@@@'",
+        r"                     ||     ||",
+        r"                   __||_____||__",
+        r"                  /  ~~~~~~~~~~  \",
+        r"                 |    N O V A    |",
+        r"                 |    ~~~~~~     |",
+        r"                  \   W I Z    /",
+        r"                   '=========='",
+    ]
+
+    # Dreams that float in and out
+    DREAMS = [
+        ("☁️", "cloud"),
+        ("💭", "thought"),
+        ("⭐", "star"),
+        ("🌙", "moon"),
+        ("✨", "sparkle"),
+        ("🔮", "crystal"),
+        ("📚", "books"),
+        ("💡", "idea"),
+        ("🚀", "rocket"),
+        ("🎯", "target"),
+        ("🧠", "brain"),
+        ("⚡", "lightning"),
+    ]
+
+    # Clever messages about working hard
+    MESSAGES = [
         "Solved 47 impossible problems today",
         "Debugged the meaning of life",
         "Optimized infinity (twice)",
         "Refactored the space-time continuum",
-        "Merged 1,000 pull requests in one commit",
+        "Merged 1,000 PRs in one commit",
         "Fixed a bug that didn't exist yet",
         "Trained a model on pure vibes",
         "Achieved O(1) on an O(n!) problem",
@@ -249,7 +291,7 @@ class Screensaver:
         "Deployed on Friday and lived",
         "Understood the legacy code",
         "Made the client happy (impossible)",
-        "Turned coffee into algorithms",
+        "Turned mass into algorithms",
         "Divided by zero (safely)",
         "Found the missing semicolon",
         "Centered a div (vertically!)",
@@ -259,114 +301,169 @@ class Screensaver:
     def __init__(self):
         self.frame = 0
         self.width, self.height = self.get_terminal_size()
-        self.current_message_idx = 0
+        self.message_idx = 0
         self.message_timer = 0
+        # Active floating dreams: (x, y, dream_idx, direction, lifespan)
+        self.active_dreams = []
+        self.dream_spawn_timer = 0
 
     def get_terminal_size(self):
-        """Get terminal dimensions."""
         try:
             size = os.get_terminal_size()
             return size.columns, size.lines
         except:
             return 80, 24
 
-    def sleeping_wizard(self):
-        """The wizard sleeps - he's earned it."""
+    def update_dreams(self):
+        """Update floating dreams - spawn, move, and remove."""
+        # Spawn new dreams occasionally
+        self.dream_spawn_timer += 1
+        if self.dream_spawn_timer > 25 and len(self.active_dreams) < 6:
+            self.dream_spawn_timer = 0
+            # Spawn on left or right side
+            side = random.choice(["left", "right"])
+            if side == "left":
+                x = random.randint(2, 15)
+                dx = random.uniform(0.1, 0.3)
+            else:
+                x = random.randint(50, 65)
+                dx = random.uniform(-0.3, -0.1)
+            
+            y = random.randint(2, 12)
+            dy = random.uniform(-0.15, 0.15)
+            dream_idx = random.randint(0, len(self.DREAMS) - 1)
+            lifespan = random.randint(80, 150)
+            
+            self.active_dreams.append({
+                'x': float(x),
+                'y': float(y),
+                'dx': dx,
+                'dy': dy,
+                'idx': dream_idx,
+                'life': lifespan,
+                'age': 0,
+            })
+
+        # Update existing dreams
+        updated = []
+        for dream in self.active_dreams:
+            dream['x'] += dream['dx']
+            dream['y'] += dream['dy']
+            dream['age'] += 1
+            
+            # Keep if still alive and on screen
+            if dream['age'] < dream['life'] and 0 < dream['x'] < 75 and 0 < dream['y'] < 20:
+                updated.append(dream)
+        
+        self.active_dreams = updated
+
+    def render_wizard(self):
+        """Render the shaded wizard with floating dreams."""
         self.width, self.height = self.get_terminal_size()
+        self.update_dreams()
+
+        # Create the scene buffer
+        scene_height = 24
+        scene_width = 78
+        scene = [[' ' for _ in range(scene_width)] for _ in range(scene_height)]
+
+        # Draw twinkling stars in background
+        for i in range(8):
+            x = (i * 11 + self.frame // 3) % scene_width
+            y = (i * 3) % 6
+            if (self.frame + i * 7) % 12 < 6:
+                char = '✦' if i % 2 == 0 else '·'
+                if 0 <= x < scene_width and 0 <= y < scene_height:
+                    scene[y][x] = f"{Colors.DIM}{char}{Colors.RESET}"
+
+        # Draw the wizard (centered)
+        wizard_start_x = 25
+        wizard_start_y = 1
+        for row_idx, row in enumerate(self.WIZARD_ART):
+            y = wizard_start_y + row_idx
+            if y >= scene_height:
+                break
+            for col_idx, char in enumerate(row):
+                x = wizard_start_x + col_idx
+                if x >= scene_width:
+                    break
+                if char != ' ':
+                    # Color based on character density
+                    if char in '@#$':
+                        color = Colors.MAGENTA
+                    elif char in '*=!':
+                        color = Colors.BLUE
+                    elif char in '~-:;':
+                        color = Colors.CYAN
+                    elif char in '☆':
+                        color = Colors.YELLOW
+                    else:
+                        color = Colors.WHITE
+                    scene[y][x] = f"{color}{char}{Colors.RESET}"
+
+        # Draw floating Z's
+        z_chars = ['z', 'z', 'Z', 'Z']
+        for i, z in enumerate(z_chars):
+            # Float upward and to the right
+            base_x = 52 + i * 2
+            base_y = 10 - i + ((self.frame // 4 + i * 2) % 6)
+            if 0 <= base_x < scene_width and 0 <= base_y < scene_height:
+                fade = Colors.CYAN if i < 2 else Colors.WHITE
+                scene[base_y][base_x] = f"{fade}{z}{Colors.RESET}"
+
+        # Draw floating dreams
+        for dream in self.active_dreams:
+            x, y = int(dream['x']), int(dream['y'])
+            if 0 <= x < scene_width - 2 and 0 <= y < scene_height:
+                emoji, _ = self.DREAMS[dream['idx']]
+                # Fade based on age
+                age_ratio = dream['age'] / dream['life']
+                if age_ratio < 0.2 or age_ratio > 0.8:
+                    fade = Colors.DIM
+                else:
+                    fade = ""
+                scene[y][x] = f"{fade}{emoji}{Colors.RESET}"
+
+        # Convert scene to lines
         lines = []
+        for row in scene:
+            lines.append(''.join(row))
 
-        # Floating Z animation (rises up)
-        z_positions = [
-            (1, "z"),
-            (2, "z"),
-            (3, "Z"),
-            (4, "Z"),
-        ]
-        z_offset = self.frame % 8
-
-        # Stars twinkle
-        star1 = "✦" if self.frame % 6 < 3 else "✧"
-        star2 = "✧" if self.frame % 8 < 4 else "✦"
-        star3 = "⋆" if self.frame % 10 < 5 else "✦"
-
-        # Build the scene
-        scene = []
-        scene.append("")
-        scene.append(f"       {Colors.DIM}{star1}        {star2}                    {star3}        ✧{Colors.RESET}")
-        scene.append(f"                  {Colors.DIM}·    ✦          ·{Colors.RESET}")
-        scene.append("")
-
-        # Animated Z's floating up
-        z_art = ["    ", "    ", "    ", "    "]
-        for i, (base_y, char) in enumerate(z_positions):
-            y_pos = (base_y + z_offset // 2) % 4
-            if y_pos < len(z_art):
-                spaces = "  " * (i + 1)
-                z_art[y_pos] = f"{spaces}{Colors.CYAN}{char}{Colors.RESET}"
-
-        # The wizard
-        wizard = [
-            f"                       {Colors.YELLOW}★{Colors.RESET}",
-            f"                   {Colors.MAGENTA}__/|\\___{Colors.RESET}",
-            f"                  {Colors.MAGENTA}/{Colors.RESET}  {Colors.YELLOW}🌙{Colors.RESET}   {Colors.MAGENTA}\\{Colors.RESET}      {z_art[0]}",
-            f"                 {Colors.MAGENTA}|{Colors.RESET}        {Colors.MAGENTA}|{Colors.RESET}      {z_art[1]}",
-            f"                 {Colors.MAGENTA}|{Colors.RESET}  {Colors.WHITE}—   —{Colors.RESET}  {Colors.MAGENTA}|{Colors.RESET}       {z_art[2]}",
-            f"                 {Colors.MAGENTA}|{Colors.RESET}    {Colors.WHITE}ᵕ{Colors.RESET}    {Colors.MAGENTA}|{Colors.RESET}        {z_art[3]}",
-            f"                  {Colors.MAGENTA}\\______/{Colors.RESET}",
-            f"                   {Colors.BLUE}│{Colors.RESET}    {Colors.BLUE}│{Colors.RESET}",
-            f"               {Colors.BLUE}┌───┴────┴───┐{Colors.RESET}",
-            f"               {Colors.BLUE}│{Colors.RESET} {Colors.CYAN}~ ~ ~ ~ ~{Colors.RESET} {Colors.BLUE}│{Colors.RESET}",
-            f"               {Colors.BLUE}│{Colors.RESET}  {Colors.WHITE}NOVA{Colors.RESET}     {Colors.BLUE}│{Colors.RESET}",
-            f"               {Colors.BLUE}│{Colors.RESET}  {Colors.WHITE}WIZARD{Colors.RESET}   {Colors.BLUE}│{Colors.RESET}",
-            f"               {Colors.BLUE}└───────────┘{Colors.RESET}",
-        ]
-
-        for line in wizard:
-            scene.append(line)
-
-        scene.append("")
-        scene.append("")
-
-        # Update message every ~4 seconds (50 frames)
+        # Update message
         self.message_timer += 1
-        if self.message_timer >= 50:
+        if self.message_timer >= 60:
             self.message_timer = 0
-            self.current_message_idx = (self.current_message_idx + 1) % len(self.HARD_WORK_MESSAGES)
+            self.message_idx = (self.message_idx + 1) % len(self.MESSAGES)
 
-        msg = self.HARD_WORK_MESSAGES[self.current_message_idx]
-
-        # Fancy message box
-        box_width = len(msg) + 4
-        scene.append(f"          {Colors.DIM}╭{'─' * box_width}╮{Colors.RESET}")
-        scene.append(f"          {Colors.DIM}│{Colors.RESET}  {Colors.YELLOW}💤{Colors.RESET} {Colors.WHITE}{msg}{Colors.RESET}  {Colors.DIM}│{Colors.RESET}")
-        scene.append(f"          {Colors.DIM}╰{'─' * box_width}╯{Colors.RESET}")
-
-        scene.append("")
-        scene.append(f"               {Colors.DIM}Shhh... the wizard is resting.{Colors.RESET}")
-        scene.append(f"               {Colors.DIM}Press Enter to wake...{Colors.RESET}")
-
-        for line in scene:
-            lines.append(line)
+        msg = self.MESSAGES[self.message_idx]
+        
+        # Add message box at bottom
+        lines.append("")
+        box_w = len(msg) + 6
+        pad = " " * max(0, (scene_width - box_w) // 2 - 5)
+        lines.append(f"{pad}{Colors.DIM}╭{'─' * box_w}╮{Colors.RESET}")
+        lines.append(f"{pad}{Colors.DIM}│{Colors.RESET}  💤 {Colors.WHITE}{msg}{Colors.RESET}  {Colors.DIM}│{Colors.RESET}")
+        lines.append(f"{pad}{Colors.DIM}╰{'─' * box_w}╯{Colors.RESET}")
+        lines.append("")
+        lines.append(f"{pad}    {Colors.DIM}Shhh... the wizard is resting.{Colors.RESET}")
+        lines.append(f"{pad}    {Colors.DIM}Press Enter to wake...{Colors.RESET}")
 
         return lines
 
     def render(self, effect="wizard"):
-        """Render a frame."""
         self.frame += 1
-        return self.sleeping_wizard()
+        return self.render_wizard()
 
 def run_screensaver():
     """Run the screensaver loop."""
     screensaver = Screensaver()
-
     clear_screen()
 
     while state.screensaver_active and state.running:
         lines = screensaver.render()
-        print("\033[H", end="")  # Home cursor
+        print("\033[H", end="")
         for line in lines:
             print(f"\033[K{line}")
-
         time.sleep(ANIMATION_SPEED)
 
     clear_screen()
