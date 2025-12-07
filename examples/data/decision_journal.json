@@ -114,5 +114,34 @@
       "Cohere Command R+": 5.0
     },
     "notes": "Demo run - generated with synthetic provider metrics and historical trust signal."
+  },
+  {
+    "timestamp": "2025-12-07T12:39:24.259846",
+    "winner": "PixelLab Nova",
+    "confidence": 3.99,
+    "method": "weighted",
+    "top3": [
+      [
+        "PixelLab Nova",
+        8.961818181818183
+      ],
+      [
+        "GPT-4.1 Enterprise",
+        8.773636363636365
+      ],
+      [
+        "Claude 3.5 Sonnet",
+        8.750000000000002
+      ]
+    ],
+    "history_bonus": {
+      "PixelLab Nova": 7.5,
+      "GPT-4.1 Enterprise": 6.25,
+      "Claude 3.5 Sonnet": 6.25,
+      "Gemini 2.0 Advanced": 5.0,
+      "Mistral Large": 5.0,
+      "Cohere Command R+": 5.0
+    },
+    "notes": "Demo run - generated with synthetic provider metrics and historical trust signal."
   }
 ]
