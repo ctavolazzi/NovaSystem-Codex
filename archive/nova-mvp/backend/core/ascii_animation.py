@@ -48,6 +48,16 @@ WIZARD_MESSAGES = [
     "Whispering to the servers...",
     "Enchanting the RAM sticks...",
     "Casting 'Compile Without Errors'...",
+    "Downloading more RAM...",
+    "Defragmenting the astral plane...",
+    "Rebooting the universe...",
+    "Syncing with parallel dimensions...",
+    "Compiling the meaning of life...",
+    "Buffering the cosmic stream...",
+    "Optimizing dream sequences...",
+    "Refactoring reality...",
+    "Deploying magic to production...",
+    "Running on pure imagination...",
 ]
 
 
@@ -124,10 +134,10 @@ class TypewriterMessageBox:
         self.wait_counter = 0
         self.message_index = 0
 
-        # Timing (in animation frames)
-        self.type_speed = 2        # frames per character when typing
+        # Timing (in animation frames) - faster typing!
+        self.type_speed = 1        # frames per character when typing (was 2)
         self.erase_speed = 1       # frames per character when erasing
-        self.wait_time = 15        # frames to wait after typing complete
+        self.wait_time = 8         # frames to wait after typing complete (was 15)
         self.frame_counter = 0
 
         # Pick first message
@@ -346,22 +356,48 @@ def play_sleeping_wizard(
     Returns:
         True if interrupted by keypress
     """
-    # Auto-detect image
+    # Auto-detect image - search multiple locations
     if image_path is None:
+        # Get the repo root (go up from core -> backend -> nova-mvp -> repo)
+        repo_root = Path(__file__).parent.parent.parent.parent
+
         search_paths = [
-            Path(__file__).parent.parent.parent.parent / "pixellab-sleeping-ascii-art-cyber-wizar-1765149003373.png",
-            Path(__file__).parent.parent.parent.parent / "pixellab-sleeping-wizard-1765148781838.png",
+            # Direct paths to known wizard images
+            repo_root / "pixellab-sleeping-ascii-art-cyber-wizar-1765149003373.png",
+            repo_root / "pixellab-sleeping-wizard-1765148781838.png",
+            # Also check archive location (in case running from archive)
+            repo_root / "archive" / "pixellab-sleeping-wizard-1765148781838.png",
+            # Check assets folder
+            repo_root / "assets" / "wizard.png",
+            # Check current working directory
             Path.cwd() / "wizard.png",
+            Path.cwd() / "pixellab-sleeping-wizard-1765148781838.png",
+            # Check for any wizard image in cwd
+            *list(Path.cwd().glob("*wizard*.png"))[:1],
         ]
+
         for p in search_paths:
-            if p.exists():
-                image_path = str(p)
-                break
+            try:
+                if p and p.exists():
+                    image_path = str(p)
+                    break
+            except (TypeError, OSError):
+                continue
 
-    if not image_path or not Path(image_path).exists():
-        raise FileNotFoundError("No wizard image found")
+    if not image_path:
+        raise FileNotFoundError(
+            "No wizard image found. Place a wizard.png in current directory "
+            "or run from the repo root."
+        )
 
-    frames = generate_breathing_frames(image_path, width=width, num_frames=4)
+    if not Path(image_path).exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
+    try:
+        frames = generate_breathing_frames(image_path, width=width, num_frames=4)
+    except Exception as e:
+        raise RuntimeError(f"Failed to process image: {e}")
+
     player = ASCIIAnimationPlayer(frames, fps=fps, colored=True)
     return player.play(message)
 
