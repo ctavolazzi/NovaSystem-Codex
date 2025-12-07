@@ -482,8 +482,7 @@ class Screensaver:
         lines.append(f"{pad}{Colors.DIM}│{Colors.RESET}  💤 {Colors.WHITE}{msg}{Colors.RESET}  {Colors.DIM}│{Colors.RESET}")
         lines.append(f"{pad}{Colors.DIM}╰{'─' * box_w}╯{Colors.RESET}")
         lines.append("")
-        lines.append(f"{pad}    {Colors.DIM}Shhh... the wizard is resting.{Colors.RESET}")
-        lines.append(f"{pad}    {Colors.DIM}Press any key to wake...{Colors.RESET}")
+        lines.append(f"{pad}       {Colors.DIM}press any key to wake{Colors.RESET}")
 
         return lines
 
