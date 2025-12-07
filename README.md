@@ -2,7 +2,7 @@
 
 🧠 **NovaSystem** is a multi-agent problem-solving framework powered by AI. It orchestrates multiple expert agents (DCE, CAE, Domain Experts) through the **Nova Process** to analyze complex problems and synthesize comprehensive solutions.
 
-> **303 tests passing** | **6 interactive demos** | **v0.3.1**
+> **303 tests passing** | **6 interactive demos** | **v0.3.2**
 
 ## Quick Start
 
@@ -31,7 +31,7 @@ The `./nova` script provides a beautiful startup experience:
 ║   ██╔██╗ ██║██║   ██║██║   ██║███████║    ███████╗ ╚████╔╝ ███████╗   ██║     ║
 ║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║    ███████║   ██║   ███████║   ██║     ║
 ║                                                                                ║
-║   🧠 Multi-Agent Problem Solving System                              v0.3.1   ║
+║   🧠 Multi-Agent Problem Solving System                              v0.3.2   ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 

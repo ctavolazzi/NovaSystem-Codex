@@ -57,7 +57,7 @@ load_dotenv()
 # =============================================================================
 
 APP_NAME = "novasystem"
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.3.2"
 CONFIG_DIR = Path.home() / ".novasystem"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 HISTORY_FILE = CONFIG_DIR / "history.json"

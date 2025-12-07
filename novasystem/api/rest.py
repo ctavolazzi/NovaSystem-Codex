@@ -205,7 +205,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="NovaSystem API",
         description="API for the Nova Process multi-agent problem-solving framework",
-        version="0.3.1"
+        version="0.3.2"
     )
 
     # Add CORS middleware
@@ -250,7 +250,7 @@ def create_app() -> FastAPI:
         """Root endpoint."""
         return {
             "message": "NovaSystem API",
-            "version": "0.3.1",
+            "version": "0.3.2",
             "endpoints": {
                 "solve": "/api/solve",
                 "session_status": "/api/sessions/{session_id}/status",

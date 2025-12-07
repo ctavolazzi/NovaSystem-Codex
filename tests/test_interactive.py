@@ -17,7 +17,7 @@ class TestInteractiveApp:
     def test_can_import_module(self):
         """Test that the interactive module can be imported."""
         from novasystem.interactive import VERSION
-        assert VERSION == "0.3.1"
+        assert VERSION == "0.3.2"
 
     def test_colors_defined(self):
         """Test that color codes are defined."""

@@ -27,7 +27,7 @@ except ImportError:
 # CONFIGURATION
 # =============================================================================
 
-VERSION = "0.3.1"
+VERSION = "0.3.2"
 SCREENSAVER_TIMEOUT = 30  # seconds of inactivity before screensaver
 ANIMATION_SPEED = 0.08  # seconds between animation frames
 
