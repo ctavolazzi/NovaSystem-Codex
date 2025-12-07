@@ -144,7 +144,7 @@ class TrafficController:
 
     def _save_state(self) -> None:
         """Persist current window state to JSON using atomic write + merge.
-        
+
         Security fixes:
         - Atomic write: Write to temp file, then rename (prevents corruption)
         - Merge strategy: Load existing state and merge (prevents race condition data loss)
@@ -172,12 +172,12 @@ class TrafficController:
         # Merge in-memory requests with disk requests
         merged: Dict[str, List[Tuple[float, int]]] = {}
         all_models = set(existing_requests.keys()) | set(self._requests.keys())
-        
+
         for model in all_models:
             # Combine entries from both sources
             disk_entries = existing_requests.get(model, [])
             mem_entries = list(self._requests.get(model, []))
-            
+
             # Deduplicate by timestamp (same request shouldn't appear twice)
             seen_timestamps = set()
             combined = []
@@ -185,7 +185,7 @@ class TrafficController:
                 if ts > cutoff and ts not in seen_timestamps:
                     combined.append((ts, tok))
                     seen_timestamps.add(ts)
-            
+
             if combined:
                 # Sort by timestamp
                 combined.sort(key=lambda x: x[0])

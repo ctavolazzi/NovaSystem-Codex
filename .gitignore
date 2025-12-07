@@ -221,3 +221,10 @@ OAI_CONFIG_LIST
 .nova_usage.db
 release_test_*.db
 release_test_*.json
+
+# Nova memory store
+.nova_memory.json
+.nova_memory.json.tmp
+
+# Mining results
+mining_results.json

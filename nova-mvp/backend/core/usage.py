@@ -23,7 +23,7 @@ DEFAULT_HOURLY_BUDGET = 2.00  # USD
 
 class BudgetExceededError(Exception):
     """Raised when spending would exceed configured budget limits."""
-    
+
     def __init__(self, message: str, current_spend: float, budget: float, period: str):
         super().__init__(message)
         self.current_spend = current_spend
@@ -68,7 +68,7 @@ class UsageLedger:
 
     Records every transaction with estimated and actual costs,
     enabling drift analysis and spend reporting.
-    
+
     Includes circuit breaker to prevent runaway costs.
     """
 
@@ -255,17 +255,17 @@ class UsageLedger:
 
     def check_budget(self, estimated_cost: float = 0.0) -> None:
         """Check if spending is within budget limits.
-        
+
         Call this BEFORE making an API request to prevent overspending.
-        
+
         Args:
             estimated_cost: The estimated cost of the upcoming request.
-            
+
         Raises:
             BudgetExceededError: If budget would be exceeded.
         """
         now = time.time()
-        
+
         # Check hourly budget
         if self._hourly_budget is not None:
             hour_ago = now - 3600
@@ -278,7 +278,7 @@ class UsageLedger:
                     budget=self._hourly_budget,
                     period="hourly"
                 )
-        
+
         # Check daily budget
         if self._daily_budget is not None:
             day_ago = now - 86400
@@ -297,10 +297,10 @@ class UsageLedger:
         now = time.time()
         hour_ago = now - 3600
         day_ago = now - 86400
-        
+
         hourly_spend = self.total_spend(since=hour_ago)
         daily_spend = self.total_spend(since=day_ago)
-        
+
         return {
             "hourly_spend": hourly_spend,
             "hourly_budget": self._hourly_budget,

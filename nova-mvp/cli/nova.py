@@ -48,6 +48,7 @@ from backend.core import (
     UsageLedger,
     get_llm,
     get_usage_ledger,
+    get_memory_store,
     traffic_controller,
 )
 from backend.agents.base import AgentResponse
@@ -200,6 +201,110 @@ def usage_report(db_path: str | None = None, limit: int = 5) -> int:
         print(f"{Colors.DIM}  …and {total_txn - limit} more rows (use --limit to see more){Colors.RESET}")
 
     return 0
+
+
+# =============================================================================
+# MEMORY COMMANDS
+# =============================================================================
+
+
+def remember_command(text: str, tags_str: str) -> int:
+    """Store a memory."""
+    store = get_memory_store()
+    tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else []
+
+    doc_id = store.remember(text, tags=tags)
+
+    print(f"{Colors.GREEN}✓ Memory stored{Colors.RESET}")
+    print(f"  ID: {doc_id}")
+    print(f"  Text: {text[:60]}{'...' if len(text) > 60 else ''}")
+    if tags:
+        print(f"  Tags: {', '.join(tags)}")
+    print(f"  Total memories: {store.count()}")
+
+    return 0
+
+
+def recall_command(query: str, limit: int, tags_str: str) -> int:
+    """Search memories."""
+    store = get_memory_store()
+    tags = [t.strip() for t in tags_str.split(",") if t.strip()] if tags_str else None
+
+    results = store.recall(query, limit=limit, tags=tags)
+
+    print(f"{Colors.CYAN}🔍 Searching: \"{query}\"{Colors.RESET}")
+    if tags:
+        print(f"{Colors.DIM}   Tags filter: {', '.join(tags)}{Colors.RESET}")
+
+    if not results:
+        print(f"\n{Colors.YELLOW}No memories found matching your query.{Colors.RESET}")
+        print(f"{Colors.DIM}Try different keywords or add memories with 'nova remember'.{Colors.RESET}")
+        return 0
+
+    print(f"\n{Colors.GREEN}Found {len(results)} result(s):{Colors.RESET}\n")
+
+    for i, (doc, score) in enumerate(results, 1):
+        score_color = Colors.GREEN if score > 0.5 else Colors.YELLOW if score > 0.3 else Colors.DIM
+        print(f"{Colors.BOLD}{i}. [{score_color}{score:.2f}{Colors.RESET}{Colors.BOLD}]{Colors.RESET} {doc['text']}")
+        if doc.get('tags'):
+            print(f"   {Colors.DIM}Tags: {', '.join(doc['tags'])}{Colors.RESET}")
+        print()
+
+    return 0
+
+
+def memory_command(action: str | None) -> int:
+    """Memory management commands."""
+    store = get_memory_store()
+
+    if action == "list":
+        memories = store.list_all(limit=20)
+        if not memories:
+            print(f"{Colors.YELLOW}No memories stored yet.{Colors.RESET}")
+            print(f"{Colors.DIM}Add one with: nova remember \"something important\"{Colors.RESET}")
+            return 0
+
+        print(f"{Colors.CYAN}📚 Stored Memories ({store.count()} total){Colors.RESET}\n")
+        for mem in memories:
+            ts = datetime.fromtimestamp(mem['created_at']).strftime("%Y-%m-%d %H:%M")
+            tags_str = f" [{', '.join(mem['tags'])}]" if mem.get('tags') else ""
+            print(f"  {Colors.DIM}{ts}{Colors.RESET} {mem['text']}{Colors.CYAN}{tags_str}{Colors.RESET}")
+
+        return 0
+
+    elif action == "stats":
+        stats = store.stats()
+        print(f"{Colors.CYAN}📊 Memory Statistics{Colors.RESET}\n")
+        print(f"  Documents: {stats['count']}")
+        print(f"  Avg Length: {stats['avg_length']} chars")
+        print(f"  Embedding Dim: {stats['embedder_dim']}")
+
+        if stats.get('tags'):
+            print(f"\n  {Colors.BOLD}Top Tags:{Colors.RESET}")
+            for tag, count in list(stats['tags'].items())[:10]:
+                print(f"    {tag}: {count}")
+
+        return 0
+
+    elif action == "clear":
+        count = store.count()
+        if count == 0:
+            print(f"{Colors.YELLOW}Memory is already empty.{Colors.RESET}")
+            return 0
+
+        print(f"{Colors.RED}⚠️  This will delete {count} memories permanently.{Colors.RESET}")
+        confirm = input("Type 'yes' to confirm: ")
+        if confirm.lower() == 'yes':
+            deleted = store.clear()
+            print(f"{Colors.GREEN}✓ Cleared {deleted} memories.{Colors.RESET}")
+        else:
+            print(f"{Colors.DIM}Cancelled.{Colors.RESET}")
+
+        return 0
+
+    else:
+        print(f"{Colors.YELLOW}Usage: nova memory <list|stats|clear>{Colors.RESET}")
+        return 1
 
 
 async def solve_command(problem: str, domains: list, provider: str, verbose: bool):
@@ -424,6 +529,35 @@ Environment variables:
         help="Number of recent transactions to display (default: 5)"
     )
 
+    # Memory commands
+    remember_parser = subparsers.add_parser("remember", help="Store a memory")
+    remember_parser.add_argument("text", help="The text to remember")
+    remember_parser.add_argument(
+        "--tags", "-t",
+        default="",
+        help="Comma-separated tags (e.g., python,api,tips)"
+    )
+
+    recall_parser = subparsers.add_parser("recall", help="Search memories")
+    recall_parser.add_argument("query", help="Search query")
+    recall_parser.add_argument(
+        "--limit", "-n",
+        type=int,
+        default=5,
+        help="Maximum results (default: 5)"
+    )
+    recall_parser.add_argument(
+        "--tags", "-t",
+        default="",
+        help="Filter by tags (comma-separated)"
+    )
+
+    memory_parser = subparsers.add_parser("memory", help="Memory management")
+    memory_sub = memory_parser.add_subparsers(dest="memory_action")
+    memory_sub.add_parser("list", help="List all memories")
+    memory_sub.add_parser("stats", help="Show memory statistics")
+    memory_sub.add_parser("clear", help="Clear all memories")
+
     # Parse args
     args = parser.parse_args()
 
@@ -439,6 +573,12 @@ Environment variables:
         return asyncio.run(interactive_mode())
     elif args.command == "report":
         return usage_report(args.db, args.limit)
+    elif args.command == "remember":
+        return remember_command(args.text, args.tags)
+    elif args.command == "recall":
+        return recall_command(args.query, args.limit, args.tags)
+    elif args.command == "memory":
+        return memory_command(args.memory_action)
     else:
         print_header()
         parser.print_help()
