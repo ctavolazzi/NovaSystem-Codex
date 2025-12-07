@@ -18,13 +18,9 @@ from openai import AsyncOpenAI
 import anthropic
 import ollama
 
-# Gemini import with fallback (new google-genai SDK)
-try:
-    from google import genai as google_genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    google_genai = None
+# Gemini uses OpenAI-compatible API - no separate SDK needed!
+# Just use AsyncOpenAI with different base_url
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 from .metrics import get_metrics_collector
 from .model_cache import get_model_cache
@@ -72,7 +68,7 @@ class LLMService:
         print("\n" + "="*80)
         llm_log("🔧", "INIT", "Initializing LLMService...")
         print("="*80)
-        
+
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         self.anthropic_api_key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
@@ -111,18 +107,18 @@ class LLMService:
             self.anthropic_client = None
             llm_log("⚠️", "INIT", "Anthropic client NOT initialized (no API key)")
 
-        # Initialize Gemini client (new google-genai SDK)
+        # Initialize Gemini client (uses OpenAI-compatible API!)
         self.gemini_client = None
-        if self.gemini_api_key and GEMINI_AVAILABLE:
+        if self.gemini_api_key:
             try:
-                # Set API key via environment for the client
-                os.environ["GEMINI_API_KEY"] = self.gemini_api_key
-                self.gemini_client = google_genai.Client()
-                llm_log("✅", "INIT", "Gemini client initialized")
+                # Gemini supports OpenAI-compatible API - just use different base_url
+                self.gemini_client = AsyncOpenAI(
+                    api_key=self.gemini_api_key,
+                    base_url=GEMINI_BASE_URL
+                )
+                llm_log("✅", "INIT", "Gemini client initialized (OpenAI-compatible)")
             except Exception as e:
                 llm_log("❌", "INIT", f"Gemini client initialization failed: {str(e)}")
-        elif self.gemini_api_key and not GEMINI_AVAILABLE:
-            llm_log("⚠️", "INIT", "GEMINI_API_KEY set but google-genai not installed. Run: pip install google-genai")
         else:
             llm_log("⚠️", "INIT", "Gemini client NOT initialized (no API key)")
 
@@ -199,10 +195,10 @@ class LLMService:
 
         start_time = time.time()
         tokens_input = sum(len(msg.get('content', '').split()) for msg in messages)
-        
+
         # Extract first user message for logging
         user_msg = next((m.get('content', '')[:80] for m in messages if m.get('role') == 'user'), 'N/A')
-        
+
         llm_log("📤", "REQUEST", f"Sending request to {model}", {
             "messages": len(messages),
             "tokens_est": tokens_input,
@@ -439,71 +435,49 @@ class LLMService:
                                     model: str,
                                     temperature: float,
                                     max_tokens: Optional[int]) -> str:
-        """Get completion from Google Gemini."""
-        llm_log("💎", "GEMINI", f"Preparing Gemini request", {
-            "model": model,
+        """Get completion from Google Gemini using OpenAI-compatible API."""
+        # Remove gemini: prefix if present
+        model_name = model.replace("gemini:", "")
+
+        llm_log("💎", "GEMINI", f"Preparing Gemini request (OpenAI-compatible)", {
+            "model": model_name,
             "messages": len(messages),
-            "temperature": temperature
+            "temperature": temperature,
+            "max_tokens": max_tokens or "default"
         })
-        
+
         if not self.gemini_client:
-            raise ValueError("Gemini client not initialized")
+            raise ValueError("Gemini client not initialized. Set GEMINI_API_KEY.")
 
         try:
-            # Convert OpenAI format to Gemini format
-            # Gemini uses a simpler contents format
-            contents = []
-            system_instruction = None
-
-            for msg in messages:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-
-                if role == "system":
-                    # Gemini handles system instructions separately
-                    system_instruction = content
-                elif role == "user":
-                    contents.append(content)
-                elif role == "assistant":
-                    # For multi-turn, we'd need to handle this differently
-                    contents.append(f"Assistant: {content}")
-
-            # Combine all contents into a single prompt
-            prompt = "\n".join(contents)
-            if system_instruction:
-                prompt = f"{system_instruction}\n\n{prompt}"
-
-            # Remove gemini: prefix if present
-            model_name = model.replace("gemini:", "")
-            
-            llm_log("💎", "GEMINI", f"Calling Gemini API", {
-                "model": model_name,
-                "prompt_length": len(prompt),
-                "has_system": system_instruction is not None
+            # Gemini uses OpenAI-compatible API - same format as OpenAI!
+            llm_log("💎", "GEMINI", f"Calling Gemini API via OpenAI compatibility layer", {
+                "endpoint": GEMINI_BASE_URL,
+                "model": model_name
             })
 
-            # Generate content using the new SDK
-            # Run in executor since the SDK may not be fully async
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
+            response = await self.gemini_client.chat.completions.create(
+                model=model_name,
+                messages=messages,  # No conversion needed - same format!
+                temperature=temperature,
+                max_tokens=max_tokens or 4096
             )
-            
+
+            result = response.choices[0].message.content
+
             llm_log("✅", "GEMINI", f"Gemini response received", {
-                "response_length": len(response.text) if response.text else 0
+                "response_length": len(result) if result else 0,
+                "finish_reason": response.choices[0].finish_reason,
+                "model": response.model
             })
 
-            return response.text
+            return result
 
         except Exception as e:
             llm_log("❌", "GEMINI", f"Gemini error: {str(e)}")
             if "rate limit" in str(e).lower() or "quota" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
-            elif "api key" in str(e).lower():
+            elif "api key" in str(e).lower() or "401" in str(e):
                 return "Error: Invalid Gemini API key. Please check your GEMINI_API_KEY."
             else:
                 return f"Gemini Error: {str(e)}"
@@ -680,51 +654,38 @@ class LLMService:
                                        messages: List[Dict[str, Any]],
                                        model: str,
                                        temperature: float) -> AsyncGenerator[str, None]:
-        """Stream completion from Google Gemini."""
+        """Stream completion from Google Gemini using OpenAI-compatible API."""
+        model_name = model.replace("gemini:", "")
+
+        llm_log("💎", "GEMINI/STREAM", f"Starting Gemini streaming request", {
+            "model": model_name,
+            "messages": len(messages)
+        })
+
         if not self.gemini_client:
             raise ValueError("Gemini client not initialized")
 
         try:
-            # Convert OpenAI format to Gemini format
-            contents = []
-            system_instruction = None
-
-            for msg in messages:
-                role = msg.get("role", "user")
-                content = msg.get("content", "")
-
-                if role == "system":
-                    system_instruction = content
-                elif role == "user":
-                    contents.append(content)
-                elif role == "assistant":
-                    contents.append(f"Assistant: {content}")
-
-            prompt = "\n".join(contents)
-            if system_instruction:
-                prompt = f"{system_instruction}\n\n{prompt}"
-
-            model_name = model.replace("gemini:", "")
-
-            # Note: The new google-genai SDK streaming API
-            # For now, we'll use non-streaming and yield the full response
-            # as the streaming API may differ
-            loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None,
-                lambda: self.gemini_client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
+            # Gemini supports OpenAI-compatible streaming!
+            stream = await self.gemini_client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                stream=True
             )
 
-            # Yield the response in chunks for consistency
-            text = response.text
-            chunk_size = 50
-            for i in range(0, len(text), chunk_size):
-                yield text[i:i + chunk_size]
+            chunk_count = 0
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    chunk_count += 1
+                    yield chunk.choices[0].delta.content
+
+            llm_log("✅", "GEMINI/STREAM", f"Gemini streaming complete", {
+                "chunks": chunk_count
+            })
 
         except Exception as e:
+            llm_log("❌", "GEMINI/STREAM", f"Gemini streaming error: {str(e)}")
             yield f"Gemini Streaming Error: {str(e)}"
 
     async def _stream_ollama_completion(self,

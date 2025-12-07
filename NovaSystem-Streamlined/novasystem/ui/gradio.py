@@ -56,16 +56,16 @@ class GradioInterface:
 
     def __init__(self, llm_service: Optional[LLMService] = None):
         log_event("🚀", "INIT", "Initializing GradioInterface...")
-        
+
         self.current_process = None
         self.session_history = []
         self.performance_metrics = {}
         self.model_performance = {}
-        
+
         # Share a single LLM service instance so model availability checks are consistent
         log_event("🔌", "INIT", "Creating LLMService instance...")
         self.llm_service = llm_service or LLMService()
-        
+
         available = self.llm_service.get_available_models()
         log_event("✅", "INIT", f"GradioInterface ready!", {
             "available_models": len(available),
@@ -75,7 +75,7 @@ class GradioInterface:
     def _validate_model_selection(self, model: str) -> Optional[str]:
         """Ensure the requested model is available before starting a run."""
         log_event("🔍", "VALIDATE", f"Checking model availability: {model}")
-        
+
         if self.llm_service.is_model_available(model):
             log_event("✅", "VALIDATE", f"Model '{model}' is available")
             return None
@@ -126,7 +126,7 @@ class GradioInterface:
             "export_format": export_format
         })
         print("="*80)
-        
+
         if not problem.strip():
             log_event("⚠️", "NOVA", "Empty problem statement - aborting")
             return ("Please enter a problem statement first!", "", "")
