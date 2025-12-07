@@ -4,7 +4,7 @@ NovaSystem - Unified Multi-Agent Problem-Solving Framework
 A CLI-first implementation of the Nova Process that provides multiple interfaces
 (CLI, API, Web, Gradio) for complex problem-solving using specialized AI agents.
 
-This is the consolidated v3.0.0 release, merging:
+This is the consolidated v0.3.0 release, merging:
 - NovaSystem-Streamlined (v2.0) - Multi-agent framework
 - novasystem CLI (v0.1.1) - Repository tools, Docker, Decision Matrix
 - nova-mvp - LocalVectorStore, pricing, usage tracking
@@ -16,7 +16,7 @@ Use explicit imports when needed:
     from novasystem.tools import DecisionMatrix, DockerExecutor
 """
 
-__version__ = "3.0.0"
+__version__ = "0.3.0"
 __author__ = "NovaSystem Team"
 
 # Lazy loading - only import when accessed
@@ -50,9 +50,13 @@ def __getattr__(name):
     elif name == "DockerExecutor":
         from .tools.docker import DockerExecutor
         return DockerExecutor
+    elif name == "RepositoryHandler":
+        from .tools.repository import RepositoryHandler
+        return RepositoryHandler
+    # Legacy alias
     elif name == "RepositoryManager":
-        from .tools.repository import RepositoryManager
-        return RepositoryManager
+        from .tools.repository import RepositoryHandler
+        return RepositoryHandler
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
@@ -69,5 +73,5 @@ __all__ = [
     # Tools
     "DecisionMatrix",
     "DockerExecutor",
-    "RepositoryManager",
+    "RepositoryHandler",
 ]

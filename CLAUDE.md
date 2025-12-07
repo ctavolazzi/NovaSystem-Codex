@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for NovaSystem
 
 **Last Updated:** 2025-12-07
-**Version:** 3.0.0
+**Version:** 0.3.0
 
 This document provides comprehensive guidance for AI assistants (like Claude, ChatGPT, etc.) working with the NovaSystem codebase. It explains the project structure, development workflows, coding conventions, and key architectural patterns.
 
@@ -34,7 +34,7 @@ This document provides comprehensive guidance for AI assistants (like Claude, Ch
 - **License:** GPL-3.0
 - **Language:** Python 3.8+
 - **Architecture:** CLI-first multi-agent orchestration with parallel processing
-- **Latest Version:** v3.0.0 (as of Dec 2025)
+- **Latest Version:** v0.3.0 (as of Dec 2025)
 
 ### The Nova Process
 
@@ -59,7 +59,7 @@ Agents run in parallel where possible using `asyncio.gather()`.
    - Branch names must match the session ID pattern
    - Never push to main/master without explicit permission
 
-3. **v3.0.0 Consolidation:** As of Dec 2025, the repository was consolidated from 4 separate implementations into one unified package. All code lives in `novasystem/`.
+3. **v0.3.0 Consolidation:** As of Dec 2025, the repository was consolidated from 4 separate implementations into one unified package. All code lives in `novasystem/`.
 
 4. **Active Areas:**
    - `novasystem/` - **THE** unified package (CLI-first)
@@ -76,7 +76,7 @@ Agents run in parallel where possible using `asyncio.gather()`.
 
 ```
 NovaSystem-Codex/
-├── novasystem/                  # UNIFIED PACKAGE (v3.0.0)
+├── novasystem/                  # UNIFIED PACKAGE (v0.3.0)
 │   ├── __init__.py              # Package entry, lazy loading
 │   ├── __main__.py              # python -m novasystem support
 │   │
@@ -584,10 +584,9 @@ When working with this codebase:
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
-| 3.0.0 | 2025-12-07 | Major consolidation: merged 4 implementations |
-| 0.3.0 | 2025-12-06 | Long-term memory system with RAG |
-| 0.2.0 | 2025-12-06 | Financial ledger, traffic control |
-| 0.1.0 | 2025-12-06 | Initial MVP release |
+| 0.3.0 | 2025-12-07 | Major consolidation: merged 4 implementations, includes all previous features |
+| 0.2.x | 2025-12-06 | (nova-mvp) Long-term memory, financial ledger, traffic control |
+| 0.1.x | 2025-12-06 | (novasystem-cli) Initial CLI tool, Decision Matrix, Docker |
 
 ---
 

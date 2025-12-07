@@ -5,7 +5,7 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v3.0.0] - 2025-12-07
+## [v0.3.0] - 2025-12-07
 
 ### Major Consolidation Release
 
@@ -24,22 +24,29 @@ This release consolidates **4 separate implementations** into a single, unified 
   ├── cli/          # CLI commands (primary interface)
   ├── core/         # Agents, process, memory, workflow
   ├── tools/        # Decision Matrix, Docker, repo installer
-  ├── services/     # Vision, docs, image generation
+  ├── utils/        # Vision, docs, image generation services
   ├── api/          # REST API endpoints
   └── ui/           # Web and Gradio interfaces
   ```
 - **Tools Module** (`novasystem.tools`):
   - `DecisionMatrix` - Multi-criteria decision analysis
   - `DockerExecutor` - Containerized command execution
-  - `RepositoryManager` - Git repository operations
-  - `DocParser` - Documentation extraction
+  - `RepositoryHandler` - Git repository operations
+  - `DocumentationParser` - Documentation extraction
   - `TechnicalDebtManager` - Debt tracking
+  - `Nova` - Main orchestrator class
 - **Vector Store** (`core/vector_store.py`) - Zero-cost local RAG from nova-mvp
 - **Pricing/Usage** (`core/pricing.py`, `core/usage.py`) - Cost tracking from nova-mvp
+- **Backwards Compatibility Shims** - Old import paths still work:
+  - `novasystem.core_utils` → `novasystem.tools.decision_matrix`
+  - `novasystem.parser` → `novasystem.tools.parser`
+  - `novasystem.docker` → `novasystem.tools.docker`
+  - `novasystem.repository` → `novasystem.tools.repository`
+  - `novasystem.nova` → `novasystem.tools.nova`
 - **Dual CLI Entry Points:** `novasystem` and `nova` commands
 
 ### Changed
-- Version bump: 0.1.1 → 3.0.0 (major consolidation)
+- Version: 0.1.1 → 0.3.0 (consolidation release)
 - All old implementations moved to `archive/` directory
 - Root-level documentation cleaned up (DECISION_MATRIX_*.md → docs/)
 - Updated pyproject.toml with comprehensive dependencies
@@ -65,7 +72,11 @@ novasystem --help  # or: nova --help
 
 ---
 
-## [v0.3.0] - 2025-12-06
+## Pre-Consolidation History (from nova-mvp)
+
+The following versions were from the nova-mvp implementation before consolidation.
+
+## [nova-mvp v0.3.0] - 2025-12-06
 
 ### Added
 - **Long-Term Memory:** Full RAG pipeline with zero-cost local embeddings (`memory.py`)
