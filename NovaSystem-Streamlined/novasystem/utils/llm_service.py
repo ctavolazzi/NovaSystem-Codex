@@ -6,6 +6,7 @@ LLM providers (OpenAI, Anthropic, Google Gemini, Ollama).
 """
 
 import os
+import sys
 import asyncio
 import logging
 import time
@@ -30,7 +31,24 @@ from .model_cache import get_model_cache
 from ..config import get_config
 from ..session import get_session_manager
 
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
+
+# Console logging helper with emojis
+def llm_log(emoji: str, category: str, message: str, details: dict = None):
+    """Log an LLM event with emoji prefix for easy console scanning."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"{timestamp} | {emoji} [LLM/{category}] {message}")
+    if details:
+        for key, value in details.items():
+            val_str = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+            print(f"           └─ {key}: {val_str}")
 
 class LLMService:
     """Unified LLM service for multiple providers."""
@@ -51,12 +69,24 @@ class LLMService:
             ollama_host: Ollama server host
             enable_session_recording: Whether to record sessions automatically
         """
+        print("\n" + "="*80)
+        llm_log("🔧", "INIT", "Initializing LLMService...")
+        print("="*80)
+        
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         self.anthropic_api_key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
         self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         self.ollama_host = ollama_host
         self.metrics_collector = get_metrics_collector()
         self.model_cache = get_model_cache()
+
+        # Log API key status (redacted)
+        llm_log("🔑", "INIT", "API Key Status:", {
+            "OPENAI": "✅ SET" if self.openai_api_key else "❌ NOT SET",
+            "ANTHROPIC": "✅ SET" if self.anthropic_api_key else "❌ NOT SET",
+            "GEMINI": "✅ SET" if self.gemini_api_key else "❌ NOT SET",
+            "OLLAMA_HOST": self.ollama_host
+        })
 
         # Session management
         self.enable_session_recording = enable_session_recording
@@ -69,17 +99,17 @@ class LLMService:
         # Initialize clients
         if self.openai_api_key:
             self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
-            logger.info("OpenAI client initialized")
+            llm_log("✅", "INIT", "OpenAI client initialized")
         else:
             self.openai_client = None
-            logger.info("No OpenAI API key provided")
+            llm_log("⚠️", "INIT", "OpenAI client NOT initialized (no API key)")
 
         if self.anthropic_api_key:
             self.anthropic_client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
-            logger.info("Anthropic client initialized")
+            llm_log("✅", "INIT", "Anthropic client initialized")
         else:
             self.anthropic_client = None
-            logger.info("No Anthropic API key provided")
+            llm_log("⚠️", "INIT", "Anthropic client NOT initialized (no API key)")
 
         # Initialize Gemini client (new google-genai SDK)
         self.gemini_client = None
@@ -88,25 +118,44 @@ class LLMService:
                 # Set API key via environment for the client
                 os.environ["GEMINI_API_KEY"] = self.gemini_api_key
                 self.gemini_client = google_genai.Client()
-                logger.info("Gemini client initialized")
+                llm_log("✅", "INIT", "Gemini client initialized")
             except Exception as e:
-                logger.warning(f"Gemini client initialization failed: {str(e)}")
+                llm_log("❌", "INIT", f"Gemini client initialization failed: {str(e)}")
         elif self.gemini_api_key and not GEMINI_AVAILABLE:
-            logger.warning("GEMINI_API_KEY set but google-genai package not installed. Run: pip install google-genai")
+            llm_log("⚠️", "INIT", "GEMINI_API_KEY set but google-genai not installed. Run: pip install google-genai")
         else:
-            logger.info("No Gemini API key provided")
+            llm_log("⚠️", "INIT", "Gemini client NOT initialized (no API key)")
 
         try:
             self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
             # Test if Ollama is running
             available_models = self.get_ollama_models()
             if available_models and len(available_models) > 0:
-                logger.info(f"Ollama client initialized with {len(available_models)} models: {[m.replace('ollama:', '') for m in available_models]}")
+                llm_log("✅", "INIT", f"Ollama client initialized", {
+                    "models": len(available_models),
+                    "available": [m.replace('ollama:', '') for m in available_models]
+                })
             else:
-                logger.warning("Ollama client initialized but no models found")
+                llm_log("⚠️", "INIT", "Ollama client initialized but no models found")
         except Exception as e:
             self.ollama_client = None
-            logger.warning(f"Ollama client initialization failed: {str(e)}")
+            llm_log("⚠️", "INIT", f"Ollama client initialization failed: {str(e)}")
+
+        # Final summary
+        all_models = self.get_available_models()
+        print("="*80)
+        llm_log("🎉", "INIT", f"LLMService ready!", {
+            "total_models": len(all_models),
+            "providers": ", ".join([
+                p for p, c in [
+                    ("OpenAI", self.openai_client),
+                    ("Anthropic", self.anthropic_client),
+                    ("Gemini", self.gemini_client),
+                    ("Ollama", self.ollama_client)
+                ] if c
+            ])
+        })
+        print("="*80 + "\n")
 
     def is_model_available(self, model: Optional[str]) -> bool:
         """Check whether the requested model can be used with the current clients/installations."""
@@ -150,6 +199,17 @@ class LLMService:
 
         start_time = time.time()
         tokens_input = sum(len(msg.get('content', '').split()) for msg in messages)
+        
+        # Extract first user message for logging
+        user_msg = next((m.get('content', '')[:80] for m in messages if m.get('role') == 'user'), 'N/A')
+        
+        llm_log("📤", "REQUEST", f"Sending request to {model}", {
+            "messages": len(messages),
+            "tokens_est": tokens_input,
+            "temperature": temperature,
+            "max_tokens": max_tokens or "default",
+            "prompt_preview": user_msg + "..." if len(user_msg) == 80 else user_msg
+        })
 
         # Check cache first
         if model.startswith("ollama:"):
@@ -163,15 +223,17 @@ class LLMService:
         cache_entry = self.model_cache.get_model(model, model_type)
 
         if cache_entry and cache_entry.is_loaded:
-            logger.debug(f"Using cached model: {model}")
+            llm_log("💾", "CACHE", f"Using cached model: {model}")
 
         try:
             # If model starts with ollama:, use Ollama directly
             if model.startswith("ollama:"):
+                llm_log("🦙", "ROUTE", f"Routing to Ollama: {model}")
                 result = await self._get_ollama_completion(messages, model, temperature)
 
             # If model starts with claude-, use Anthropic
             elif model.startswith("claude-"):
+                llm_log("🤖", "ROUTE", f"Routing to Anthropic: {model}")
                 if self.anthropic_client:
                     result = await self._get_anthropic_completion(messages, model, temperature, max_tokens)
                 else:
@@ -179,6 +241,7 @@ class LLMService:
 
             # If model starts with gemini, use Google Gemini
             elif model.startswith("gemini"):
+                llm_log("💎", "ROUTE", f"Routing to Gemini: {model}")
                 if self.gemini_client:
                     result = await self._get_gemini_completion(messages, model, temperature, max_tokens)
                 else:
@@ -186,6 +249,7 @@ class LLMService:
 
             # If model starts with gpt or o1, try OpenAI first
             elif model.startswith("gpt") or model.startswith("o1"):
+                llm_log("🧠", "ROUTE", f"Routing to OpenAI: {model}")
                 if self.openai_client:
                     result = await self._get_openai_completion(messages, model, temperature, max_tokens)
                 else:
@@ -193,12 +257,14 @@ class LLMService:
 
             # For any other model, try Ollama first
             else:
+                llm_log("🦙", "ROUTE", f"Routing to Ollama (fallback): {model}")
                 try:
                     result = await self._get_ollama_completion(messages, model, temperature)
                 except Exception:
                     raise ValueError(f"Model {model} not supported. Please use a valid model.")
 
         except Exception as e:
+            llm_log("❌", "ERROR", f"Error getting completion: {str(e)}")
             logger.error(f"Error getting completion: {str(e)}")
             result = f"Error: {str(e)}"
 
@@ -206,6 +272,15 @@ class LLMService:
         end_time = time.time()
         response_time = end_time - start_time
         tokens_generated = len(result.split()) if result else 0
+
+        # Log response summary
+        result_preview = str(result)[:100] + "..." if len(str(result)) > 100 else str(result)
+        llm_log("📥", "RESPONSE", f"Received response from {model}", {
+            "response_time": f"{response_time:.2f}s",
+            "tokens_in": tokens_input,
+            "tokens_out": tokens_generated,
+            "response_preview": result_preview.replace('\n', ' ')
+        })
 
         self.metrics_collector.record_llm_call(
             model=model,
@@ -365,6 +440,12 @@ class LLMService:
                                     temperature: float,
                                     max_tokens: Optional[int]) -> str:
         """Get completion from Google Gemini."""
+        llm_log("💎", "GEMINI", f"Preparing Gemini request", {
+            "model": model,
+            "messages": len(messages),
+            "temperature": temperature
+        })
+        
         if not self.gemini_client:
             raise ValueError("Gemini client not initialized")
 
@@ -394,6 +475,12 @@ class LLMService:
 
             # Remove gemini: prefix if present
             model_name = model.replace("gemini:", "")
+            
+            llm_log("💎", "GEMINI", f"Calling Gemini API", {
+                "model": model_name,
+                "prompt_length": len(prompt),
+                "has_system": system_instruction is not None
+            })
 
             # Generate content using the new SDK
             # Run in executor since the SDK may not be fully async
@@ -405,10 +492,15 @@ class LLMService:
                     contents=prompt
                 )
             )
+            
+            llm_log("✅", "GEMINI", f"Gemini response received", {
+                "response_length": len(response.text) if response.text else 0
+            })
 
             return response.text
 
         except Exception as e:
+            llm_log("❌", "GEMINI", f"Gemini error: {str(e)}")
             if "rate limit" in str(e).lower() or "quota" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
             elif "api key" in str(e).lower():

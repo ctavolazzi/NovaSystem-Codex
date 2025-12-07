@@ -5,6 +5,7 @@ This module provides a simple Gradio-based web interface for the Nova Process.
 """
 
 import os
+import sys
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -17,6 +18,7 @@ _env_paths = [
 for _env_path in _env_paths:
     if _env_path.exists():
         load_dotenv(_env_path)
+        print(f"🔧 [ENV] Loaded environment from: {_env_path}")
         break
 
 import gradio as gr
@@ -31,31 +33,64 @@ from ..core.process import NovaProcess
 from ..core.memory import MemoryManager
 from ..utils.llm_service import LLMService
 
+# Configure detailed console logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
+
+# Console logging helper with emojis for visibility
+def log_event(emoji: str, category: str, message: str, details: dict = None):
+    """Log an event with emoji prefix for easy console scanning."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"{timestamp} | {emoji} [{category}] {message}")
+    if details:
+        for key, value in details.items():
+            print(f"           └─ {key}: {value}")
 
 class GradioInterface:
     """Gradio interface for NovaSystem."""
 
     def __init__(self, llm_service: Optional[LLMService] = None):
+        log_event("🚀", "INIT", "Initializing GradioInterface...")
+        
         self.current_process = None
         self.session_history = []
         self.performance_metrics = {}
         self.model_performance = {}
+        
         # Share a single LLM service instance so model availability checks are consistent
+        log_event("🔌", "INIT", "Creating LLMService instance...")
         self.llm_service = llm_service or LLMService()
+        
+        available = self.llm_service.get_available_models()
+        log_event("✅", "INIT", f"GradioInterface ready!", {
+            "available_models": len(available),
+            "models": available[:5] if len(available) > 5 else available
+        })
 
     def _validate_model_selection(self, model: str) -> Optional[str]:
         """Ensure the requested model is available before starting a run."""
+        log_event("🔍", "VALIDATE", f"Checking model availability: {model}")
+        
         if self.llm_service.is_model_available(model):
+            log_event("✅", "VALIDATE", f"Model '{model}' is available")
             return None
 
         available_models = self.llm_service.get_available_models()
         if not available_models:
+            log_event("❌", "VALIDATE", "No LLM models available!")
             return (
                 "Error: No LLMs are available. Please set OPENAI_API_KEY/ANTHROPIC_API_KEY "
                 "or start Ollama with at least one pulled model."
             )
 
+        log_event("⚠️", "VALIDATE", f"Model '{model}' not available", {
+            "available": available_models
+        })
         return (
             f"Error: The selected model '{model}' is not available.\n\n"
             f"Available models: {', '.join(available_models)}"
@@ -82,22 +117,37 @@ class GradioInterface:
         Returns:
             Tuple of (formatted results, session info, performance metrics)
         """
+        print("\n" + "="*80)
+        log_event("🎯", "NOVA", "Starting Nova Process run", {
+            "problem_length": len(problem),
+            "model": model,
+            "domains": domains,
+            "max_iterations": max_iterations,
+            "export_format": export_format
+        })
+        print("="*80)
+        
         if not problem.strip():
+            log_event("⚠️", "NOVA", "Empty problem statement - aborting")
             return ("Please enter a problem statement first!", "", "")
 
         # Fail fast if the selected model cannot be used
         model_error = self._validate_model_selection(model)
         if model_error:
+            log_event("❌", "NOVA", "Model validation failed")
             return (model_error, "", "")
 
         start_time = time.time()
         session_id = f"session_{int(time.time())}"
+        log_event("📋", "NOVA", f"Session created: {session_id}")
 
         try:
             # Parse domains
             domain_list = [d.strip() for d in domains.split(",") if d.strip()]
+            log_event("🎓", "NOVA", f"Domains parsed: {domain_list}")
 
             # Create Nova Process
+            log_event("🔧", "NOVA", "Creating NovaProcess instance...")
             memory_manager = MemoryManager()
             nova_process = NovaProcess(
                 domains=domain_list,
@@ -105,17 +155,21 @@ class GradioInterface:
                 memory_manager=memory_manager,
                 llm_service=self.llm_service
             )
+            log_event("✅", "NOVA", "NovaProcess created successfully")
 
             # Run the process
+            log_event("🚀", "NOVA", "Starting problem solving...")
             result = asyncio.run(nova_process.solve_problem(
                 problem,
                 max_iterations=max_iterations,
                 stream=False
             ))
+            log_event("✅", "NOVA", "Problem solving completed!")
 
             # Calculate performance metrics
             end_time = time.time()
             duration = end_time - start_time
+            log_event("⏱️", "NOVA", f"Total processing time: {duration:.2f}s")
 
             # Track performance
             self.performance_metrics[session_id] = {
@@ -145,9 +199,11 @@ class GradioInterface:
                 }
                 self.session_history.append(session_data)
                 session_info = f"Session saved with ID: {session_id}"
+                log_event("💾", "NOVA", f"Session saved: {session_id}")
 
             # Format the result based on export format
             formatted_result = self._format_result(result, export_format)
+            log_event("📝", "NOVA", f"Result formatted as: {export_format}")
 
             # Create performance summary
             avg_model_time = self.model_performance[model]['total_time'] / self.model_performance[model]['sessions']
@@ -160,12 +216,27 @@ Performance Metrics:
 • Session ID: {session_id}
 """
 
+            print("\n" + "="*80)
+            log_event("🎉", "NOVA", "Nova Process run completed successfully!", {
+                "session_id": session_id,
+                "duration": f"{duration:.2f}s",
+                "model": model,
+                "result_length": len(str(formatted_result))
+            })
+            print("="*80 + "\n")
+
             return (formatted_result, session_info, performance_info)
 
         except Exception as e:
-            logger.error(f"Error in Nova Process: {str(e)}")
+            duration = time.time() - start_time
+            log_event("❌", "NOVA", f"Error in Nova Process!", {
+                "error": str(e),
+                "duration": f"{duration:.2f}s",
+                "session_id": session_id
+            })
+            logger.exception(f"Error in Nova Process: {str(e)}")
             error_msg = f"Error: {str(e)}\n\nPlease try again with a more specific problem statement."
-            return (error_msg, f"Session {session_id} failed", f"Error occurred after {time.time() - start_time:.2f} seconds")
+            return (error_msg, f"Session {session_id} failed", f"Error occurred after {duration:.2f} seconds")
 
     def _format_result(self, result: Dict[str, Any], format_type: str = "text") -> str:
         """Format the Nova Process result for display in different formats."""
