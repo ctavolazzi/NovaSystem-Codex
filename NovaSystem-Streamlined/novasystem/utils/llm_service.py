@@ -357,6 +357,12 @@ class LLMService:
         if not self.openai_client:
             raise ValueError("OpenAI client not initialized")
 
+        llm_log("🧠", "OPENAI", f"Calling OpenAI API", {
+            "model": model,
+            "messages": len(messages),
+            "temperature": temperature
+        })
+
         try:
             response = await self.openai_client.chat.completions.create(
                 model=model,
@@ -364,8 +370,26 @@ class LLMService:
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response.choices[0].message.content
+
+            result = response.choices[0].message.content
+
+            # Log token usage from API response
+            usage = response.usage
+            if usage:
+                llm_log("📊", "OPENAI/TOKENS", f"Token usage", {
+                    "input": f"{usage.prompt_tokens} tokens",
+                    "output": f"{usage.completion_tokens} tokens",
+                    "total": f"{usage.total_tokens} tokens"
+                })
+
+            llm_log("✅", "OPENAI", f"Response received", {
+                "response_length": len(result) if result else 0,
+                "finish_reason": response.choices[0].finish_reason
+            })
+
+            return result
         except Exception as e:
+            llm_log("❌", "OPENAI", f"Error: {str(e)}")
             if "rate limit" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
             elif "insufficient_quota" in str(e).lower():
@@ -381,6 +405,12 @@ class LLMService:
         """Get completion from Anthropic."""
         if not self.anthropic_client:
             raise ValueError("Anthropic client not initialized")
+
+        llm_log("🤖", "ANTHROPIC", f"Preparing Anthropic request", {
+            "model": model,
+            "messages": len(messages),
+            "temperature": temperature
+        })
 
         try:
             # Convert OpenAI format to Anthropic format
@@ -417,12 +447,32 @@ class LLMService:
                 if system_message:
                     api_params["system"] = system_message
 
+                llm_log("🤖", "ANTHROPIC", f"Calling Anthropic API", {
+                    "has_system": bool(system_message),
+                    "content_length": len(content)
+                })
+
                 response = await self.anthropic_client.messages.create(**api_params)
             else:
                 raise ValueError("No user messages provided")
 
-            return response.content[0].text
+            result = response.content[0].text
+
+            # Log token usage from Anthropic response
+            if hasattr(response, 'usage'):
+                llm_log("📊", "ANTHROPIC/TOKENS", f"Token usage", {
+                    "input": f"{response.usage.input_tokens} tokens",
+                    "output": f"{response.usage.output_tokens} tokens"
+                })
+
+            llm_log("✅", "ANTHROPIC", f"Response received", {
+                "response_length": len(result) if result else 0,
+                "stop_reason": response.stop_reason
+            })
+
+            return result
         except Exception as e:
+            llm_log("❌", "ANTHROPIC", f"Error: {str(e)}")
             if "rate limit" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
             elif "insufficient_quota" in str(e).lower():
@@ -465,11 +515,31 @@ class LLMService:
 
             result = response.choices[0].message.content
 
+            # Extract actual token usage from API response
+            usage = response.usage
+            token_info = {}
+            if usage:
+                token_info = {
+                    "prompt_tokens": usage.prompt_tokens,
+                    "completion_tokens": usage.completion_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "cost_estimate": f"~${(usage.prompt_tokens * 0.000001 + usage.completion_tokens * 0.000004):.6f}"
+                }
+
             llm_log("✅", "GEMINI", f"Gemini response received", {
                 "response_length": len(result) if result else 0,
                 "finish_reason": response.choices[0].finish_reason,
-                "model": response.model
+                "model": response.model,
+                **token_info
             })
+
+            # Log token breakdown for debugging
+            if usage:
+                llm_log("📊", "GEMINI/TOKENS", f"Token usage breakdown", {
+                    "input": f"{usage.prompt_tokens} tokens (~{usage.prompt_tokens * 4} chars)",
+                    "output": f"{usage.completion_tokens} tokens (~{usage.completion_tokens * 4} chars)",
+                    "total": f"{usage.total_tokens} tokens"
+                })
 
             return result
 
