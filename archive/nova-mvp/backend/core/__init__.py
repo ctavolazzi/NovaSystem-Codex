@@ -19,6 +19,13 @@ from .traffic import (
     traffic_controller,
 )
 from .usage import UsageLedger, Transaction, get_usage_ledger, BudgetExceededError
+from .ascii_animation import (
+    image_to_ascii,
+    generate_breathing_frames,
+    ASCIIAnimationPlayer,
+    play_sleeping_wizard,
+)
+from .pixellab import generate_wizard_animation, AnimationResult
 
 __all__ = [
     # LLM
@@ -52,4 +59,12 @@ __all__ = [
     "Transaction",
     "get_usage_ledger",
     "BudgetExceededError",
+    # ASCII Animation
+    "image_to_ascii",
+    "generate_breathing_frames",
+    "ASCIIAnimationPlayer",
+    "play_sleeping_wizard",
+    # PixelLab
+    "generate_wizard_animation",
+    "AnimationResult",
 ]
