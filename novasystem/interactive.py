@@ -38,12 +38,12 @@ class Colors:
     DIM = '\033[90m'
     BOLD = '\033[1m'
     RESET = '\033[0m'
-    
+
     # Extended styles
     UNDERLINE = '\033[4m'
     BLINK = '\033[5m'
     REVERSE = '\033[7m'
-    
+
     # Background colors
     BG_BLACK = '\033[40m'
     BG_BLUE = '\033[44m'
@@ -103,7 +103,7 @@ def print_separator(char="─", width=None, color=Colors.DIM):
 def print_banner():
     """Print a beautiful responsive banner."""
     width = min(get_terminal_width() - 2, 78)
-    
+
     # Compact banner for narrow terminals
     if width < 60:
         banner = f"""
@@ -134,7 +134,7 @@ def print_banner():
 def print_command_box():
     """Print the command reference box."""
     width = min(get_terminal_width() - 2, 78)
-    
+
     commands = [
         ("help", "Show this menu", Colors.GREEN),
         ("ask <q>", "Ask a question", Colors.CYAN),
@@ -146,33 +146,33 @@ def print_command_box():
         ("clear", "Clear screen", Colors.DIM),
         ("quit", "Exit program", Colors.RED),
     ]
-    
+
     # Print in two columns if wide enough
     if width >= 70:
         print(f"\n{Colors.DIM}┌{'─' * 32}┬{'─' * 32}┐{Colors.RESET}")
         print(f"{Colors.DIM}│{Colors.RESET}  {Colors.WHITE}{Colors.BOLD}Commands{Colors.RESET}                       {Colors.DIM}│{Colors.RESET}                                 {Colors.DIM}│{Colors.RESET}")
         print(f"{Colors.DIM}├{'─' * 32}┼{'─' * 32}┤{Colors.RESET}")
-        
+
         mid = (len(commands) + 1) // 2
         for i in range(mid):
             left = commands[i]
             right = commands[i + mid] if i + mid < len(commands) else None
-            
+
             left_str = f"  {left[2]}{left[0]:10}{Colors.RESET} {Colors.DIM}{left[1]:18}{Colors.RESET}"
             if right:
                 right_str = f"  {right[2]}{right[0]:10}{Colors.RESET} {Colors.DIM}{right[1]:18}{Colors.RESET}"
             else:
                 right_str = " " * 32
-                
+
             print(f"{Colors.DIM}│{Colors.RESET}{left_str}{Colors.DIM}│{Colors.RESET}{right_str}{Colors.DIM}│{Colors.RESET}")
-        
+
         print(f"{Colors.DIM}└{'─' * 32}┴{'─' * 32}┘{Colors.RESET}")
     else:
         # Single column for narrow terminals
         print(f"\n{Colors.DIM}Commands:{Colors.RESET}")
         for cmd, desc, color in commands:
             print(f"  {color}•{Colors.RESET} {Colors.WHITE}{cmd:10}{Colors.RESET} {Colors.DIM}{desc}{Colors.RESET}")
-    
+
     print(f"\n{Colors.YELLOW}💡{Colors.RESET} {Colors.DIM}Screensaver activates after {SCREENSAVER_TIMEOUT}s of inactivity{Colors.RESET}")
 
 def print_prompt():
@@ -186,14 +186,14 @@ def print_prompt():
 
 class ProgressBar:
     """Beautiful progress bar with multiple styles."""
-    
+
     STYLES = {
         "blocks": ("█", "░"),
         "arrows": ("▶", "▷"),
         "dots": ("●", "○"),
         "bars": ("━", "─"),
     }
-    
+
     @staticmethod
     def render(progress, width=30, style="blocks", color=Colors.CYAN):
         """Render a progress bar."""
@@ -206,7 +206,7 @@ class ProgressBar:
 
 class Spinner:
     """Animated spinner with multiple styles."""
-    
+
     STYLES = {
         "dots": ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"],
         "line": ["─", "\\", "│", "/"],
@@ -214,11 +214,11 @@ class Spinner:
         "bounce": ["⠁", "⠂", "⠄", "⡀", "⢀", "⠠", "⠐", "⠈"],
         "brain": ["🧠", "🧠", "💭", "💭", "✨", "✨"],
     }
-    
+
     def __init__(self, style="dots"):
         self.frames = self.STYLES.get(style, self.STYLES["dots"])
         self.frame = 0
-    
+
     def next(self):
         """Get next spinner frame."""
         frame = self.frames[self.frame % len(self.frames)]
@@ -230,23 +230,48 @@ class Spinner:
 # =============================================================================
 
 class Screensaver:
-    """Beautiful animated screensaver."""
-    
-    NEURAL_FRAMES = [
-        "◯───◯───◯",
-        "●───◯───◯", 
-        "◯───●───◯",
-        "◯───◯───●",
-        "◯───●───◯",
-        "●───◯───◯",
+    """Whimsical animated screensaver with sleeping wizard and magical effects."""
+
+    # Sleeping wizard ASCII art frames
+    WIZARD_BASE = [
+        r"        ⭐",
+        r"    ___/\___",
+        r"   /   🌙   \    ",
+        r"  |  ◡   ◡  |   ",
+        r"  |    ω    |   ",
+        r"   \  ___  /    ",
+        r"    \_____/     ",
+        r"      |||       ",
+        r"   ___|||___    ",
+        r"  /  ~~~~~  \   ",
+        r" |  NovaBot  |  ",
+        r"  \  zzZZZ  /   ",
+        r"   ‾‾‾‾‾‾‾‾‾    ",
     ]
-    
-    PULSE_CHARS = "░▒▓█▓▒░"
-    
+
+    # Floating Z positions (will animate)
+    ZZZ_FRAMES = [
+        ["  z", "   z", "    Z"],
+        [" z", "  z", "   Z"],
+        ["z", " z", "  Z"],
+        [" z", "  z", "   Z"],
+    ]
+
+    # Moon phases
+    MOONS = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
+
+    # Sparkle characters
+    SPARKLES = ["✨", "⭐", "✦", "✧", "⋆", "｡", "°", "･ﾟ"]
+
+    # Dream bubbles
+    DREAMS = ["💭", "☁️", "🌈", "🔮", "📚", "💡", "🎯", "🚀"]
+
     def __init__(self):
         self.frame = 0
         self.width, self.height = self.get_terminal_size()
-    
+        # Random sparkle positions
+        self.sparkle_positions = [(random.randint(5, 70), random.randint(1, 12)) for _ in range(8)]
+
     def get_terminal_size(self):
         """Get terminal dimensions."""
         try:
@@ -254,61 +279,88 @@ class Screensaver:
             return size.columns, size.lines
         except:
             return 80, 24
-    
-    def neural_pulse(self):
-        """Neural network animation."""
+
+    def sleeping_wizard(self):
+        """Adorable sleeping wizard animation."""
         self.width, self.height = self.get_terminal_size()
         lines = []
-        
-        # Top spacer
-        for _ in range(3):
-            lines.append("")
-        
-        # Neural network visualization
-        neural_idx = self.frame % len(self.NEURAL_FRAMES)
-        pulse_idx = self.frame % len(self.PULSE_CHARS)
-        pulse = self.PULSE_CHARS[pulse_idx]
-        
         center_w = self.width // 2
-        
-        network = [
-            f"         {Colors.CYAN}◯{Colors.RESET}         ",
-            f"        {Colors.DIM}/{Colors.RESET} {Colors.DIM}\\{Colors.RESET}        ",
-            f"      {Colors.CYAN}◯{Colors.RESET}───{Colors.GREEN}{pulse}{Colors.RESET}───{Colors.CYAN}◯{Colors.RESET}      ",
-            f"     {Colors.DIM}/{Colors.RESET} {Colors.DIM}\\{Colors.RESET}   {Colors.DIM}/{Colors.RESET} {Colors.DIM}\\{Colors.RESET}     ",
-            f"   {Colors.CYAN}◯{Colors.RESET}   {Colors.GREEN}{self.NEURAL_FRAMES[neural_idx]}{Colors.RESET}   {Colors.CYAN}◯{Colors.RESET}   ",
-            f"     {Colors.DIM}\\{Colors.RESET} {Colors.DIM}/{Colors.RESET}   {Colors.DIM}\\{Colors.RESET} {Colors.DIM}/{Colors.RESET}     ",
-            f"      {Colors.CYAN}◯{Colors.RESET}───{Colors.GREEN}{pulse}{Colors.RESET}───{Colors.CYAN}◯{Colors.RESET}      ",
-            f"        {Colors.DIM}\\{Colors.RESET} {Colors.DIM}/{Colors.RESET}        ",
-            f"         {Colors.CYAN}◯{Colors.RESET}         ",
+
+        # Moon phase (changes slowly)
+        moon = self.MOONS[(self.frame // 20) % len(self.MOONS)]
+
+        # Floating Z animation
+        z_frame = self.ZZZ_FRAMES[self.frame % len(self.ZZZ_FRAMES)]
+        z_offset = (self.frame // 3) % 4
+
+        # Dream bubble (changes occasionally)
+        dream = self.DREAMS[(self.frame // 30) % len(self.DREAMS)]
+
+        # Build the scene
+        scene = []
+        scene.append("")
+        scene.append(f"  {Colors.DIM}·  ·    ·      ·   ·    {moon}   ·      ·  ·{Colors.RESET}")
+        scene.append(f"    {Colors.DIM}·      ·   ✦    ·       ·    ·  ✧{Colors.RESET}")
+        scene.append("")
+
+        # Wizard with animated Z's
+        wizard_art = [
+            f"                    {Colors.YELLOW}⭐{Colors.RESET}",
+            f"                {Colors.MAGENTA}___/\\___{Colors.RESET}",
+            f"               {Colors.MAGENTA}/        \\{Colors.RESET}   {Colors.CYAN}{z_frame[0]}{Colors.RESET}",
+            f"              {Colors.MAGENTA}|{Colors.RESET}  {Colors.WHITE}◡   ◡{Colors.RESET}  {Colors.MAGENTA}|{Colors.RESET}    {Colors.CYAN}{z_frame[1]}{Colors.RESET}",
+            f"              {Colors.MAGENTA}|{Colors.RESET}    {Colors.WHITE}ω{Colors.RESET}    {Colors.MAGENTA}|{Colors.RESET}      {Colors.CYAN}{z_frame[2]}{Colors.RESET}",
+            f"               {Colors.MAGENTA}\\  ___  /{Colors.RESET}        {dream}",
+            f"                {Colors.MAGENTA}‾‾‾‾‾‾‾{Colors.RESET}",
+            f"                  {Colors.BLUE}│││{Colors.RESET}",
+            f"              {Colors.BLUE}____│││____{Colors.RESET}",
+            f"             {Colors.BLUE}/  ~~~~~~~~  \\{Colors.RESET}",
+            f"            {Colors.BLUE}|{Colors.RESET}   {Colors.CYAN}NovaBot{Colors.RESET}    {Colors.BLUE}|{Colors.RESET}",
+            f"             {Colors.BLUE}\\   {Colors.DIM}sleeping{Colors.RESET}  {Colors.BLUE}/{Colors.RESET}",
+            f"              {Colors.BLUE}‾‾‾‾‾‾‾‾‾‾‾‾{Colors.RESET}",
         ]
-        
-        for line in network:
-            pad = " " * max(0, (center_w - 15))
-            lines.append(f"{pad}{line}")
-        
-        # Status text
-        lines.append("")
-        states = ["Processing", "Analyzing", "Thinking", "Computing"]
-        state_text = states[(self.frame // 10) % len(states)]
-        dots = "." * ((self.frame % 4) + 1)
-        pad = " " * max(0, (center_w - 12))
-        lines.append(f"{pad}{Colors.YELLOW}🧠 {state_text}{dots:4}{Colors.RESET}")
-        
-        # Idle indicator
-        lines.append("")
-        lines.append(f"{pad}{Colors.DIM}NovaSystem v{VERSION} - Idle{Colors.RESET}")
-        lines.append("")
-        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
-        
+
+        for line in wizard_art:
+            scene.append(line)
+
+        # Animated sparkles at bottom
+        sparkle_line = "    "
+        for i in range(12):
+            if (i + self.frame) % 5 == 0:
+                sparkle = self.SPARKLES[(i + self.frame) % len(self.SPARKLES)]
+                sparkle_line += f"{Colors.YELLOW}{sparkle}{Colors.RESET}  "
+            else:
+                sparkle_line += "   "
+
+        scene.append("")
+        scene.append(sparkle_line)
+        scene.append("")
+
+        # Status message
+        messages = [
+            "Sweet dreams in the cloud...",
+            "Dreaming of algorithms...",
+            "Recharging neural networks...",
+            "Counting electric sheep...",
+        ]
+        msg = messages[(self.frame // 40) % len(messages)]
+        scene.append(f"            {Colors.DIM}💤 {msg}{Colors.RESET}")
+
+        scene.append("")
+        scene.append(f"{Colors.DIM}Press Enter to wake the wizard...{Colors.RESET}")
+
+        # Center everything
+        for line in scene:
+            lines.append(line)
+
         return lines
-    
+
     def starfield(self):
-        """Starfield animation."""
+        """Starfield with shooting stars."""
         self.width, self.height = self.get_terminal_size()
         stars = "·.+*✦✧⋆"
         lines = []
-        
+
         for y in range(min(self.height - 5, 16)):
             line = ""
             for x in range(min(self.width - 2, 78)):
@@ -318,53 +370,106 @@ class Screensaver:
                     colors = [Colors.WHITE, Colors.CYAN, Colors.YELLOW]
                     color = colors[(x + y + self.frame) % len(colors)]
                     line += f"{color}{star}{Colors.RESET}"
+                # Shooting star
+                elif x == (self.frame * 3 + y * 2) % 78 and y == (self.frame // 2) % 16:
+                    line += f"{Colors.YELLOW}━━✦{Colors.RESET}"
                 else:
                     line += " "
             lines.append(line)
-        
-        # Center text
+
+        # Center text with moon
         center_y = len(lines) // 2
-        center_x = (self.width - 30) // 2
-        logo = f"  {Colors.CYAN}✨ NovaSystem v{VERSION} ✨{Colors.RESET}  "
+        center_x = (self.width - 40) // 2
+        moon = self.MOONS[(self.frame // 15) % len(self.MOONS)]
+        logo = f"  {Colors.CYAN}✨ NovaSystem v{VERSION} {moon}{Colors.RESET}  "
         if 0 <= center_y < len(lines):
             lines[center_y] = " " * max(0, center_x) + logo
-        
+
         lines.append("")
         lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
-        
+
         return lines
-    
-    def render(self, effect="neural"):
+
+    def floating_dreams(self):
+        """Floating dream bubbles animation."""
+        self.width, self.height = self.get_terminal_size()
+        lines = []
+
+        # Create a field of floating elements
+        for y in range(min(self.height - 5, 14)):
+            line = " " * min(self.width - 2, 78)
+            line_list = list(line)
+
+            for i, (bx, by) in enumerate(self.sparkle_positions):
+                # Make positions float up and wrap
+                float_y = (by + self.frame // 4) % 14
+                float_x = bx + int(2 * ((self.frame + i * 10) % 20 - 10) / 10)
+                float_x = max(0, min(float_x, len(line_list) - 3))
+
+                if float_y == y:
+                    bubble = self.DREAMS[(i + self.frame // 20) % len(self.DREAMS)]
+                    if float_x < len(line_list):
+                        line_list[float_x] = f"{bubble}"
+
+            # Add twinkling stars
+            for x in range(len(line_list)):
+                if line_list[x] == " ":
+                    seed = (x * 11 + y * 17 + self.frame) % 150
+                    if seed < 2:
+                        star = self.SPARKLES[seed % len(self.SPARKLES)]
+                        colors = [Colors.CYAN, Colors.YELLOW, Colors.WHITE]
+                        color = colors[(x + self.frame) % len(colors)]
+                        line_list[x] = f"{color}{star}{Colors.RESET}"
+
+            lines.append("".join(line_list))
+
+        # Center message
+        center_y = len(lines) // 2
+        msg = f"  {Colors.MAGENTA}🔮 Nova is dreaming... 🔮{Colors.RESET}  "
+        center_x = max(0, (self.width - 30) // 2)
+        if 0 <= center_y < len(lines):
+            lines[center_y] = " " * center_x + msg
+
+        lines.append("")
+        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
+
+        return lines
+
+    def render(self, effect="wizard"):
         """Render a frame."""
         self.frame += 1
         if effect == "stars":
             return self.starfield()
-        return self.neural_pulse()
+        elif effect == "dreams":
+            return self.floating_dreams()
+        return self.sleeping_wizard()
 
 def run_screensaver():
     """Run the screensaver loop."""
     screensaver = Screensaver()
-    effects = ["neural", "stars", "neural"]
+    effects = ["wizard", "stars", "wizard", "dreams"]
     current = 0
-    effect_frames = 150
+    effect_frames = 200  # Longer time per effect
     frame_count = 0
-    
+
     clear_screen()
-    
+
     while state.screensaver_active and state.running:
         if frame_count >= effect_frames:
             frame_count = 0
             current = (current + 1) % len(effects)
             clear_screen()
-        
+            # Refresh sparkle positions for variety
+            screensaver.sparkle_positions = [(random.randint(5, 70), random.randint(1, 12)) for _ in range(8)]
+
         lines = screensaver.render(effects[current])
         print("\033[H", end="")  # Home cursor
         for line in lines:
             print(f"\033[K{line}")
-        
+
         frame_count += 1
         time.sleep(ANIMATION_SPEED)
-    
+
     clear_screen()
 
 # =============================================================================
@@ -404,11 +509,11 @@ def cmd_ask(question):
         print(f"\n{Colors.YELLOW}Usage:{Colors.RESET} ask <your question>")
         print(f"{Colors.DIM}Example: ask What is machine learning?{Colors.RESET}")
         return
-    
+
     print(f"\n{Colors.DIM}┌─ Question ────────────────────────────────────────────────┐{Colors.RESET}")
     print(f"{Colors.DIM}│{Colors.RESET} {Colors.WHITE}{question[:55]}{Colors.RESET}")
     print(f"{Colors.DIM}└────────────────────────────────────────────────────────────┘{Colors.RESET}")
-    
+
     # Animated processing
     spinner = Spinner("brain")
     phases = [
@@ -417,7 +522,7 @@ def cmd_ask(question):
         ("Analyzing context", 1.0),
         ("Generating response", 1.2),
     ]
-    
+
     print()
     for phase, duration in phases:
         start = time.time()
@@ -427,7 +532,7 @@ def cmd_ask(question):
             print(f"\r  {Colors.YELLOW}{spinner.next()}{Colors.RESET} {phase:20} {bar}", end="", flush=True)
             time.sleep(0.08)
         print(f"\r  {Colors.GREEN}✓{Colors.RESET} {phase:20} {Colors.GREEN}Complete{Colors.RESET}            ")
-    
+
     # Response
     print(f"\n{Colors.GREEN}┌─ Response ─────────────────────────────────────────────────┐{Colors.RESET}")
     responses = [
@@ -445,33 +550,33 @@ def cmd_think():
     print(f"\n{Colors.CYAN}╭─────────────────────────────────────────────────────────────╮{Colors.RESET}")
     print(f"{Colors.CYAN}│{Colors.RESET}  {Colors.BOLD}🧠 Nova Process - Agent Reasoning{Colors.RESET}                          {Colors.CYAN}│{Colors.RESET}")
     print(f"{Colors.CYAN}╰─────────────────────────────────────────────────────────────╯{Colors.RESET}")
-    
+
     agents = [
         ("DCE", "Discussion Continuity Expert", Colors.CYAN, "Structuring problem space..."),
         ("DE₁", "Domain Expert (Technical)", Colors.GREEN, "Analyzing implementation..."),
         ("DE₂", "Domain Expert (Strategic)", Colors.GREEN, "Evaluating approaches..."),
         ("CAE", "Critical Analysis Expert", Colors.YELLOW, "Reviewing for gaps..."),
     ]
-    
+
     print()
     for name, role, color, task in agents:
         # Agent header
         print(f"  {color}┌─ {name} ─────────────────────────────────────────────┐{Colors.RESET}")
         print(f"  {color}│{Colors.RESET}  {Colors.DIM}{role}{Colors.RESET}")
         print(f"  {color}│{Colors.RESET}")
-        
+
         # Animated task
         spinner = Spinner("pulse")
         for i in range(15):
             bar = ProgressBar.render(i / 14, width=20, style="bars", color=color)
             print(f"\r  {color}│{Colors.RESET}  {Colors.DIM}{spinner.next()}{Colors.RESET} {task:30} {bar}", end="", flush=True)
             time.sleep(0.08)
-        
+
         print(f"\r  {color}│{Colors.RESET}  {Colors.GREEN}✓{Colors.RESET} {task:30} {Colors.GREEN}Done{Colors.RESET}                  ")
         print(f"  {color}└──────────────────────────────────────────────────────┘{Colors.RESET}")
         print()
         time.sleep(0.2)
-    
+
     print(f"{Colors.GREEN}  ╭───────────────────────────────────────────────────────────╮{Colors.RESET}")
     print(f"{Colors.GREEN}  │         ✨ Synthesis Complete - Ready for Query ✨        │{Colors.RESET}")
     print(f"{Colors.GREEN}  ╰───────────────────────────────────────────────────────────╯{Colors.RESET}")
@@ -481,11 +586,11 @@ def cmd_solve(problem):
     if not problem:
         print(f"\n{Colors.YELLOW}Usage:{Colors.RESET} solve <problem description>")
         return
-    
+
     print(f"\n{Colors.CYAN}{'═' * 60}{Colors.RESET}")
     print(f"{Colors.CYAN}  NOVA PROCESS - Problem Solving Pipeline{Colors.RESET}")
     print(f"{Colors.CYAN}{'═' * 60}{Colors.RESET}")
-    
+
     # Phase 1: UNPACK
     print(f"\n{Colors.YELLOW}┌─ Phase 1: UNPACK ──────────────────────────────────────────┐{Colors.RESET}")
     print(f"{Colors.YELLOW}│{Colors.RESET} {Colors.DIM}Breaking down the problem...{Colors.RESET}")
@@ -495,7 +600,7 @@ def cmd_solve(problem):
         time.sleep(0.06)
     print(f"\r{Colors.YELLOW}│{Colors.RESET} {Colors.GREEN}✓{Colors.RESET} Problem decomposed into components")
     print(f"{Colors.YELLOW}└────────────────────────────────────────────────────────────┘{Colors.RESET}")
-    
+
     # Phase 2: ANALYZE
     print(f"\n{Colors.MAGENTA}┌─ Phase 2: ANALYZE ─────────────────────────────────────────┐{Colors.RESET}")
     experts = ["Technical", "Strategic", "User Experience"]
@@ -507,7 +612,7 @@ def cmd_solve(problem):
     time.sleep(0.5)
     print(f" {Colors.GREEN}✓{Colors.RESET}")
     print(f"{Colors.MAGENTA}└────────────────────────────────────────────────────────────┘{Colors.RESET}")
-    
+
     # Phase 3: SYNTHESIZE
     print(f"\n{Colors.GREEN}┌─ Phase 3: SYNTHESIZE ──────────────────────────────────────┐{Colors.RESET}")
     print(f"{Colors.GREEN}│{Colors.RESET} {Colors.DIM}Combining perspectives...{Colors.RESET}")
@@ -518,17 +623,17 @@ def cmd_solve(problem):
     print(f"\n{Colors.GREEN}│{Colors.RESET}")
     print(f"{Colors.GREEN}│{Colors.RESET} {Colors.BOLD}Solution synthesized!{Colors.RESET}")
     print(f"{Colors.GREEN}└────────────────────────────────────────────────────────────┘{Colors.RESET}")
-    
+
     print(f"\n{Colors.DIM}[Simulated - connect LLM for real problem solving]{Colors.RESET}")
 
 def cmd_demo():
     """Run an impressive demo."""
     clear_screen()
-    
+
     print(f"\n{Colors.CYAN}{'═' * 60}{Colors.RESET}")
     print(f"{Colors.CYAN}       🎬 NovaSystem Demonstration{Colors.RESET}")
     print(f"{Colors.CYAN}{'═' * 60}{Colors.RESET}")
-    
+
     steps = [
         ("Initializing agents", "🤖", Colors.CYAN, 0.4),
         ("Loading knowledge base", "📚", Colors.BLUE, 0.3),
@@ -540,7 +645,7 @@ def cmd_demo():
         ("Critical analysis", "🔍", Colors.YELLOW, 0.4),
         ("Synthesizing results", "✨", Colors.GREEN, 0.5),
     ]
-    
+
     print()
     for step, icon, color, duration in steps:
         # Progress animation
@@ -551,7 +656,7 @@ def cmd_demo():
             print(f"\r  {color}{icon}{Colors.RESET} {step:30} {bar}", end="", flush=True)
             time.sleep(0.06)
         print(f"\r  {Colors.GREEN}✓{Colors.RESET}  {step:30} {Colors.GREEN}Complete{Colors.RESET}              ")
-    
+
     # Final summary
     print(f"""
 {Colors.GREEN}╔════════════════════════════════════════════════════════════╗
@@ -572,7 +677,7 @@ def cmd_demo():
 def cmd_status():
     """Show system status with style."""
     uptime = datetime.now() - state.stats["session_start"]
-    
+
     print(f"""
 {Colors.CYAN}╭─────────────────────────────────────────────────────────────╮
 │                    System Status                             │
@@ -584,7 +689,7 @@ def cmd_status():
 
 {Colors.WHITE}{Colors.BOLD}Components{Colors.RESET}                          {Colors.WHITE}{Colors.BOLD}API Keys{Colors.RESET}
   {Colors.GREEN}✓{Colors.RESET} Memory Manager                   {Colors.GREEN if os.getenv('ANTHROPIC_API_KEY') else Colors.DIM}{'●' if os.getenv('ANTHROPIC_API_KEY') else '○'}{Colors.RESET} Anthropic
-  {Colors.GREEN}✓{Colors.RESET} Vector Store                     {Colors.GREEN if os.getenv('OPENAI_API_KEY') else Colors.DIM}{'●' if os.getenv('OPENAI_API_KEY') else '○'}{Colors.RESET} OpenAI  
+  {Colors.GREEN}✓{Colors.RESET} Vector Store                     {Colors.GREEN if os.getenv('OPENAI_API_KEY') else Colors.DIM}{'●' if os.getenv('OPENAI_API_KEY') else '○'}{Colors.RESET} OpenAI
   {Colors.GREEN}✓{Colors.RESET} Event Bus                        {Colors.GREEN if os.getenv('GOOGLE_API_KEY') else Colors.DIM}{'●' if os.getenv('GOOGLE_API_KEY') else '○'}{Colors.RESET} Google
   {Colors.GREEN}✓{Colors.RESET} Agent Factory
 """)
@@ -593,12 +698,12 @@ def cmd_stats():
     """Show session statistics."""
     uptime = datetime.now() - state.stats["session_start"]
     idle = int(time.time() - state.last_activity)
-    
+
     # Progress bar for idle time
     idle_progress = min(idle / SCREENSAVER_TIMEOUT, 1.0)
-    idle_bar = ProgressBar.render(idle_progress, width=20, 
+    idle_bar = ProgressBar.render(idle_progress, width=20,
                                    color=Colors.YELLOW if idle_progress > 0.7 else Colors.GREEN)
-    
+
     print(f"""
 {Colors.CYAN}╭─────────────────────────────────────────────────────────────╮
 │                  Session Statistics                          │
@@ -608,7 +713,7 @@ def cmd_stats():
   {Colors.DIM}Uptime:{Colors.RESET}       {Colors.WHITE}{str(uptime).split('.')[0]}{Colors.RESET}
   {Colors.DIM}Commands:{Colors.RESET}     {Colors.WHITE}{state.stats['commands_run']}{Colors.RESET}
   {Colors.DIM}History:{Colors.RESET}      {Colors.WHITE}{len(state.history)}{Colors.RESET} entries
-  
+
   {Colors.DIM}Idle time:{Colors.RESET}    {idle_bar}
   {Colors.DIM}Screensaver:{Colors.RESET}  {Colors.WHITE}{state.stats['screensaver_activations']}{Colors.RESET} activations
 """)
@@ -618,7 +723,7 @@ def cmd_history():
     if not state.history:
         print(f"\n{Colors.DIM}No commands in history yet.{Colors.RESET}")
         return
-    
+
     print(f"\n{Colors.CYAN}Recent Commands:{Colors.RESET}")
     print_separator()
     for i, cmd in enumerate(state.history[-10:], 1):
@@ -629,14 +734,14 @@ def process_command(cmd_line):
     """Process a command."""
     state.stats["commands_run"] += 1
     state.history.append(cmd_line)
-    
+
     parts = cmd_line.strip().split(maxsplit=1)
     if not parts:
         return True
-    
+
     cmd = parts[0].lower()
     args = parts[1] if len(parts) > 1 else ""
-    
+
     commands = {
         "quit": lambda: False,
         "exit": lambda: False,
@@ -651,16 +756,16 @@ def process_command(cmd_line):
         "clear": lambda: (clear_screen(), print_banner()) or True,
         "history": lambda: cmd_history() or True,
     }
-    
+
     if cmd in ["quit", "exit", "q"]:
         print(f"\n{Colors.CYAN}👋 Goodbye! Thanks for using NovaSystem.{Colors.RESET}\n")
         return False
-    
+
     handler = commands.get(cmd)
     if handler:
         result = handler()
         return result if result is not None else True
-    
+
     print(f"\n{Colors.RED}Unknown command:{Colors.RESET} {cmd}")
     print(f"{Colors.DIM}Type 'help' for available commands.{Colors.RESET}")
     return True
@@ -679,35 +784,35 @@ def signal_handler(sig, frame):
 def main():
     """Main entry point."""
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     # Start activity monitor
     monitor = threading.Thread(target=activity_monitor, daemon=True)
     monitor.start()
-    
+
     # Startup
     clear_screen()
     print_banner()
     print(f"\n{Colors.GREEN}✓{Colors.RESET} {Colors.WHITE}NovaSystem initialized!{Colors.RESET}")
     print(f"{Colors.DIM}Type 'help' for commands or 'demo' to see a demonstration.{Colors.RESET}")
-    
+
     # Main loop
     while state.running:
         try:
             print_prompt()
             cmd_line = input()
             update_activity()
-            
+
             if not cmd_line and state.stats["screensaver_activations"] > 0:
                 clear_screen()
                 print_banner()
                 continue
-            
+
             if not process_command(cmd_line):
                 break
-                
+
         except (EOFError, KeyboardInterrupt):
             break
-    
+
     state.running = False
     print(f"\n{Colors.DIM}Session ended. Commands run: {state.stats['commands_run']}{Colors.RESET}\n")
 
