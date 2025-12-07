@@ -44,15 +44,11 @@ from pathlib import Path
 
 def main():
     """Main entry point - launches interactive mode by default."""
-    # Add project root to path for novasystem_interactive
-    project_root = Path(__file__).parent.parent
-    if str(project_root) not in sys.path:
-        sys.path.insert(0, str(project_root))
 
     # No args or 'interactive' = launch interactive mode
     if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1].lower() == "interactive"):
         try:
-            from novasystem_interactive import main as interactive_main
+            from novasystem.interactive import main as interactive_main
             interactive_main()
             return 0
         except ImportError:

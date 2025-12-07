@@ -94,7 +94,7 @@ def main():
     # No args = launch interactive mode by default
     if len(sys.argv) == 1:
         try:
-            from novasystem_interactive import main as interactive_main
+            from novasystem.interactive import main as interactive_main
             interactive_main()
             return 0
         except ImportError as e:
@@ -109,7 +109,7 @@ def main():
     # Check for explicit interactive mode
     if len(sys.argv) > 1 and sys.argv[1].lower() == "interactive":
         try:
-            from novasystem_interactive import main as interactive_main
+            from novasystem.interactive import main as interactive_main
             interactive_main()
             return 0
         except ImportError as e:

@@ -16,19 +16,19 @@ class TestInteractiveApp:
 
     def test_can_import_module(self):
         """Test that the interactive module can be imported."""
-        import novasystem_interactive
-        assert novasystem_interactive.VERSION == "0.3.1"
+        from novasystem.interactive import VERSION
+        assert VERSION == "0.3.1"
 
     def test_colors_defined(self):
         """Test that color codes are defined."""
-        from novasystem_interactive import Colors
+        from novasystem.interactive import Colors
         assert hasattr(Colors, 'CYAN')
         assert hasattr(Colors, 'GREEN')
         assert hasattr(Colors, 'RESET')
 
     def test_app_state_initialization(self):
         """Test that AppState initializes correctly."""
-        from novasystem_interactive import AppState
+        from novasystem.interactive import AppState
         state = AppState()
         assert state.running == True
         assert state.screensaver_active == False
@@ -36,7 +36,7 @@ class TestInteractiveApp:
 
     def test_screensaver_class(self):
         """Test that Screensaver class works."""
-        from novasystem_interactive import Screensaver
+        from novasystem.interactive import Screensaver
         ss = Screensaver()
 
         # Test neural pulse
@@ -49,6 +49,6 @@ class TestInteractiveApp:
 
     def test_screensaver_timeout_configured(self):
         """Test that screensaver timeout is reasonable."""
-        from novasystem_interactive import SCREENSAVER_TIMEOUT
+        from novasystem.interactive import SCREENSAVER_TIMEOUT
         assert SCREENSAVER_TIMEOUT >= 10  # At least 10 seconds
         assert SCREENSAVER_TIMEOUT <= 300  # No more than 5 minutes
