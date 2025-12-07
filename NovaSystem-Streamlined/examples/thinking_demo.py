@@ -109,7 +109,7 @@ async def demo_logic_puzzle():
     Carol owns a dog.
     The green house is to the left of the red house.
     Alice does not own a cat.
-    
+
     Who lives in each house, and what pet do they own?
     """
 
