@@ -13,7 +13,7 @@ import os
 import time
 import asyncio
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, AsyncIterator
 from dataclasses import dataclass
 
 from .traffic import traffic_controller, estimate_tokens
@@ -129,6 +129,26 @@ class LLMProvider(ABC):
         """
         pass
 
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """
+        Stream a chat response token by token.
+
+        Args:
+            system_prompt: The system prompt for the conversation
+            user_message: The user's message
+
+        Yields:
+            Response text chunks as they are generated
+        """
+        # Default implementation: fall back to non-streaming
+        result = await self.chat(system_prompt, user_message, **kwargs)
+        yield result
+
     @abstractmethod
     def is_available(self) -> bool:
         """Check if this provider is available (API key configured)."""
@@ -205,6 +225,44 @@ class ClaudeProvider(LLMProvider):
 
         return response.content[0].text
 
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat response token by token from Claude."""
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        client = self._get_client()
+        model = kwargs.get("model", self.config.model)
+
+        collected_text = []
+
+        # Use streaming API
+        with client.messages.stream(
+            model=model,
+            max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        ) as stream:
+            for text in stream.text_stream:
+                collected_text.append(text)
+                yield text
+
+        # Record usage after streaming completes
+        full_response = "".join(collected_text)
+        # Estimate output tokens from response
+        actual_out = estimate_tokens(full_response)
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=input_tokens,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
+        )
+
 
 class OpenAIProvider(LLMProvider):
     """OpenAI GPT provider."""
@@ -274,6 +332,175 @@ class OpenAIProvider(LLMProvider):
         )
 
         return response.choices[0].message.content
+
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat response token by token from OpenAI."""
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        client = self._get_client()
+        model = kwargs.get("model", self.config.model)
+
+        collected_text = []
+
+        # Use streaming API
+        stream = client.chat.completions.create(
+            model=model,
+            max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+            temperature=kwargs.get("temperature", self.config.temperature),
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message}
+            ],
+            stream=True
+        )
+
+        for chunk in stream:
+            if chunk.choices[0].delta.content:
+                text = chunk.choices[0].delta.content
+                collected_text.append(text)
+                yield text
+
+        # Record usage after streaming completes
+        full_response = "".join(collected_text)
+        actual_out = estimate_tokens(full_response)
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=input_tokens,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
+        )
+
+
+class GeminiProvider(LLMProvider):
+    """Google Gemini provider with streaming support."""
+
+    PROVIDER_NAME = "gemini"
+
+    def __init__(self, config: Optional[LLMConfig] = None, api_key: Optional[str] = None, track_usage: bool = True):
+        super().__init__(config, track_usage)
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
+        self._client = None
+
+    def _default_config(self) -> LLMConfig:
+        return LLMConfig(
+            model="gemini-2.5-flash",
+            max_tokens=4096,
+            temperature=1.0  # Gemini recommends 1.0 for best results
+        )
+
+    def is_available(self) -> bool:
+        return bool(self.api_key)
+
+    def _get_client(self):
+        if self._client is None:
+            try:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
+            except ImportError:
+                raise ImportError("google-genai package required. Install with: pip install google-genai")
+        return self._client
+
+    async def chat(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> str:
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        client = self._get_client()
+        model = kwargs.get("model", self.config.model)
+
+        try:
+            from google.genai import types
+        except ImportError:
+            raise ImportError("google-genai package required. Install with: pip install google-genai")
+
+        # Build config with system instruction
+        gen_config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_output_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+        )
+
+        # Run in thread pool since genai client is sync
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: client.models.generate_content(
+                model=model,
+                contents=user_message,
+                config=gen_config
+            )
+        )
+
+        result_text = response.text
+        actual_out = estimate_tokens(result_text)
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=input_tokens,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
+        )
+
+        return result_text
+
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream chat response token by token from Gemini."""
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        client = self._get_client()
+        model = kwargs.get("model", self.config.model)
+
+        try:
+            from google.genai import types
+        except ImportError:
+            raise ImportError("google-genai package required. Install with: pip install google-genai")
+
+        # Build config with system instruction
+        gen_config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_output_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+        )
+
+        collected_text = []
+
+        # Use streaming API
+        for chunk in client.models.generate_content_stream(
+            model=model,
+            contents=user_message,
+            config=gen_config
+        ):
+            if chunk.text:
+                collected_text.append(chunk.text)
+                yield chunk.text
+
+        # Record usage after streaming completes
+        full_response = "".join(collected_text)
+        actual_out = estimate_tokens(full_response)
+
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            actual_input=input_tokens,
+            actual_output=actual_out,
+            context=kwargs.get("context", "general"),
+        )
 
 
 class MockProvider(LLMProvider):
@@ -430,6 +657,42 @@ Next steps:
 
         return response
 
+    async def chat_stream(
+        self,
+        system_prompt: str,
+        user_message: str,
+        **kwargs
+    ) -> AsyncIterator[str]:
+        """Stream mock response word by word to simulate streaming."""
+        input_tokens, est_output = self._enforce_limits(system_prompt, user_message, **kwargs)
+        model = kwargs.get("model", self.config.model)
+
+        # Generate full response first
+        if "DCE" in system_prompt or "Discussion Continuity" in system_prompt:
+            response = self._mock_dce_response(user_message)
+        elif "CAE" in system_prompt or "Critical Analysis" in system_prompt:
+            response = self._mock_cae_response(user_message)
+        elif "Expert" in system_prompt:
+            response = self._mock_domain_response(system_prompt, user_message)
+        else:
+            response = self._mock_generic_response(user_message)
+
+        # Stream word by word with small delays
+        words = response.split(' ')
+        for i, word in enumerate(words):
+            if i > 0:
+                yield ' '
+            yield word
+            await asyncio.sleep(0.02)  # Small delay between words
+
+        # Record usage
+        self._record_usage(
+            model=model,
+            input_tokens=input_tokens,
+            output_tokens=est_output,
+            context=kwargs.get("context", "general"),
+        )
+
 
 def get_llm(
     provider: str = "auto",
@@ -440,7 +703,7 @@ def get_llm(
     Factory function to get an LLM provider.
 
     Args:
-        provider: "claude", "openai", "mock", or "auto" (tries claude, then openai, then mock)
+        provider: "claude", "openai", "gemini", "mock", or "auto"
         api_key: Optional API key (overrides environment variable)
         config: Optional LLMConfig
 
@@ -451,19 +714,25 @@ def get_llm(
         return ClaudeProvider(config=config, api_key=api_key)
     elif provider == "openai":
         return OpenAIProvider(config=config, api_key=api_key)
+    elif provider == "gemini":
+        return GeminiProvider(config=config, api_key=api_key)
     elif provider == "mock":
         return MockProvider(config=config)
     elif provider == "auto":
-        # Try Claude first, then OpenAI, then Mock
+        # Try Claude first, then OpenAI, then Gemini, then Mock
         claude = ClaudeProvider(config=config, api_key=api_key)
         if claude.is_available():
             return claude
 
-        openai = OpenAIProvider(config=config, api_key=api_key)
-        if openai.is_available():
-            return openai
+        openai_provider = OpenAIProvider(config=config, api_key=api_key)
+        if openai_provider.is_available():
+            return openai_provider
+
+        gemini = GeminiProvider(config=config, api_key=api_key)
+        if gemini.is_available():
+            return gemini
 
         # Fall back to mock
         return MockProvider(config=config)
     else:
-        raise ValueError(f"Unknown provider: {provider}. Use 'claude', 'openai', 'mock', or 'auto'")
+        raise ValueError(f"Unknown provider: {provider}. Use 'claude', 'openai', 'gemini', 'mock', or 'auto'")
