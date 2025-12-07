@@ -31,7 +31,7 @@ echo "Using test directory: ${TEST_DIR}"
 
 # Run the sanity check script
 echo -e "\n${YELLOW}Running sanity checks...${NC}"
-python scripts/test_sanity_check.py || true  # Continue even if sanity checks fail for now
+python3 scripts/test_sanity_check.py || true  # Continue even if sanity checks fail for now
 
 # Parse command line options
 COVERAGE=0
@@ -55,8 +55,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Build the pytest command
-PYTEST_CMD="python -m pytest"
+# Build the pytest command (use python3 for cross-platform compatibility)
+PYTEST_CMD="python3 -m pytest"
 
 # Add coverage if requested
 if [ $COVERAGE -eq 1 ]; then

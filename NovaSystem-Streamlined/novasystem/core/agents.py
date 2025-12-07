@@ -5,17 +5,50 @@ This module defines the specialized agents used in the Nova Process:
 - DCE (Discussion Continuity Expert): Manages conversation flow
 - CAE (Critical Analysis Expert): Provides critical evaluation
 - Domain Expert: Provides specialized knowledge
+
+Uses structured prompts following Gemini best practices.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, AsyncGenerator
+from datetime import datetime
 import asyncio
 import logging
 
 from ..utils.llm_service import LLMService
+from ..utils.prompt_builder import PromptBuilder, Verbosity, Tone, Example
 from ..config.models import get_model_for_agent, get_default_model
 
 logger = logging.getLogger(__name__)
+
+# ANSI colors for terminal output
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+# Agent-specific colors
+AGENT_COLORS = {
+    "DCE": Colors.CYAN,
+    "CAE": Colors.YELLOW,
+    "Domain Expert": Colors.GREEN,
+}
+
+# Console logging helper
+def agent_log(emoji: str, agent: str, message: str, details: dict = None):
+    """Log an agent event with emoji prefix."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"{timestamp} | {emoji} [AGENT/{agent}] {message}")
+    if details:
+        for key, value in details.items():
+            val_str = str(value)[:80] + "..." if len(str(value)) > 80 else str(value)
+            print(f"           └─ {key}: {val_str}")
 
 class BaseAgent(ABC):
     """Base class for all Nova Process agents."""
@@ -33,6 +66,16 @@ class BaseAgent(ABC):
         """Process input and return response."""
         pass
 
+    async def process_stream(self, input_text: str, context: Optional[str] = None) -> AsyncGenerator[str, None]:
+        """
+        Process input and stream response token by token.
+
+        Yields:
+            Individual tokens/chunks as they are generated
+        """
+        async for chunk in self._call_llm_stream(input_text, context):
+            yield chunk
+
     def add_to_history(self, role: str, content: str):
         """Add message to conversation history."""
         self.conversation_history.append({"role": role, "content": content})
@@ -41,30 +84,65 @@ class BaseAgent(ABC):
         """Get the system message for this agent."""
         return f"You are {self.name}. {self.role_description}"
 
+    def _build_structured_prompt(self) -> PromptBuilder:
+        """Build a structured prompt using the PromptBuilder."""
+        builder = PromptBuilder()
+        builder.set_role(f"You are {self.name}. {self.role_description}")
+        builder.set_verbosity(Verbosity.MEDIUM)
+        builder.set_tone(Tone.TECHNICAL)
+        builder.add_constraint("Be precise and analytical")
+        builder.add_constraint("Support conclusions with reasoning")
+        return builder
+
     async def _call_llm(self, input_text: str, context: Optional[str] = None) -> str:
-        """Make a call to the LLM service."""
+        """Make a call to the LLM service with structured prompts."""
         try:
-            # Get the best model for this agent's task type
             task_type = self._get_task_type()
-            best_model = self.llm_service.get_best_model_for_task(task_type)
 
-            # Use the best model if different from current
-            model_to_use = best_model if best_model != self.model else self.model
+            agent_log("🎯", self.name, f"Processing request", {
+                "task_type": task_type,
+                "input_preview": input_text[:60],
+                "has_context": bool(context)
+            })
 
-            # Build messages
+            # Prefer the explicitly configured model when available
+            available_models = self.llm_service.get_available_models()
+            if self.model and self.llm_service.is_model_available(self.model):
+                model_to_use = self.model
+            elif available_models:
+                model_to_use = self.llm_service.get_best_model_for_task(
+                    task_type,
+                    available_models=available_models,
+                    prioritize_speed=True
+                )
+                if model_to_use != self.model:
+                    agent_log("⚠️", self.name, f"Model fallback: {self.model} → {model_to_use}")
+            else:
+                raise ValueError("No LLM models available. Please configure API keys or ensure Ollama is running with models.")
+
+            # Build structured messages using PromptBuilder
+            builder = self._build_structured_prompt()
+
+            # Build the user prompt with context
+            user_prompt = builder.build_user_prompt(
+                task=input_text,
+                context=context,
+                final_instruction="Think step-by-step and provide a clear, structured response."
+            )
+
             messages = [
-                {"role": "system", "content": self.get_system_message()}
+                {"role": "system", "content": builder.build_system_prompt()},
+                {"role": "user", "content": user_prompt}
             ]
 
-            # Add context if provided
-            if context:
-                messages.append({"role": "user", "content": f"Context: {context}\n\nInput: {input_text}"})
-            else:
-                messages.append({"role": "user", "content": input_text})
-
-            # Add conversation history
-            for msg in self.conversation_history[-5:]:  # Last 5 messages for context
+            # Add conversation history (last 5 messages for continuity)
+            for msg in self.conversation_history[-5:]:
                 messages.append(msg)
+
+            agent_log("📤", self.name, f"Calling LLM", {
+                "model": model_to_use,
+                "messages": len(messages)
+            })
 
             # Call LLM service with the best model for the task
             response = await self.llm_service.get_completion(
@@ -77,9 +155,14 @@ class BaseAgent(ABC):
             self.add_to_history("user", input_text)
             self.add_to_history("assistant", response)
 
+            agent_log("✅", self.name, f"Response received", {
+                "response_length": len(response)
+            })
+
             return response
 
         except Exception as e:
+            agent_log("❌", self.name, f"Error: {str(e)}")
             logger.error(f"Error calling LLM for {self.name}: {str(e)}")
             # Fallback to mock response if LLM fails
             return self._get_fallback_response(input_text)
@@ -92,6 +175,83 @@ class BaseAgent(ABC):
     def _get_fallback_response(self, input_text: str) -> str:
         """Get a fallback response when LLM fails."""
         return f"[{self.name} - LLM Error] Processing: {input_text[:100]}..."
+
+    async def _call_llm_stream(self, input_text: str, context: Optional[str] = None) -> AsyncGenerator[str, None]:
+        """Stream tokens from the LLM service."""
+        try:
+            task_type = self._get_task_type()
+
+            # Get agent color
+            agent_color = AGENT_COLORS.get(self.name.split(" (")[0], Colors.BLUE)
+
+            agent_log("🎯", self.name, f"Starting streaming request", {
+                "task_type": task_type,
+                "input_preview": input_text[:60],
+            })
+
+            # Prefer the explicitly configured model when available
+            available_models = self.llm_service.get_available_models()
+            if self.model and self.llm_service.is_model_available(self.model):
+                model_to_use = self.model
+            elif available_models:
+                model_to_use = self.llm_service.get_best_model_for_task(
+                    task_type,
+                    available_models=available_models,
+                    prioritize_speed=True
+                )
+            else:
+                raise ValueError("No LLM models available.")
+
+            # Build structured messages using PromptBuilder
+            builder = self._build_structured_prompt()
+
+            user_prompt = builder.build_user_prompt(
+                task=input_text,
+                context=context,
+                final_instruction="Think step-by-step and provide a clear, structured response."
+            )
+
+            messages = [
+                {"role": "system", "content": builder.build_system_prompt()},
+                {"role": "user", "content": user_prompt}
+            ]
+
+            # Add conversation history
+            for msg in self.conversation_history[-5:]:
+                messages.append(msg)
+
+            # Print agent header
+            print(f"\n{agent_color}{Colors.BOLD}{'='*60}{Colors.END}")
+            print(f"{agent_color}{Colors.BOLD}📢 {self.name}{Colors.END}")
+            print(f"{agent_color}{'='*60}{Colors.END}")
+            print(f"{agent_color}", end="", flush=True)
+
+            # Stream tokens
+            full_response = []
+            async for chunk in self.llm_service.stream_completion(
+                messages=messages,
+                model=model_to_use,
+                temperature=0.7
+            ):
+                full_response.append(chunk)
+                # Print to console with color
+                print(f"{chunk}", end="", flush=True)
+                yield chunk
+
+            print(f"{Colors.END}\n")  # Reset color
+
+            # Add complete response to history
+            complete_text = "".join(full_response)
+            self.add_to_history("user", input_text)
+            self.add_to_history("assistant", complete_text)
+
+            agent_log("✅", self.name, f"Streaming complete", {
+                "total_tokens": len(complete_text.split())
+            })
+
+        except Exception as e:
+            agent_log("❌", self.name, f"Streaming error: {str(e)}")
+            yield self._get_fallback_response(input_text)
 
 class DCEAgent(BaseAgent):
     """

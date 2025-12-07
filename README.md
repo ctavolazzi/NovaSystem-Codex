@@ -1,5 +1,11 @@
 <img width="1344" height="768" alt="Gemini_Generated_Image_iup822iup822iup8" src="https://github.com/user-attachments/assets/f6f81113-c00d-451e-ac01-3c698342bd4c" />
 
+## The Nova Process Overview
+
+![Nova Process Overview](assets/Gemini_Generated_Image_hz3js7hz3js7hz3j-f8137feb-1d23-4d12-8b7a-baca8f7b4914.png)
+
+*The Nova Process combines problem-solving methodology with automated installation tools and structured AI outputs.*
+
 # NovaSystem: A Next-Generation Problem-Solving Framework for GPT-5 or Comparable LLM
 
 Welcome to the NovaSystem, a pioneering problem-solving method that harnesses the power of a team of virtual experts to tackle complex problems. This open-source project provides an implementation of the Nova Process utilizing multiple AI models working together locally and in the cloud.

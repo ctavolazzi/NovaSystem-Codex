@@ -2,10 +2,11 @@
 LLM Service for NovaSystem.
 
 This module provides a unified interface for interacting with different
-LLM providers (OpenAI, Ollama, etc.).
+LLM providers (OpenAI, Anthropic, Google Gemini, Ollama).
 """
 
 import os
+import sys
 import asyncio
 import logging
 import time
@@ -16,12 +17,34 @@ import httpx
 from openai import AsyncOpenAI
 import anthropic
 import ollama
+
+# Gemini uses OpenAI-compatible API - no separate SDK needed!
+# Just use AsyncOpenAI with different base_url
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
+
 from .metrics import get_metrics_collector
 from .model_cache import get_model_cache
 from ..config import get_config
 from ..session import get_session_manager
 
+# Configure logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s | %(levelname)-8s | %(name)-25s | %(message)s',
+    datefmt='%H:%M:%S',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
 logger = logging.getLogger(__name__)
+
+# Console logging helper with emojis
+def llm_log(emoji: str, category: str, message: str, details: dict = None):
+    """Log an LLM event with emoji prefix for easy console scanning."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"{timestamp} | {emoji} [LLM/{category}] {message}")
+    if details:
+        for key, value in details.items():
+            val_str = str(value)[:100] + "..." if len(str(value)) > 100 else str(value)
+            print(f"           └─ {key}: {val_str}")
 
 class LLMService:
     """Unified LLM service for multiple providers."""
@@ -29,6 +52,7 @@ class LLMService:
     def __init__(self,
                  openai_api_key: Optional[str] = None,
                  anthropic_api_key: Optional[str] = None,
+                 gemini_api_key: Optional[str] = None,
                  ollama_host: str = "http://localhost:11434",
                  enable_session_recording: bool = True):
         """
@@ -37,14 +61,28 @@ class LLMService:
         Args:
             openai_api_key: OpenAI API key
             anthropic_api_key: Anthropic API key
+            gemini_api_key: Google Gemini API key
             ollama_host: Ollama server host
             enable_session_recording: Whether to record sessions automatically
         """
+        print("\n" + "="*80)
+        llm_log("🔧", "INIT", "Initializing LLMService...")
+        print("="*80)
+
         self.openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
         self.anthropic_api_key = anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
+        self.gemini_api_key = gemini_api_key or os.getenv("GEMINI_API_KEY")
         self.ollama_host = ollama_host
         self.metrics_collector = get_metrics_collector()
         self.model_cache = get_model_cache()
+
+        # Log API key status (redacted)
+        llm_log("🔑", "INIT", "API Key Status:", {
+            "OPENAI": "✅ SET" if self.openai_api_key else "❌ NOT SET",
+            "ANTHROPIC": "✅ SET" if self.anthropic_api_key else "❌ NOT SET",
+            "GEMINI": "✅ SET" if self.gemini_api_key else "❌ NOT SET",
+            "OLLAMA_HOST": self.ollama_host
+        })
 
         # Session management
         self.enable_session_recording = enable_session_recording
@@ -57,29 +95,82 @@ class LLMService:
         # Initialize clients
         if self.openai_api_key:
             self.openai_client = AsyncOpenAI(api_key=self.openai_api_key)
-            logger.info("OpenAI client initialized")
+            llm_log("✅", "INIT", "OpenAI client initialized")
         else:
             self.openai_client = None
-            logger.info("No OpenAI API key provided, will use Ollama if available")
+            llm_log("⚠️", "INIT", "OpenAI client NOT initialized (no API key)")
 
         if self.anthropic_api_key:
             self.anthropic_client = anthropic.AsyncAnthropic(api_key=self.anthropic_api_key)
-            logger.info("Anthropic client initialized")
+            llm_log("✅", "INIT", "Anthropic client initialized")
         else:
             self.anthropic_client = None
-            logger.info("No Anthropic API key provided")
+            llm_log("⚠️", "INIT", "Anthropic client NOT initialized (no API key)")
+
+        # Initialize Gemini client (uses OpenAI-compatible API!)
+        self.gemini_client = None
+        if self.gemini_api_key:
+            try:
+                # Gemini supports OpenAI-compatible API - just use different base_url
+                self.gemini_client = AsyncOpenAI(
+                    api_key=self.gemini_api_key,
+                    base_url=GEMINI_BASE_URL
+                )
+                llm_log("✅", "INIT", "Gemini client initialized (OpenAI-compatible)")
+            except Exception as e:
+                llm_log("❌", "INIT", f"Gemini client initialization failed: {str(e)}")
+        else:
+            llm_log("⚠️", "INIT", "Gemini client NOT initialized (no API key)")
 
         try:
             self.ollama_client = ollama.AsyncClient(host=self.ollama_host)
             # Test if Ollama is running
             available_models = self.get_ollama_models()
             if available_models and len(available_models) > 0:
-                logger.info(f"Ollama client initialized with {len(available_models)} models: {[m.replace('ollama:', '') for m in available_models]}")
+                llm_log("✅", "INIT", f"Ollama client initialized", {
+                    "models": len(available_models),
+                    "available": [m.replace('ollama:', '') for m in available_models]
+                })
             else:
-                logger.warning("Ollama client initialized but no models found")
+                llm_log("⚠️", "INIT", "Ollama client initialized but no models found")
         except Exception as e:
             self.ollama_client = None
-            logger.warning(f"Ollama client initialization failed: {str(e)}")
+            llm_log("⚠️", "INIT", f"Ollama client initialization failed: {str(e)}")
+
+        # Final summary
+        all_models = self.get_available_models()
+        print("="*80)
+        llm_log("🎉", "INIT", f"LLMService ready!", {
+            "total_models": len(all_models),
+            "providers": ", ".join([
+                p for p, c in [
+                    ("OpenAI", self.openai_client),
+                    ("Anthropic", self.anthropic_client),
+                    ("Gemini", self.gemini_client),
+                    ("Ollama", self.ollama_client)
+                ] if c
+            ])
+        })
+        print("="*80 + "\n")
+
+    def is_model_available(self, model: Optional[str]) -> bool:
+        """Check whether the requested model can be used with the current clients/installations."""
+        if not model:
+            return False
+
+        # Normalize model name for Ollama comparisons
+        normalized = model.replace("ollama:", "").replace("gemini:", "")
+
+        if model.startswith(("gpt", "o1")):
+            return self.openai_client is not None
+        if model.startswith("claude-"):
+            return self.anthropic_client is not None
+        if model.startswith("gemini") or model.startswith("gemini:"):
+            return self.gemini_client is not None
+
+        # Treat anything else as an Ollama model
+        available_ollama = self.get_ollama_models()
+        return any(normalized == m.replace("ollama:", "") for m in available_ollama)
 
     async def get_completion(self,
                            messages: List[Dict[str, Any]],
@@ -105,47 +196,71 @@ class LLMService:
         start_time = time.time()
         tokens_input = sum(len(msg.get('content', '').split()) for msg in messages)
 
+        # Extract first user message for logging
+        user_msg = next((m.get('content', '')[:80] for m in messages if m.get('role') == 'user'), 'N/A')
+
+        llm_log("📤", "REQUEST", f"Sending request to {model}", {
+            "messages": len(messages),
+            "tokens_est": tokens_input,
+            "temperature": temperature,
+            "max_tokens": max_tokens or "default",
+            "prompt_preview": user_msg + "..." if len(user_msg) == 80 else user_msg
+        })
+
         # Check cache first
         if model.startswith("ollama:"):
             model_type = "ollama"
         elif model.startswith("claude-"):
             model_type = "anthropic"
+        elif model.startswith("gemini"):
+            model_type = "gemini"
         else:
             model_type = "openai"
         cache_entry = self.model_cache.get_model(model, model_type)
 
         if cache_entry and cache_entry.is_loaded:
-            logger.debug(f"Using cached model: {model}")
+            llm_log("💾", "CACHE", f"Using cached model: {model}")
 
         try:
             # If model starts with ollama:, use Ollama directly
             if model.startswith("ollama:"):
+                llm_log("🦙", "ROUTE", f"Routing to Ollama: {model}")
                 result = await self._get_ollama_completion(messages, model, temperature)
 
             # If model starts with claude-, use Anthropic
             elif model.startswith("claude-"):
+                llm_log("🤖", "ROUTE", f"Routing to Anthropic: {model}")
                 if self.anthropic_client:
                     result = await self._get_anthropic_completion(messages, model, temperature, max_tokens)
                 else:
-                    # Fallback to Ollama if no Anthropic client
-                    result = await self._get_ollama_fallback(messages, temperature)
+                    raise ValueError("Anthropic client not initialized. Set ANTHROPIC_API_KEY or choose an available model.")
+
+            # If model starts with gemini, use Google Gemini
+            elif model.startswith("gemini"):
+                llm_log("💎", "ROUTE", f"Routing to Gemini: {model}")
+                if self.gemini_client:
+                    result = await self._get_gemini_completion(messages, model, temperature, max_tokens)
+                else:
+                    raise ValueError("Gemini client not initialized. Set GEMINI_API_KEY and install google-generativeai package.")
 
             # If model starts with gpt or o1, try OpenAI first
             elif model.startswith("gpt") or model.startswith("o1"):
+                llm_log("🧠", "ROUTE", f"Routing to OpenAI: {model}")
                 if self.openai_client:
                     result = await self._get_openai_completion(messages, model, temperature, max_tokens)
                 else:
-                    # Fallback to Ollama if no OpenAI client
-                    result = await self._get_ollama_fallback(messages, temperature)
+                    raise ValueError("OpenAI client not initialized. Set OPENAI_API_KEY or choose an available model.")
 
             # For any other model, try Ollama first
             else:
+                llm_log("🦙", "ROUTE", f"Routing to Ollama (fallback): {model}")
                 try:
                     result = await self._get_ollama_completion(messages, model, temperature)
                 except Exception:
-                    raise ValueError(f"Model {model} not supported. Please use a valid Claude or Ollama model.")
+                    raise ValueError(f"Model {model} not supported. Please use a valid model.")
 
         except Exception as e:
+            llm_log("❌", "ERROR", f"Error getting completion: {str(e)}")
             logger.error(f"Error getting completion: {str(e)}")
             result = f"Error: {str(e)}"
 
@@ -153,6 +268,15 @@ class LLMService:
         end_time = time.time()
         response_time = end_time - start_time
         tokens_generated = len(result.split()) if result else 0
+
+        # Log response summary
+        result_preview = str(result)[:100] + "..." if len(str(result)) > 100 else str(result)
+        llm_log("📥", "RESPONSE", f"Received response from {model}", {
+            "response_time": f"{response_time:.2f}s",
+            "tokens_in": tokens_input,
+            "tokens_out": tokens_generated,
+            "response_preview": result_preview.replace('\n', ' ')
+        })
 
         self.metrics_collector.record_llm_call(
             model=model,
@@ -233,6 +357,12 @@ class LLMService:
         if not self.openai_client:
             raise ValueError("OpenAI client not initialized")
 
+        llm_log("🧠", "OPENAI", f"Calling OpenAI API", {
+            "model": model,
+            "messages": len(messages),
+            "temperature": temperature
+        })
+
         try:
             response = await self.openai_client.chat.completions.create(
                 model=model,
@@ -240,8 +370,26 @@ class LLMService:
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            return response.choices[0].message.content
+
+            result = response.choices[0].message.content
+
+            # Log token usage from API response
+            usage = response.usage
+            if usage:
+                llm_log("📊", "OPENAI/TOKENS", f"Token usage", {
+                    "input": f"{usage.prompt_tokens} tokens",
+                    "output": f"{usage.completion_tokens} tokens",
+                    "total": f"{usage.total_tokens} tokens"
+                })
+
+            llm_log("✅", "OPENAI", f"Response received", {
+                "response_length": len(result) if result else 0,
+                "finish_reason": response.choices[0].finish_reason
+            })
+
+            return result
         except Exception as e:
+            llm_log("❌", "OPENAI", f"Error: {str(e)}")
             if "rate limit" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
             elif "insufficient_quota" in str(e).lower():
@@ -257,6 +405,12 @@ class LLMService:
         """Get completion from Anthropic."""
         if not self.anthropic_client:
             raise ValueError("Anthropic client not initialized")
+
+        llm_log("🤖", "ANTHROPIC", f"Preparing Anthropic request", {
+            "model": model,
+            "messages": len(messages),
+            "temperature": temperature
+        })
 
         try:
             # Convert OpenAI format to Anthropic format
@@ -293,18 +447,110 @@ class LLMService:
                 if system_message:
                     api_params["system"] = system_message
 
+                llm_log("🤖", "ANTHROPIC", f"Calling Anthropic API", {
+                    "has_system": bool(system_message),
+                    "content_length": len(content)
+                })
+
                 response = await self.anthropic_client.messages.create(**api_params)
             else:
                 raise ValueError("No user messages provided")
 
-            return response.content[0].text
+            result = response.content[0].text
+
+            # Log token usage from Anthropic response
+            if hasattr(response, 'usage'):
+                llm_log("📊", "ANTHROPIC/TOKENS", f"Token usage", {
+                    "input": f"{response.usage.input_tokens} tokens",
+                    "output": f"{response.usage.output_tokens} tokens"
+                })
+
+            llm_log("✅", "ANTHROPIC", f"Response received", {
+                "response_length": len(result) if result else 0,
+                "stop_reason": response.stop_reason
+            })
+
+            return result
         except Exception as e:
+            llm_log("❌", "ANTHROPIC", f"Error: {str(e)}")
             if "rate limit" in str(e).lower():
                 return "Error: Rate limit exceeded. Please try again later."
             elif "insufficient_quota" in str(e).lower():
                 return "Error: Insufficient API quota. Please check your Anthropic account."
             else:
                 return f"Anthropic Error: {str(e)}"
+
+    async def _get_gemini_completion(self,
+                                    messages: List[Dict[str, Any]],
+                                    model: str,
+                                    temperature: float,
+                                    max_tokens: Optional[int]) -> str:
+        """Get completion from Google Gemini using OpenAI-compatible API."""
+        # Remove gemini: prefix if present
+        model_name = model.replace("gemini:", "")
+
+        llm_log("💎", "GEMINI", f"Preparing Gemini request (OpenAI-compatible)", {
+            "model": model_name,
+            "messages": len(messages),
+            "temperature": temperature,
+            "max_tokens": max_tokens or "default"
+        })
+
+        if not self.gemini_client:
+            raise ValueError("Gemini client not initialized. Set GEMINI_API_KEY.")
+
+        try:
+            # Gemini uses OpenAI-compatible API - same format as OpenAI!
+            llm_log("💎", "GEMINI", f"Calling Gemini API via OpenAI compatibility layer", {
+                "endpoint": GEMINI_BASE_URL,
+                "model": model_name
+            })
+
+            response = await self.gemini_client.chat.completions.create(
+                model=model_name,
+                messages=messages,  # No conversion needed - same format!
+                temperature=temperature,
+                max_tokens=max_tokens or 4096
+            )
+
+            result = response.choices[0].message.content
+
+            # Extract actual token usage from API response
+            usage = response.usage
+            token_info = {}
+            if usage:
+                token_info = {
+                    "prompt_tokens": usage.prompt_tokens,
+                    "completion_tokens": usage.completion_tokens,
+                    "total_tokens": usage.total_tokens,
+                    "cost_estimate": f"~${(usage.prompt_tokens * 0.000001 + usage.completion_tokens * 0.000004):.6f}"
+                }
+
+            llm_log("✅", "GEMINI", f"Gemini response received", {
+                "response_length": len(result) if result else 0,
+                "finish_reason": response.choices[0].finish_reason,
+                "model": response.model,
+                **token_info
+            })
+
+            # Log token breakdown for debugging
+            if usage:
+                llm_log("📊", "GEMINI/TOKENS", f"Token usage breakdown", {
+                    "input": f"{usage.prompt_tokens} tokens (~{usage.prompt_tokens * 4} chars)",
+                    "output": f"{usage.completion_tokens} tokens (~{usage.completion_tokens * 4} chars)",
+                    "total": f"{usage.total_tokens} tokens"
+                })
+
+            return result
+
+        except Exception as e:
+            llm_log("❌", "GEMINI", f"Gemini error: {str(e)}")
+            if "rate limit" in str(e).lower() or "quota" in str(e).lower():
+                return "Error: Rate limit exceeded. Please try again later."
+            elif "api key" in str(e).lower() or "401" in str(e):
+                return "Error: Invalid Gemini API key. Please check your GEMINI_API_KEY."
+            else:
+                return f"Gemini Error: {str(e)}"
 
     async def _get_ollama_completion(self,
                                    messages: List[Dict[str, Any]],
@@ -378,6 +624,9 @@ class LLMService:
             elif model.startswith("gpt"):
                 async for chunk in self._stream_openai_completion(messages, model, temperature):
                     yield chunk
+            elif model.startswith("gemini"):
+                async for chunk in self._stream_gemini_completion(messages, model, temperature):
+                    yield chunk
             elif model.startswith("ollama:"):
                 async for chunk in self._stream_ollama_completion(messages, model, temperature):
                     yield chunk
@@ -387,7 +636,7 @@ class LLMService:
                     async for chunk in self._stream_ollama_completion(messages, model, temperature):
                         yield chunk
                 except Exception:
-                    raise ValueError(f"Model {model} not supported. Please use a valid Claude or Ollama model.")
+                    raise ValueError(f"Model {model} not supported. Please use a valid model.")
 
         except Exception as e:
             logger.error(f"Error streaming completion: {str(e)}")
@@ -471,6 +720,44 @@ class LLMService:
         except Exception as e:
             yield f"Anthropic Streaming Error: {str(e)}"
 
+    async def _stream_gemini_completion(self,
+                                       messages: List[Dict[str, Any]],
+                                       model: str,
+                                       temperature: float) -> AsyncGenerator[str, None]:
+        """Stream completion from Google Gemini using OpenAI-compatible API."""
+        model_name = model.replace("gemini:", "")
+
+        llm_log("💎", "GEMINI/STREAM", f"Starting Gemini streaming request", {
+            "model": model_name,
+            "messages": len(messages)
+        })
+
+        if not self.gemini_client:
+            raise ValueError("Gemini client not initialized")
+
+        try:
+            # Gemini supports OpenAI-compatible streaming!
+            stream = await self.gemini_client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                temperature=temperature,
+                stream=True
+            )
+
+            chunk_count = 0
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    chunk_count += 1
+                    yield chunk.choices[0].delta.content
+
+            llm_log("✅", "GEMINI/STREAM", f"Gemini streaming complete", {
+                "chunks": chunk_count
+            })
+
+        except Exception as e:
+            llm_log("❌", "GEMINI/STREAM", f"Gemini streaming error: {str(e)}")
+            yield f"Gemini Streaming Error: {str(e)}"
+
     async def _stream_ollama_completion(self,
                                       messages: List[Dict[str, Any]],
                                       model: str,
@@ -530,6 +817,15 @@ class LLMService:
                 "claude-3-opus-20240229",
                 "claude-3-sonnet-20240229",
                 "claude-3-haiku-20240307"
+            ])
+
+        if self.gemini_client:
+            models.extend([
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-pro"
             ])
 
         # Get actual Ollama models
@@ -607,41 +903,26 @@ class LLMService:
 
     def get_default_model(self) -> str:
         """Get the default model to use, preferring Claude 3.5 Sonnet for optimal balance."""
-        # Use configured default model if available
         config_default = self.config.llm.default_model
 
-        # Check if configured default is available
-        if config_default.startswith("claude-") and self.anthropic_client:
+        # Honor configured default if we can actually run it
+        if self.is_model_available(config_default):
             return config_default
-        elif config_default.startswith("ollama:"):
-            ollama_models = self.get_ollama_models()
-            if config_default in ollama_models:
-                return config_default
 
-        # Fallback to priority order
-        # First priority: Claude models
-        if self.anthropic_client:
-            for model in self.config.llm.model_priority:
-                if model.startswith("claude-"):
-                    return model
-
-        # Second priority: Ollama models
-        ollama_models = self.get_ollama_models()
-        if ollama_models and len(ollama_models) > 0:
-            # Try configured fallback models first
-            for model in self.config.llm.fallback_models:
-                if model in ollama_models:
-                    return model
-            # Fallback to best available Ollama model
-            return self.get_best_model_for_task("general", prioritize_speed=True)
+        available_models = self.get_available_models()
+        if available_models:
+            try:
+                return self.get_best_model_for_task("general", available_models, prioritize_speed=True)
+            except ValueError:
+                pass
 
         # No fallback - raise error if no models available
-        raise ValueError("No LLM models available. Please configure Anthropic API key or ensure Ollama is running.")
+        raise ValueError("No LLM models available. Please configure an API key or ensure Ollama is running with models.")
 
     def get_model_capabilities(self, model_name: str) -> Dict[str, Any]:
         """Get capabilities for a specific model."""
-        # Remove ollama: prefix for lookup
-        clean_name = model_name.replace("ollama:", "").lower()
+        # Remove prefixes for lookup
+        clean_name = model_name.replace("ollama:", "").replace("gemini:", "").lower()
 
         # Model capability database
         capabilities = {
@@ -780,6 +1061,58 @@ class LLMService:
                 "description": "Claude 3 Haiku: Fast Claude 3 model for quick and efficient tasks"
             },
 
+            # Google Gemini models
+            "gemini-2.5-flash": {
+                "reasoning": 92,
+                "coding": 90,
+                "analysis": 92,
+                "creativity": 88,
+                "speed": 95,
+                "context_length": 1000000,
+                "type": "gemini",
+                "description": "Gemini 2.5 Flash: Fast and capable model with 1M token context"
+            },
+            "gemini-2.5-pro": {
+                "reasoning": 96,
+                "coding": 95,
+                "analysis": 96,
+                "creativity": 92,
+                "speed": 75,
+                "context_length": 1000000,
+                "type": "gemini",
+                "description": "Gemini 2.5 Pro: Most capable Gemini model with advanced reasoning"
+            },
+            "gemini-2.0-flash": {
+                "reasoning": 90,
+                "coding": 88,
+                "analysis": 90,
+                "creativity": 85,
+                "speed": 92,
+                "context_length": 1000000,
+                "type": "gemini",
+                "description": "Gemini 2.0 Flash: Fast multimodal model"
+            },
+            "gemini-1.5-flash": {
+                "reasoning": 88,
+                "coding": 85,
+                "analysis": 88,
+                "creativity": 82,
+                "speed": 90,
+                "context_length": 1000000,
+                "type": "gemini",
+                "description": "Gemini 1.5 Flash: Efficient model with large context window"
+            },
+            "gemini-1.5-pro": {
+                "reasoning": 93,
+                "coding": 90,
+                "analysis": 93,
+                "creativity": 88,
+                "speed": 70,
+                "context_length": 2000000,
+                "type": "gemini",
+                "description": "Gemini 1.5 Pro: High-capability model with 2M token context"
+            },
+
             # Common Ollama models
             "phi3": {
                 "reasoning": 85,
@@ -876,7 +1209,15 @@ class LLMService:
                 return caps
 
         # Default capabilities for unknown models
-        model_type = "ollama" if "ollama:" in model_name else ("anthropic" if "claude-" in model_name else "openai")
+        if "ollama:" in model_name:
+            model_type = "ollama"
+        elif "claude-" in model_name:
+            model_type = "anthropic"
+        elif "gemini" in model_name.lower():
+            model_type = "gemini"
+        else:
+            model_type = "openai"
+
         return {
             "reasoning": 70,
             "coding": 70,
@@ -888,13 +1229,20 @@ class LLMService:
             "description": "Unknown model with default capabilities"
         }
 
-    def get_best_model_for_task(self, task_type: str, available_models: List[str] = None, prioritize_speed: bool = False) -> str:
+    def get_best_model_for_task(self,
+                                task_type: str,
+                                available_models: List[str] = None,
+                                prioritize_speed: bool = False,
+                                preferred_model: Optional[str] = None) -> str:
         """Get the best model for a specific task type."""
+        if preferred_model and self.is_model_available(preferred_model):
+            return preferred_model
+
         if available_models is None:
             available_models = self.get_available_models()
 
         if not available_models:
-            return "gpt-4"  # Fallback
+            raise ValueError("No LLM models available. Configure OPENAI_API_KEY, ANTHROPIC_API_KEY, or start Ollama with models.")
 
         # Task type weights
         task_weights = {
