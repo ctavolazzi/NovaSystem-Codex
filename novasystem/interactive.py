@@ -11,8 +11,17 @@ import time
 import random
 import threading
 import signal
+import select
 from datetime import datetime
 from pathlib import Path
+
+# For cross-platform keypress detection
+try:
+    import termios
+    import tty
+    HAS_TERMIOS = True
+except ImportError:
+    HAS_TERMIOS = False
 
 # =============================================================================
 # CONFIGURATION
@@ -178,11 +187,11 @@ def print_command_box():
 def print_prompt():
     """Print the command prompt with style and sleep countdown."""
     time_str = datetime.now().strftime("%H:%M")
-    
+
     # Calculate time until screensaver
     idle_time = int(time.time() - state.last_activity)
     time_left = max(0, SCREENSAVER_TIMEOUT - idle_time)
-    
+
     # Show countdown when getting close (under 15 seconds)
     if time_left <= 15 and time_left > 0:
         countdown = f" {Colors.YELLOW}💤 {time_left}s{Colors.RESET}"
@@ -190,7 +199,7 @@ def print_prompt():
         countdown = f" {Colors.DIM}💤 zzz{Colors.RESET}"
     else:
         countdown = ""
-    
+
     print(f"\n{Colors.DIM}[{time_str}]{Colors.RESET} {Colors.CYAN}nova{Colors.RESET}{Colors.DIM}:{Colors.RESET}{Colors.GREEN}~{Colors.RESET} {Colors.BOLD}${Colors.RESET}{countdown} ", end="", flush=True)
 
 # =============================================================================
@@ -303,9 +312,9 @@ class Screensaver:
         ],
     ]
 
-    # Dreams that float in and out  
+    # Dreams that float in and out
     DREAMS = [
-        "☁️", "💭", "⭐", "🌙", "✨", "🔮", "📚", "💡", 
+        "☁️", "💭", "⭐", "🌙", "✨", "🔮", "📚", "💡",
         "🚀", "🎯", "🧠", "⚡", "🌈", "🎨", "🔧", "💎",
     ]
 
@@ -392,7 +401,7 @@ class Screensaver:
         self.breathing_frame = (self.frame // 30) % 2
 
         lines = []
-        
+
         # Night sky with twinkling stars
         stars_line = ""
         for i in range(78):
@@ -415,7 +424,7 @@ class Screensaver:
 
         # Get current wizard frame
         wizard = self.WIZARD_FRAMES[self.breathing_frame]
-        
+
         # Draw wizard with colors
         for row in wizard:
             colored_row = ""
@@ -474,7 +483,7 @@ class Screensaver:
         lines.append(f"{pad}{Colors.DIM}╰{'─' * box_w}╯{Colors.RESET}")
         lines.append("")
         lines.append(f"{pad}    {Colors.DIM}Shhh... the wizard is resting.{Colors.RESET}")
-        lines.append(f"{pad}    {Colors.DIM}Press Enter to wake...{Colors.RESET}")
+        lines.append(f"{pad}    {Colors.DIM}Press any key to wake...{Colors.RESET}")
 
         return lines
 
@@ -482,17 +491,54 @@ class Screensaver:
         self.frame += 1
         return self.render_wizard()
 
+def kbhit():
+    """Check if a key has been pressed (non-blocking)."""
+    if not HAS_TERMIOS:
+        return False
+    try:
+        dr, _, _ = select.select([sys.stdin], [], [], 0)
+        return dr != []
+    except:
+        return False
+
 def run_screensaver():
     """Run the screensaver loop."""
     screensaver = Screensaver()
     clear_screen()
 
-    while state.screensaver_active and state.running:
-        lines = screensaver.render()
-        print("\033[H", end="")
-        for line in lines:
-            print(f"\033[K{line}")
-        time.sleep(ANIMATION_SPEED)
+    # Set terminal to raw mode to catch any keypress
+    old_settings = None
+    if HAS_TERMIOS:
+        try:
+            old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+        except:
+            pass
+
+    try:
+        while state.screensaver_active and state.running:
+            # Check for any keypress
+            if kbhit():
+                # Read the key to clear it from buffer
+                try:
+                    sys.stdin.read(1)
+                except:
+                    pass
+                state.screensaver_active = False
+                break
+
+            lines = screensaver.render()
+            print("\033[H", end="")
+            for line in lines:
+                print(f"\033[K{line}")
+            time.sleep(ANIMATION_SPEED)
+    finally:
+        # Restore terminal settings
+        if old_settings and HAS_TERMIOS:
+            try:
+                termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+            except:
+                pass
 
     clear_screen()
 
