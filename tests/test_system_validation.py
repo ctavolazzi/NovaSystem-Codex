@@ -153,7 +153,7 @@ class SystemValidator:
             # Check for expected commands in output (v2.0 CLI commands)
             # The CLI was redesigned in v2.0 to focus on problem-solving
             expected_commands = ['ask', 'chat', 'solve', 'status']
-            
+
             for cmd in expected_commands:
                 if cmd in output:
                     print_success(f"Found expected command: {cmd}")
@@ -225,7 +225,7 @@ class SystemValidator:
             self.project_root / "novasystem" / "__init__.py",
             self.project_root / "utils" / "README.md",
         ]
-        
+
         # Check for module OR package (cli can be cli.py or cli/__init__.py)
         module_or_package = [
             ("novasystem" / Path("cli"), "cli module/package"),
@@ -239,7 +239,7 @@ class SystemValidator:
             else:
                 print_error(f"Missing file: {file.relative_to(self.project_root)}")
                 self.tests_failed += 1
-        
+
         # Check module or package paths
         for rel_path, name in module_or_package:
             module_file = self.project_root / (str(rel_path) + ".py")
