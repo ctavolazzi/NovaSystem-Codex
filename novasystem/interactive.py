@@ -251,10 +251,10 @@ class Screensaver:
         r"                  '@@@@@@@@@@@@@@'",
         r"                     ||     ||",
         r"                   __||_____||__",
-        r"                  /  ~~~~~~~~~~  \",
+        "                  /  ~~~~~~~~~~  \\",
         r"                 |    N O V A    |",
         r"                 |    ~~~~~~     |",
-        r"                  \   W I Z    /",
+        "                  \\   W I Z    /",
         r"                   '=========='",
     ]
 
@@ -328,12 +328,12 @@ class Screensaver:
             else:
                 x = random.randint(50, 65)
                 dx = random.uniform(-0.3, -0.1)
-            
+
             y = random.randint(2, 12)
             dy = random.uniform(-0.15, 0.15)
             dream_idx = random.randint(0, len(self.DREAMS) - 1)
             lifespan = random.randint(80, 150)
-            
+
             self.active_dreams.append({
                 'x': float(x),
                 'y': float(y),
@@ -350,11 +350,11 @@ class Screensaver:
             dream['x'] += dream['dx']
             dream['y'] += dream['dy']
             dream['age'] += 1
-            
+
             # Keep if still alive and on screen
             if dream['age'] < dream['life'] and 0 < dream['x'] < 75 and 0 < dream['y'] < 20:
                 updated.append(dream)
-        
+
         self.active_dreams = updated
 
     def render_wizard(self):
@@ -436,7 +436,7 @@ class Screensaver:
             self.message_idx = (self.message_idx + 1) % len(self.MESSAGES)
 
         msg = self.MESSAGES[self.message_idx]
-        
+
         # Add message box at bottom
         lines.append("")
         box_w = len(msg) + 6
