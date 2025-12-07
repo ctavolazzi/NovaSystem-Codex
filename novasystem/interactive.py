@@ -254,63 +254,38 @@ class Spinner:
 class Screensaver:
     """Sleeping wizard screensaver with floating dreams."""
 
-    # Better wizard with pointy hat, beard, and staff
-    WIZARD_FRAMES = [
-        # Frame 0 - eyes closed (u u)
-        [
-            "                              *  ",
-            "                             /|\\ ",
-            "                            /*|*\\",
-            "                           /  |  \\",
-            "                          / * | * \\",
-            "                         /  * | *  \\",
-            "                        /    *|*    \\",
-            "                       /  ☆  |  ☆  \\",
-            "                      '------+------'",
-            "                       \\    ___    /",
-            "                        |  (u u)  |",
-            "                        |    >    |",
-            "                        |  \\___/  |",
-            "                       /| ~~~~~~~ |\\",
-            "                      / |  ^~~~^  | \\",
-            "                     /  | /     \\ |  \\",
-            "                    /   |/       \\|   \\",
-            "                   /    +    |    +    \\",
-            "                  /     |    |    |     \\",
-            "                  ~~~~~~+~~~~+~~~~+~~~~~~",
-            "                        |    |    |",
-            "                       /|    |    |\\",
-            "                      | |   _|_   | |",
-            "                       \\|  |___|  |/",
-        ],
-        # Frame 1 - eyes more closed (- -)
-        [
-            "                              *  ",
-            "                             /|\\ ",
-            "                            /*|*\\",
-            "                           /  |  \\",
-            "                          / * | * \\",
-            "                         /  * | *  \\",
-            "                        /    *|*    \\",
-            "                       /  ☆  |  ☆  \\",
-            "                      '------+------'",
-            "                       \\    ___    /",
-            "                        |  (- -)  |",
-            "                        |    >    |",
-            "                        |  \\___/  |",
-            "                       /| ~~~~~~~ |\\",
-            "                      / |  ^~~~^  | \\",
-            "                     /  | /     \\ |  \\",
-            "                    /   |/       \\|   \\",
-            "                   /    +    |    +    \\",
-            "                  /     |    |    |     \\",
-            "                  ~~~~~~+~~~~+~~~~+~~~~~~",
-            "                        |    |    |",
-            "                       /|    |    |\\",
-            "                      | |   _|_   | |",
-            "                       \\|  |___|  |/",
-        ],
+    # Beautifully shaded wizard using Unicode block characters
+    # ▏▎▍▌▋▊▉█ for gradients (light to dark)
+    WIZARD_ART = [
+        "                                    ▄▀▀▀▄                                  ",
+        "                                   ▌ ✦  ▐                                  ",
+        "                                  ▗▀▀▀▀▀▀▖                                 ",
+        "                                 ▗▛▀▀▀▀▀▀▜▖                                ",
+        "                                ▗▛  ☆  ☆  ▜▖                               ",
+        "                               ▗▛▀▀▀▀▀▀▀▀▀▀▜▖                              ",
+        "                              ▗▛            ▜▖                             ",
+        "                             ▗▛   ▄▀▀▀▀▄    ▜▖                            ",
+        "                            ▐▛   ▐ ‿  ‿ ▌    ▜▌                           ",
+        "                            ▐     ▌  ◡  ▐     ▌                            ",
+        "                            ▐      ▀▄▄▀       ▌                            ",
+        "                            ▐    ░░░░░░░░     ▌                            ",
+        "                            ▐   ░▒▒▒▒▒▒▒▒░    ▌                            ",
+        "                           ▐▌  ░▒▓▓▓▓▓▓▓▓▒░   ▐▌                           ",
+        "                          ▐▌   ░▒▓██████▓▒░    ▐▌                          ",
+        "                         ▐▛     ░▒▓████▓▒░      ▜▌                         ",
+        "                        ▗▛       ░▒▓██▓▒░        ▜▖                        ",
+        "                       ▗▛         ░▒▓▓▒░          ▜▖                       ",
+        "                      ▗▛           ░▒▒░            ▜▖                      ",
+        "                     ▞▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▚                     ",
+        "                     ▌    ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄     ▐                     ",
+        "                     ▌   █ N O V A   W I Z A R D █   ▐                     ",
+        "                     ▌    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀     ▐                     ",
+        "                     ▚▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▞                     ",
     ]
+    
+    # Breathing frames - just the face area changes
+    FACE_AWAKE = "▐ ‿  ‿ ▌"
+    FACE_SLEEP = "▐ ─  ─ ▌"
 
     # Dreams that float in and out
     DREAMS = [
@@ -395,13 +370,12 @@ class Screensaver:
         self.active_dreams = updated
 
     def render_wizard(self):
-        """Render the wizard with floating dreams."""
+        """Render the beautifully shaded wizard with floating dreams."""
         self.width, self.height = self.get_terminal_size()
         self.update_dreams()
-        self.breathing_frame = (self.frame // 30) % 2
 
         lines = []
-
+        
         # Night sky with twinkling stars
         stars_line = ""
         for i in range(78):
@@ -414,57 +388,60 @@ class Screensaver:
             else:
                 stars_line += " "
         lines.append(stars_line)
-        lines.append("")
 
         # Moon
         moons = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
         moon = moons[(self.frame // 100) % len(moons)]
-        lines.append(f"  {moon}                                                              ")
+        lines.append(f"  {moon}")
         lines.append("")
 
-        # Get current wizard frame
-        wizard = self.WIZARD_FRAMES[self.breathing_frame]
-
         # Draw wizard with colors
-        for row in wizard:
+        breathing = (self.frame // 25) % 2 == 0
+        
+        for i, row in enumerate(self.WIZARD_ART):
+            # Animate the face (line 8 has the eyes)
+            if i == 8:
+                if breathing:
+                    row = row.replace("‿  ‿", "─  ─")
+            
             colored_row = ""
             for char in row:
-                if char in '*☆':
+                if char in '✦☆':
                     colored_row += f"{Colors.YELLOW}{char}{Colors.RESET}"
-                elif char in '/\\|+-':
+                elif char in '▄▀▌▐▗▖▛▜▞▚█▀':
                     colored_row += f"{Colors.MAGENTA}{char}{Colors.RESET}"
-                elif char in '()_>u-':
-                    colored_row += f"{Colors.WHITE}{char}{Colors.RESET}"
-                elif char == '~':
+                elif char in '░':
+                    colored_row += f"{Colors.BLUE}{char}{Colors.RESET}"
+                elif char in '▒':
                     colored_row += f"{Colors.CYAN}{char}{Colors.RESET}"
-                elif char == '^':
+                elif char in '▓':
+                    colored_row += f"{Colors.WHITE}{char}{Colors.RESET}"
+                elif char in '‿─◡':
                     colored_row += f"{Colors.WHITE}{char}{Colors.RESET}"
                 else:
                     colored_row += char
             lines.append(colored_row)
 
-        # Insert floating dreams into the display
+        # Insert floating dreams
         for dream in self.active_dreams:
             x, y = int(dream['x']), int(dream['y'])
-            if 0 <= y < len(lines) and 0 <= x < 76:
+            if 3 <= y < len(lines) and 0 <= x < 76:
                 emoji = self.DREAMS[dream['idx']]
                 age_ratio = dream['age'] / dream['life']
-                # Fade at edges of life
                 if age_ratio < 0.15 or age_ratio > 0.85:
                     lines[y] = lines[y][:x] + f"{Colors.DIM}{emoji}{Colors.RESET}" + lines[y][x+2:]
                 else:
                     lines[y] = lines[y][:x] + emoji + lines[y][x+2:]
 
         # Floating Z's
-        z_positions = [
-            (60, 8, 'z'), (62, 6, 'z'), (64, 4, 'Z'), (66, 2, 'Z')
-        ]
-        z_offset = (self.frame // 5) % 4
-        for i, (bx, by, z) in enumerate(z_positions):
-            y = by - z_offset + i
-            if 0 <= y < len(lines) and bx < len(lines[y]):
+        z_chars = ['z', 'z', 'Z', 'Z']
+        for i, z in enumerate(z_chars):
+            x = 58 + i * 3
+            y = 10 - i + ((self.frame // 6) % 5)
+            if 0 <= y < len(lines) and x < 76:
                 color = Colors.CYAN if z == 'z' else Colors.WHITE
-                lines[y] = lines[y][:bx] + f"{color}{z}{Colors.RESET}" + lines[y][bx+1:]
+                if y < len(lines):
+                    lines[y] = lines[y][:x] + f"{color}{z}{Colors.RESET}" + lines[y][x+1:]
 
         # Update message
         self.message_timer += 1
