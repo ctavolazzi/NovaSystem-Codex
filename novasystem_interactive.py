@@ -228,6 +228,10 @@ class Screensaver:
                 line = ""
             lines.append(line)
 
+        # Add wake message at bottom
+        lines.append("")
+        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
+
         return lines
 
     def neural_pulse(self):
@@ -259,7 +263,7 @@ class Screensaver:
         lines.append("")
         lines.append(f"{center_pad}{Colors.YELLOW}{self.THINKING_FRAMES[self.frame % 4]}{Colors.RESET}")
         lines.append("")
-        lines.append(f"{Colors.DIM}Press any key to wake up...{Colors.RESET}")
+        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
 
         return lines
 
@@ -289,6 +293,10 @@ class Screensaver:
         if center_y < len(lines):
             pad = (width - 40) // 2
             lines[center_y] = " " * pad + msg
+
+        # Add wake message at bottom
+        lines.append("")
+        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
 
         return lines
 
@@ -382,7 +390,7 @@ def cmd_help():
   {Colors.GREEN}quit{Colors.RESET}      Exit the program
 
 {Colors.DIM}Screensaver activates after {SCREENSAVER_TIMEOUT} seconds of inactivity.
-Press Enter at any time to wake from screensaver.{Colors.RESET}
+Press Enter to wake from screensaver.{Colors.RESET}
 """)
 
 def cmd_ask(question):
