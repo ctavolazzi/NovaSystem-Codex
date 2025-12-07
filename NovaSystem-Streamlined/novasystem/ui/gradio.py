@@ -259,15 +259,13 @@ Performance Metrics:
         Yields:
             Partial output string with all expert responses so far
         """
-        print("\n" + "="*80)
         log_event("🎯", "NOVA/STREAM", "Starting Streaming Nova Process", {
-            "problem_length": len(problem),
+            "problem_length": len(problem) if problem else 0,
             "model": model,
             "domains": domains
         })
-        print("="*80)
 
-        if not problem.strip():
+        if not problem or not problem.strip():
             yield "❌ Please enter a problem statement first!"
             return
 
@@ -280,121 +278,91 @@ Performance Metrics:
         # Parse domains
         domain_list = [d.strip() for d in domains.split(",") if d.strip()]
 
-        # Create agents
-        log_event("🔧", "NOVA/STREAM", "Creating expert agents...")
-        dce = AgentFactory.create_dce(model=model, llm_service=self.llm_service)
-        cae = AgentFactory.create_cae(model=model, llm_service=self.llm_service)
-        domain_experts = [
-            AgentFactory.create_domain_expert(domain, model=model, llm_service=self.llm_service)
-            for domain in domain_list
-        ]
+        # Build initial output
+        output = f"# 🚀 Nova Process - Streaming Analysis\n\n"
+        output += f"**Problem:** {problem}\n\n"
+        output += f"**Model:** {model}\n\n"
+        output += f"**Domains:** {', '.join(domain_list)}\n\n"
+        output += "---\n\n"
+        yield output
 
-        output = []
-        output.append(f"# 🚀 Nova Process - Streaming Analysis\n")
-        output.append(f"**Problem:** {problem}\n")
-        output.append(f"**Model:** {model}\n")
-        output.append(f"**Domains:** {', '.join(domain_list)}\n")
-        output.append("\n---\n")
-        yield "".join(output)
+        try:
+            # Create agents
+            log_event("🔧", "NOVA/STREAM", "Creating expert agents...")
+            dce = AgentFactory.create_dce(model=model, llm_service=self.llm_service)
+            cae = AgentFactory.create_cae(model=model, llm_service=self.llm_service)
+            domain_experts = [
+                AgentFactory.create_domain_expert(domain, model=model, llm_service=self.llm_service)
+                for domain in domain_list
+            ]
 
-        accumulated_context = f"Problem: {problem}\n\n"
-
-        async def stream_experts():
-            nonlocal output, accumulated_context
+            accumulated_context = f"Problem: {problem}\n\n"
 
             # Phase 1: DCE Initial Analysis
-            output.append("\n## 🎯 Phase 1: Initial Analysis (DCE)\n\n")
-            yield "".join(output)
+            output += "## 🎯 Phase 1: Initial Analysis (DCE)\n\n"
+            yield output
 
-            dce_response = []
-            async for chunk in dce.process_stream(
+            # Get DCE response (non-streaming for simplicity in Gradio)
+            dce_response = asyncio.run(dce.process(
                 f"Analyze this problem and provide an initial assessment:\n\n{problem}",
                 context=None
-            ):
-                dce_response.append(chunk)
-                output.append(chunk)
-                yield "".join(output)
+            ))
+            output += dce_response + "\n\n---\n\n"
+            yield output
 
-            accumulated_context += f"DCE Analysis:\n{''.join(dce_response)}\n\n"
-            output.append("\n\n---\n")
-            yield "".join(output)
+            accumulated_context += f"DCE Analysis:\n{dce_response}\n\n"
 
             # Phase 2: Domain Experts
-            output.append("\n## 🎓 Phase 2: Domain Expert Insights\n")
-            yield "".join(output)
+            output += "## 🎓 Phase 2: Domain Expert Insights\n\n"
+            yield output
 
             for expert in domain_experts:
-                output.append(f"\n### {expert.name}\n\n")
-                yield "".join(output)
+                output += f"### {expert.name}\n\n"
+                yield output
 
-                expert_response = []
-                async for chunk in expert.process_stream(
+                expert_response = asyncio.run(expert.process(
                     f"Provide your specialized perspective on this problem:\n\n{problem}",
                     context=accumulated_context
-                ):
-                    expert_response.append(chunk)
-                    output.append(chunk)
-                    yield "".join(output)
+                ))
+                output += expert_response + "\n\n"
+                yield output
 
-                accumulated_context += f"{expert.name}:\n{''.join(expert_response)}\n\n"
-                output.append("\n")
-                yield "".join(output)
+                accumulated_context += f"{expert.name}:\n{expert_response}\n\n"
 
-            output.append("\n---\n")
-            yield "".join(output)
+            output += "---\n\n"
+            yield output
 
             # Phase 3: CAE Critical Analysis
-            output.append("\n## ⚠️ Phase 3: Critical Analysis (CAE)\n\n")
-            yield "".join(output)
+            output += "## ⚠️ Phase 3: Critical Analysis (CAE)\n\n"
+            yield output
 
-            cae_response = []
-            async for chunk in cae.process_stream(
+            cae_response = asyncio.run(cae.process(
                 "Review all the insights and identify potential issues, risks, or alternatives.",
                 context=accumulated_context
-            ):
-                cae_response.append(chunk)
-                output.append(chunk)
-                yield "".join(output)
+            ))
+            output += cae_response + "\n\n---\n\n"
+            yield output
 
-            accumulated_context += f"CAE Analysis:\n{''.join(cae_response)}\n\n"
-            output.append("\n\n---\n")
-            yield "".join(output)
+            accumulated_context += f"CAE Analysis:\n{cae_response}\n\n"
 
             # Phase 4: DCE Synthesis
-            output.append("\n## ✨ Phase 4: Final Synthesis (DCE)\n\n")
-            yield "".join(output)
+            output += "## ✨ Phase 4: Final Synthesis (DCE)\n\n"
+            yield output
 
-            async for chunk in dce.process_stream(
+            synthesis = asyncio.run(dce.process(
                 "Synthesize all insights and provide a comprehensive final response.",
                 context=accumulated_context
-            ):
-                output.append(chunk)
-                yield "".join(output)
+            ))
+            output += synthesis + "\n\n---\n\n"
+            output += "✅ **Nova Process Complete!**\n"
+            yield output
 
-            output.append("\n\n---\n")
-            output.append("\n✅ **Nova Process Complete!**\n")
-            yield "".join(output)
+            log_event("✅", "NOVA/STREAM", "Streaming Nova Process complete!")
 
-        # Run the async generator
-        async def run_stream():
-            async for partial in stream_experts():
-                yield partial
-
-        # Execute using asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            gen = run_stream()
-            while True:
-                try:
-                    result = loop.run_until_complete(gen.__anext__())
-                    yield result
-                except StopAsyncIteration:
-                    break
-        finally:
-            loop.close()
-
-        log_event("✅", "NOVA/STREAM", "Streaming Nova Process complete!")
+        except Exception as e:
+            log_event("❌", "NOVA/STREAM", f"Error: {str(e)}")
+            output += f"\n\n❌ **Error:** {str(e)}\n"
+            yield output
 
     def _format_result(self, result: Dict[str, Any], format_type: str = "text") -> str:
         """Format the Nova Process result for display in different formats."""
