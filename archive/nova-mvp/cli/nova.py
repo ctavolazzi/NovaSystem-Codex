@@ -50,6 +50,8 @@ from backend.core import (
     get_usage_ledger,
     get_memory_store,
     traffic_controller,
+    play_sleeping_wizard,
+    generate_wizard_animation,
 )
 from backend.agents.base import AgentResponse
 
@@ -340,6 +342,96 @@ def memory_command(action: str | None) -> int:
 
     else:
         print(f"{Colors.YELLOW}Usage: nova memory <list|stats|clear>{Colors.RESET}")
+        return 1
+
+
+def sleep_command(image: str | None, width: int, fps: float, message: str) -> int:
+    """Display the sleeping wizard ASCII animation."""
+    print_header()
+    print(f"\n{Colors.CYAN}🧙 Sleeping Wizard Animation{Colors.RESET}")
+    print(f"{Colors.DIM}Press any key to wake the wizard...{Colors.RESET}\n")
+
+    try:
+        interrupted = play_sleeping_wizard(
+            image_path=image,
+            width=width,
+            fps=fps,
+            message=message
+        )
+        if interrupted:
+            print(f"\n{Colors.GREEN}✨ The wizard awakens!{Colors.RESET}")
+        return 0
+    except FileNotFoundError as e:
+        print(f"{Colors.RED}Error: {e}{Colors.RESET}")
+        print(f"{Colors.DIM}Generate a wizard with: nova wizard generate{Colors.RESET}")
+        return 1
+    except Exception as e:
+        print(f"{Colors.RED}Error: {e}{Colors.RESET}")
+        return 1
+
+
+def wizard_command(action: str | None, prompt: str | None, frames: int, output: str) -> int:
+    """Wizard animation management."""
+    if action == "generate":
+        print_header()
+        print(f"\n{Colors.CYAN}🎨 Generating Wizard with PixelLab API{Colors.RESET}")
+
+        api_key = os.getenv("PIXELLAB_API_KEY")
+        if not api_key:
+            print(f"\n{Colors.RED}Error: PIXELLAB_API_KEY not set{Colors.RESET}")
+            print(f"{Colors.DIM}Get your API key at https://pixellab.ai{Colors.RESET}")
+            print(f"{Colors.DIM}Then: export PIXELLAB_API_KEY=your_key{Colors.RESET}")
+            return 1
+
+        print(f"\n{Colors.DIM}Prompt: {prompt or 'sleeping wizard (default)'}")
+        print(f"Frames: {frames}")
+        print(f"Output: {output}{Colors.RESET}\n")
+
+        result = asyncio.run(generate_wizard_animation(
+            num_frames=frames,
+            output_dir=output,
+            prompt=prompt
+        ))
+
+        if result.success:
+            print(f"{Colors.GREEN}✓ Generated {result.total_frames} frames{Colors.RESET}")
+            for frame in result.frames:
+                print(f"  {Colors.DIM}→ {output}/{frame.filename}{Colors.RESET}")
+            print(f"\n{Colors.CYAN}View with: nova sleep --image {output}/frame_00.png{Colors.RESET}")
+            return 0
+        else:
+            print(f"{Colors.RED}Error: {result.error}{Colors.RESET}")
+            return 1
+
+    elif action == "list":
+        print_header()
+        print(f"\n{Colors.CYAN}🖼️  Available Wizard Images{Colors.RESET}\n")
+
+        search_dirs = [
+            Path.cwd(),
+            Path(__file__).parent.parent.parent,
+            Path.home() / "wizard_frames",
+        ]
+
+        found = []
+        for d in search_dirs:
+            if d.exists():
+                for p in d.glob("*wizard*.png"):
+                    found.append(p)
+                for p in d.glob("**/frame_*.png"):
+                    found.append(p)
+
+        if not found:
+            print(f"{Colors.YELLOW}No wizard images found.{Colors.RESET}")
+            print(f"{Colors.DIM}Generate with: nova wizard generate{Colors.RESET}")
+        else:
+            for p in found[:20]:
+                print(f"  {Colors.DIM}→{Colors.RESET} {p}")
+
+        return 0
+
+    else:
+        print(f"{Colors.YELLOW}Usage: nova wizard <generate|list>{Colors.RESET}")
         return 1
 
 
@@ -654,6 +746,53 @@ Environment variables:
     memory_sub.add_parser("stats", help="Show memory statistics")
     memory_sub.add_parser("clear", help="Clear all memories")
 
+    # Sleep command (ASCII wizard animation)
+    sleep_parser = subparsers.add_parser("sleep", help="Display sleeping wizard animation")
+    sleep_parser.add_argument(
+        "--image", "-i",
+        help="Path to wizard image (auto-detected if not specified)"
+    )
+    sleep_parser.add_argument(
+        "--width", "-w",
+        type=int,
+        default=50,
+        help="ASCII width in characters (default: 50)"
+    )
+    sleep_parser.add_argument(
+        "--fps", "-f",
+        type=float,
+        default=1.5,
+        help="Animation speed (default: 1.5)"
+    )
+    sleep_parser.add_argument(
+        "--message", "-m",
+        default="💤 Wizard sleeping... Press any key to wake",
+        help="Message to display"
+    )
+
+    # Wizard command (PixelLab integration)
+    wizard_parser = subparsers.add_parser("wizard", help="Wizard animation management")
+    wizard_sub = wizard_parser.add_subparsers(dest="wizard_action")
+
+    wizard_gen = wizard_sub.add_parser("generate", help="Generate wizard with PixelLab API")
+    wizard_gen.add_argument(
+        "--prompt", "-p",
+        help="Custom prompt for generation"
+    )
+    wizard_gen.add_argument(
+        "--frames", "-n",
+        type=int,
+        default=4,
+        help="Number of frames (default: 4)"
+    )
+    wizard_gen.add_argument(
+        "--output", "-o",
+        default="wizard_frames",
+        help="Output directory (default: wizard_frames)"
+    )
+
+    wizard_sub.add_parser("list", help="List available wizard images")
+
     # Parse args
     args = parser.parse_args()
 
@@ -676,6 +815,15 @@ Environment variables:
         return recall_command(args.query, args.limit, args.tags)
     elif args.command == "memory":
         return memory_command(args.memory_action)
+    elif args.command == "sleep":
+        return sleep_command(args.image, args.width, args.fps, args.message)
+    elif args.command == "wizard":
+        return wizard_command(
+            args.wizard_action,
+            getattr(args, 'prompt', None),
+            getattr(args, 'frames', 4),
+            getattr(args, 'output', 'wizard_frames')
+        )
     else:
         print_header()
         parser.print_help()
