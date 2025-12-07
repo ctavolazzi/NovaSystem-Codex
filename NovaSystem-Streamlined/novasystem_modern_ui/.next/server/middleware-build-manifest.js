@@ -1,0 +1,55 @@
+globalThis.__BUILD_MANIFEST = {
+  "pages": {
+    "/_app": [
+      "static/chunks/b9f81_next_dist_compiled_next-devtools_index_4a2924fc.js",
+      "static/chunks/b9f81_next_dist_compiled_e3cfb0b0._.js",
+      "static/chunks/b9f81_next_dist_shared_lib_0e0c0934._.js",
+      "static/chunks/b9f81_next_dist_client_a33daa61._.js",
+      "static/chunks/b9f81_next_dist_d0aba2f8._.js",
+      "static/chunks/b9f81_next_app_3256bb13.js",
+      "static/chunks/[next]_entry_page-loader_ts_03924351._.js",
+      "static/chunks/b9f81_react-dom_03f577ea._.js",
+      "static/chunks/b9f81_d3098a64._.js",
+      "static/chunks/[root-of-the-server]__fcd939c2._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_pages__app_2da965e7._.js",
+      "static/chunks/turbopack-NovaSystem-Streamlined_novasystem_modern_ui_pages__app_5d691683._.js"
+    ],
+    "/_error": [
+      "static/chunks/b9f81_next_dist_compiled_next-devtools_index_4a2924fc.js",
+      "static/chunks/b9f81_next_dist_compiled_e3cfb0b0._.js",
+      "static/chunks/b9f81_next_dist_shared_lib_e3560560._.js",
+      "static/chunks/b9f81_next_dist_client_a33daa61._.js",
+      "static/chunks/b9f81_next_dist_9580f3f4._.js",
+      "static/chunks/b9f81_next_error_8c24a616.js",
+      "static/chunks/[next]_entry_page-loader_ts_f84b57f8._.js",
+      "static/chunks/b9f81_react-dom_03f577ea._.js",
+      "static/chunks/b9f81_d3098a64._.js",
+      "static/chunks/[root-of-the-server]__8adc21b2._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_pages__error_2da965e7._.js",
+      "static/chunks/turbopack-NovaSystem-Streamlined_novasystem_modern_ui_pages__error_83b15d77._.js"
+    ]
+  },
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [
+    "static/chunks/b9f81_next_dist_build_polyfills_polyfill-nomodule.js"
+  ],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [
+    "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_6d78f6b3._.js",
+    "static/chunks/b9f81_next_dist_compiled_react-dom_f9c18274._.js",
+    "static/chunks/b9f81_next_dist_compiled_next-devtools_index_b4f34f4f.js",
+    "static/chunks/b9f81_next_dist_compiled_193a1c7d._.js",
+    "static/chunks/b9f81_next_dist_client_09db55bc._.js",
+    "static/chunks/b9f81_next_dist_8e7d35b9._.js",
+    "static/chunks/b9f81_@swc_helpers_cjs_41036951._.js",
+    "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_a0ff3932._.js",
+    "static/chunks/turbopack-NovaSystem-Streamlined_novasystem_modern_ui_8411637e._.js"
+  ],
+  "ampFirstPages": []
+};
+globalThis.__BUILD_MANIFEST.lowPriorityFiles = [
+"/static/" + process.env.__NEXT_BUILD_ID + "/_buildManifest.js",
+,"/static/" + process.env.__NEXT_BUILD_ID + "/_ssgManifest.js",
+
+];

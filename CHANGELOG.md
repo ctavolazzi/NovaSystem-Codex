@@ -5,7 +5,78 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v0.3.0] - 2025-12-06
+## [v0.3.0] - 2025-12-07
+
+### Major Consolidation Release
+
+This release consolidates **4 separate implementations** into a single, unified CLI-first package.
+
+### Merged From
+- **NovaSystem-Streamlined (v2.0)** - Multi-agent framework with full UI support
+- **novasystem CLI (v0.1.1)** - Repository tools, Docker executor, Decision Matrix
+- **nova-mvp** - LocalVectorStore, pricing/usage tracking, clean agent patterns
+- **dev/* experimental** - Best patterns extracted, rest archived
+
+### Added
+- **Unified Package Structure:**
+  ```
+  novasystem/
+  ├── cli/          # CLI commands (primary interface)
+  ├── core/         # Agents, process, memory, workflow
+  ├── tools/        # Decision Matrix, Docker, repo installer
+  ├── utils/        # Vision, docs, image generation services
+  ├── api/          # REST API endpoints
+  └── ui/           # Web and Gradio interfaces
+  ```
+- **Tools Module** (`novasystem.tools`):
+  - `DecisionMatrix` - Multi-criteria decision analysis
+  - `DockerExecutor` - Containerized command execution
+  - `RepositoryHandler` - Git repository operations
+  - `DocumentationParser` - Documentation extraction
+  - `TechnicalDebtManager` - Debt tracking
+  - `Nova` - Main orchestrator class
+- **Vector Store** (`core/vector_store.py`) - Zero-cost local RAG from nova-mvp
+- **Pricing/Usage** (`core/pricing.py`, `core/usage.py`) - Cost tracking from nova-mvp
+- **Backwards Compatibility Shims** - Old import paths still work:
+  - `novasystem.core_utils` → `novasystem.tools.decision_matrix`
+  - `novasystem.parser` → `novasystem.tools.parser`
+  - `novasystem.docker` → `novasystem.tools.docker`
+  - `novasystem.repository` → `novasystem.tools.repository`
+  - `novasystem.nova` → `novasystem.tools.nova`
+- **Dual CLI Entry Points:** `novasystem` and `nova` commands
+
+### Changed
+- Version: 0.1.1 → 0.3.0 (consolidation release)
+- All old implementations moved to `archive/` directory
+- Root-level documentation cleaned up (DECISION_MATRIX_*.md → docs/)
+- Updated pyproject.toml with comprehensive dependencies
+
+### Archived
+- `archive/NovaSystem-Streamlined/` - Original v2.0 source
+- `archive/novasystem-v0.1.1-cli/` - Original CLI tool
+- `archive/nova-mvp/` - Original FastAPI MVP
+- `archive/dev-experimental/` - NS-bytesize, NS-core, NS-lite, mcp-claude, saas
+- `archive/streamlined-backup-20250928/` - Historical backup
+
+### Removed
+- Duplicate implementations and conflicting package names
+- Scattered root-level test files (moved to tests/)
+- Orphaned files (package-lock.json, .git-rewrite/)
+
+### Migration Notes
+If upgrading from v0.1.1 (CLI tool) or v2.0 (Streamlined):
+```bash
+pip install -e .  # Reinstall to get new package structure
+novasystem --help  # or: nova --help
+```
+
+---
+
+## Pre-Consolidation History (from nova-mvp)
+
+The following versions were from the nova-mvp implementation before consolidation.
+
+## [nova-mvp v0.3.0] - 2025-12-06
 
 ### Added
 - **Long-Term Memory:** Full RAG pipeline with zero-cost local embeddings (`memory.py`)

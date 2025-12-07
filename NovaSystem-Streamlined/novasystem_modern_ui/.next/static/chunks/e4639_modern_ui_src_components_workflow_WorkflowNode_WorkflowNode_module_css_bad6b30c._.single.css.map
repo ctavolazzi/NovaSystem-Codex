@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["turbopack:///[project]/NovaSystem-Streamlined/novasystem_modern_ui/src/components/workflow/WorkflowNode/WorkflowNode.module.css"],"sourcesContent":["\n"],"names":[],"mappings":""}}]
+}

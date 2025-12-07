@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 1, "column": 0}, "map": {"version":3,"sources":["file:///Users/ctavolazzi/Code/NovaSystem-Codex/NovaSystem-Streamlined/novasystem_modern_ui/src/components/workflow/WorkflowNode/WorkflowNode.module.css"],"sourcesContent":["\n"],"names":[],"mappings":"","debugId":null}},
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///Users/ctavolazzi/Code/NovaSystem-Codex/NovaSystem-Streamlined/novasystem_modern_ui/src/components/workflow/WorkflowCanvas/WorkflowCanvas.module.css"],"sourcesContent":["\n"],"names":[],"mappings":"","debugId":null}}]
+}

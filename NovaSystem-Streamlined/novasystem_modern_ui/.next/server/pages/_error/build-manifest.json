@@ -1,0 +1,24 @@
+{
+  "devFiles": [],
+  "ampDevFiles": [],
+  "polyfillFiles": [],
+  "lowPriorityFiles": [],
+  "rootMainFiles": [],
+  "pages": {
+    "/_error": [
+      "static/chunks/b9f81_next_dist_compiled_next-devtools_index_4a2924fc.js",
+      "static/chunks/b9f81_next_dist_compiled_e3cfb0b0._.js",
+      "static/chunks/b9f81_next_dist_shared_lib_e3560560._.js",
+      "static/chunks/b9f81_next_dist_client_a33daa61._.js",
+      "static/chunks/b9f81_next_dist_9580f3f4._.js",
+      "static/chunks/b9f81_next_error_8c24a616.js",
+      "static/chunks/[next]_entry_page-loader_ts_f84b57f8._.js",
+      "static/chunks/b9f81_react-dom_03f577ea._.js",
+      "static/chunks/b9f81_d3098a64._.js",
+      "static/chunks/[root-of-the-server]__8adc21b2._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_pages__error_2da965e7._.js",
+      "static/chunks/turbopack-NovaSystem-Streamlined_novasystem_modern_ui_pages__error_83b15d77._.js"
+    ]
+  },
+  "ampFirstPages": []
+}
