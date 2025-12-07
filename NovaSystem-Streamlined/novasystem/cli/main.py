@@ -17,12 +17,12 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from .core.process import NovaProcess
-from .core.memory import MemoryManager
-from .core.agents import AgentFactory
-from .utils.llm_service import LLMService
-from .utils.metrics import get_metrics_collector
-from .utils.model_cache import get_model_cache
+from ..core.process import NovaProcess
+from ..core.memory import MemoryManager
+from ..core.agents import AgentFactory
+from ..utils.llm_service import LLMService
+from ..utils.metrics import get_metrics_collector
+from ..utils.model_cache import get_model_cache
 
 logger = logging.getLogger(__name__)
 
