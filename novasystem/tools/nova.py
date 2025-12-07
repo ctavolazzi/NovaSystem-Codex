@@ -16,7 +16,7 @@ import json
 from .repository import RepositoryHandler
 from .parser import DocumentationParser, Command
 from .docker import DockerExecutor, CommandResult
-from .database import DatabaseManager
+from .legacy_database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 

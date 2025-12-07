@@ -53,6 +53,12 @@ def __getattr__(name):
     elif name == "RepositoryHandler":
         from .tools.repository import RepositoryHandler
         return RepositoryHandler
+    elif name == "DocumentationParser":
+        from .tools.parser import DocumentationParser
+        return DocumentationParser
+    elif name == "DatabaseManager":
+        from .tools.legacy_database import DatabaseManager
+        return DatabaseManager
     # Legacy alias
     elif name == "RepositoryManager":
         from .tools.repository import RepositoryHandler
@@ -74,4 +80,6 @@ __all__ = [
     "DecisionMatrix",
     "DockerExecutor",
     "RepositoryHandler",
+    "DocumentationParser",
+    "DatabaseManager",
 ]
