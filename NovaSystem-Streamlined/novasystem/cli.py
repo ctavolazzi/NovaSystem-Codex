@@ -19,11 +19,21 @@ load_dotenv()
 
 from .core.process import NovaProcess
 from .core.memory import MemoryManager
+from .core.agents import AgentFactory
 from .utils.llm_service import LLMService
 from .utils.metrics import get_metrics_collector
 from .utils.model_cache import get_model_cache
 
 logger = logging.getLogger(__name__)
+
+# ANSI colors for terminal
+class Colors:
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    END = '\033[0m'
 
 def setup_logging(verbose: bool = False):
     """Setup logging configuration."""
@@ -314,6 +324,216 @@ def model_info_command(args):
     except Exception as e:
         print(f"Error: {str(e)}")
 
+
+def ask_command(args):
+    """Handle the ask command - quick single question."""
+    print(f"\n{Colors.BOLD}🧠 NovaSystem Quick Ask{Colors.END}\n")
+
+    try:
+        llm_service = LLMService()
+        model = args.model
+
+        # Validate model
+        if not llm_service.is_model_available(model):
+            available = llm_service.get_available_models()
+            if available:
+                model = available[0]
+                print(f"{Colors.YELLOW}⚠️  Using {model} (requested model not available){Colors.END}")
+            else:
+                print(f"{Colors.RED}❌ No models available{Colors.END}")
+                return
+
+        messages = [
+            {"role": "system", "content": args.system or "You are a helpful assistant. Be concise and direct."},
+            {"role": "user", "content": args.question}
+        ]
+
+        print(f"{Colors.CYAN}📤 Question:{Colors.END} {args.question}")
+        print(f"{Colors.CYAN}🤖 Model:{Colors.END} {model}\n")
+
+        if args.stream:
+            print(f"{Colors.GREEN}📥 Answer:{Colors.END} ", end="", flush=True)
+            response_text = []
+
+            async def stream_response():
+                async for chunk in llm_service.stream_completion(messages, model=model):
+                    print(chunk, end="", flush=True)
+                    response_text.append(chunk)
+
+            asyncio.run(stream_response())
+            print("\n")
+        else:
+            print(f"{Colors.GREEN}📥 Answer:{Colors.END}")
+            response = asyncio.run(llm_service.get_completion(messages, model=model))
+            print(response)
+            print()
+
+    except Exception as e:
+        print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+
+
+def chat_command(args):
+    """Handle the chat command - interactive streaming chat."""
+    print_banner()
+    print(f"{Colors.BOLD}💬 NovaSystem Interactive Chat{Colors.END}")
+    print(f"Type 'quit' to exit, 'clear' to reset history")
+    print(f"Model: {args.model}")
+    print()
+
+    try:
+        llm_service = LLMService()
+        model = args.model
+
+        # Validate model
+        if not llm_service.is_model_available(model):
+            available = llm_service.get_available_models()
+            if available:
+                model = available[0]
+                print(f"{Colors.YELLOW}⚠️  Using {model} (requested model not available){Colors.END}\n")
+            else:
+                print(f"{Colors.RED}❌ No models available{Colors.END}")
+                return
+
+        history = []
+        system_msg = args.system or "You are a helpful AI assistant. Be conversational and helpful."
+
+        while True:
+            try:
+                user_input = input(f"\n{Colors.CYAN}You:{Colors.END} ").strip()
+
+                if user_input.lower() in ['quit', 'exit', 'q']:
+                    print(f"\n{Colors.BOLD}Goodbye! 👋{Colors.END}")
+                    break
+
+                if user_input.lower() == 'clear':
+                    history = []
+                    print(f"{Colors.YELLOW}✅ Chat history cleared{Colors.END}")
+                    continue
+
+                if not user_input:
+                    continue
+
+                # Build messages
+                messages = [{"role": "system", "content": system_msg}]
+                messages.extend(history)
+                messages.append({"role": "user", "content": user_input})
+
+                # Stream response
+                print(f"\n{Colors.GREEN}Assistant:{Colors.END} ", end="", flush=True)
+                response_chunks = []
+
+                async def stream():
+                    async for chunk in llm_service.stream_completion(messages, model=model):
+                        print(chunk, end="", flush=True)
+                        response_chunks.append(chunk)
+
+                asyncio.run(stream())
+                print()
+
+                # Update history
+                full_response = "".join(response_chunks)
+                history.append({"role": "user", "content": user_input})
+                history.append({"role": "assistant", "content": full_response})
+
+                # Keep history manageable
+                if len(history) > 20:
+                    history = history[-20:]
+
+            except KeyboardInterrupt:
+                print(f"\n\n{Colors.BOLD}Goodbye! 👋{Colors.END}")
+                break
+
+    except Exception as e:
+        print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+
+
+def experts_command(args):
+    """Handle the experts command - stream expert analysis."""
+    print_banner()
+    print(f"{Colors.BOLD}🎭 NovaSystem Expert Panel{Colors.END}\n")
+
+    try:
+        llm_service = LLMService()
+        model = args.model
+
+        # Validate model
+        if not llm_service.is_model_available(model):
+            available = llm_service.get_available_models()
+            if available:
+                model = available[0]
+                print(f"{Colors.YELLOW}⚠️  Using {model}{Colors.END}\n")
+            else:
+                print(f"{Colors.RED}❌ No models available{Colors.END}")
+                return
+
+        # Parse domains
+        domains = [d.strip() for d in args.domains.split(",") if d.strip()]
+
+        print(f"📋 Problem: {args.problem}")
+        print(f"🤖 Model: {model}")
+        print(f"🎓 Experts: DCE, CAE, {', '.join(domains)}")
+        print("\n" + "="*60)
+
+        # Create agents
+        dce = AgentFactory.create_dce(model=model, llm_service=llm_service)
+        cae = AgentFactory.create_cae(model=model, llm_service=llm_service)
+        domain_experts = [
+            AgentFactory.create_domain_expert(domain, model=model, llm_service=llm_service)
+            for domain in domains
+        ]
+
+        accumulated_context = f"Problem: {args.problem}\n\n"
+
+        # Phase 1: DCE
+        print(f"\n{Colors.CYAN}{Colors.BOLD}📋 Phase 1: DCE Initial Analysis{Colors.END}")
+        print("-" * 40)
+
+        dce_response = asyncio.run(dce.process(
+            f"Analyze this problem and provide an initial assessment:\n\n{args.problem}",
+            context=None
+        ))
+        print(dce_response)
+        accumulated_context += f"DCE Analysis:\n{dce_response}\n\n"
+
+        # Phase 2: Domain Experts
+        for expert in domain_experts:
+            print(f"\n{Colors.GREEN}{Colors.BOLD}🎓 {expert.name}{Colors.END}")
+            print("-" * 40)
+
+            expert_response = asyncio.run(expert.process(
+                f"Provide your specialized perspective:\n\n{args.problem}",
+                context=accumulated_context
+            ))
+            print(expert_response)
+            accumulated_context += f"{expert.name}:\n{expert_response}\n\n"
+
+        # Phase 3: CAE
+        print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠️ Phase 3: CAE Critical Analysis{Colors.END}")
+        print("-" * 40)
+
+        cae_response = asyncio.run(cae.process(
+            "Review all insights and identify potential issues, risks, or alternatives.",
+            context=accumulated_context
+        ))
+        print(cae_response)
+        accumulated_context += f"CAE Analysis:\n{cae_response}\n\n"
+
+        # Phase 4: Synthesis
+        print(f"\n{Colors.CYAN}{Colors.BOLD}✨ Phase 4: Final Synthesis{Colors.END}")
+        print("-" * 40)
+
+        synthesis = asyncio.run(dce.process(
+            "Synthesize all insights into a comprehensive final response.",
+            context=accumulated_context
+        ))
+        print(synthesis)
+
+        print("\n" + "="*60)
+        print(f"{Colors.BOLD}✅ Expert Panel Complete!{Colors.END}\n")
+
+    except Exception as e:
+        print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
     parser = argparse.ArgumentParser(
@@ -321,11 +541,23 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  novasystem solve "How can we improve our code review process?"
-  novasystem solve "Design a scalable authentication system" --domains "Security,Architecture" --max-iterations 5
-  novasystem interactive --domains "Technology,Business"
-  novasystem list-models
-  novasystem model-info phi3
+  # Quick question (streaming)
+  python -m novasystem ask "What is the best way to learn Python?"
+
+  # Interactive chat
+  python -m novasystem chat --model gemini-2.5-flash
+
+  # Expert panel analysis
+  python -m novasystem experts "Design a scalable API" --domains "Backend,Security"
+
+  # Full Nova Process
+  python -m novasystem solve "How can we improve code reviews?" --domains "Engineering,Process"
+
+  # List available models
+  python -m novasystem list-models --detailed
+
+  # Interactive mode
+  python -m novasystem interactive
         """
     )
 
@@ -367,6 +599,31 @@ Examples:
     # Model info command
     model_info_parser = subparsers.add_parser('model-info', help='Get detailed information about a specific model')
     model_info_parser.add_argument('model', help='Model name to get info for')
+
+    # Ask command - quick single question
+    ask_parser = subparsers.add_parser('ask', help='Quick single question (no full Nova Process)')
+    ask_parser.add_argument('question', help='Question to ask')
+    ask_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
+                           help='AI model to use (default: gemini-2.5-flash)')
+    ask_parser.add_argument('--system', '-s', help='Custom system instruction')
+    ask_parser.add_argument('--stream', action='store_true', default=True,
+                           help='Stream the response (default: True)')
+    ask_parser.add_argument('--no-stream', dest='stream', action='store_false',
+                           help='Disable streaming')
+
+    # Chat command - interactive streaming chat
+    chat_parser = subparsers.add_parser('chat', help='Interactive streaming chat')
+    chat_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
+                            help='AI model to use (default: gemini-2.5-flash)')
+    chat_parser.add_argument('--system', '-s', help='Custom system instruction')
+
+    # Experts command - expert panel analysis
+    experts_parser = subparsers.add_parser('experts', help='Run expert panel analysis')
+    experts_parser.add_argument('problem', help='Problem to analyze')
+    experts_parser.add_argument('--domains', '-d', default='Software Engineering,System Design',
+                               help='Comma-separated expert domains')
+    experts_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
+                               help='AI model to use (default: gemini-2.5-flash)')
 
     # Metrics command
     metrics_parser = subparsers.add_parser('metrics', help='Display performance metrics')
@@ -533,6 +790,12 @@ def main(args: Optional[List[str]] = None) -> int:
             list_models_command(parsed_args)
         elif parsed_args.command == 'model-info':
             model_info_command(parsed_args)
+        elif parsed_args.command == 'ask':
+            ask_command(parsed_args)
+        elif parsed_args.command == 'chat':
+            chat_command(parsed_args)
+        elif parsed_args.command == 'experts':
+            experts_command(parsed_args)
         elif parsed_args.command == 'metrics':
             metrics_command(parsed_args)
         elif parsed_args.command == 'cache':
