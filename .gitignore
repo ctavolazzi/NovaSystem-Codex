@@ -219,6 +219,7 @@ OAI_CONFIG_LIST
 # Nova MVP persistence files (do not commit user data)
 .nova_traffic_state.json
 .nova_usage.db
+.nova_memory.json
 release_test_*.db
 release_test_*.json
 

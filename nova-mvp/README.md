@@ -137,7 +137,7 @@ Nova follows a modular "System of Systems" approach:
 | `pricing.py` | Cost estimation before execution | — |
 | `usage.py` | Financial ledger for all transactions | SQLite |
 | `llm.py` | Coordinates providers, records usage | — |
-| `memory.py` | VectorStore stub for future RAG | — |
+| `memory.py` | Local vector store (hashed embeddings + cosine) | JSON |
 
 ### Data Files
 
@@ -147,8 +147,9 @@ Nova creates these files automatically:
 |------|---------|----------|
 | `.nova_usage.db` | Transaction history | Working directory |
 | `.nova_traffic_state.json` | Rate limit windows | Working directory |
+| `.nova_memory.json` | Long-term memory store | Working directory |
 
-Both files are gitignored and should not be committed.
+These files are gitignored and should not be committed.
 
 ## Agents
 
