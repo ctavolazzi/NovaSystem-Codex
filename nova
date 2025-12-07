@@ -60,24 +60,24 @@ def print_startup_banner():
 def check_environment():
     """Check if the environment is properly configured."""
     issues = []
-    
+
     # Check for API keys
     api_keys = {
         "ANTHROPIC_API_KEY": "Claude models",
-        "OPENAI_API_KEY": "OpenAI models", 
+        "OPENAI_API_KEY": "OpenAI models",
         "GOOGLE_API_KEY": "Gemini models",
         "GEMINI_API_KEY": "Gemini models (alt)",
     }
-    
+
     found_any = False
     for key, desc in api_keys.items():
         if os.getenv(key):
             found_any = True
             break
-    
+
     if not found_any:
         issues.append("⚠️  No API keys found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY")
-    
+
     return issues
 
 
@@ -89,24 +89,24 @@ def main():
         load_dotenv()
     except ImportError:
         pass  # dotenv not required
-    
+
     # Show banner only for interactive use (no args or just --help)
     if len(sys.argv) == 1:
         print_startup_banner()
-        
+
         # Check environment
         issues = check_environment()
         if issues:
             print("\033[93m" + "\n".join(issues) + "\033[0m\n")
-        
+
         print("\033[90mRun 'nova --help' for available commands.\033[0m\n")
-        
+
         # Show interactive hint
         print("\033[97m🚀 Quick Start:\033[0m")
         print("   \033[96mnova ask \"What is machine learning?\"\033[0m")
         print("   \033[96mnova solve \"How do I optimize my database?\"\033[0m\n")
         return 0
-    
+
     # Import and run the CLI
     try:
         from novasystem.cli.main import main as cli_main
@@ -121,7 +121,7 @@ def main():
     except Exception as e:
         print(f"\033[91m❌ Error: {e}\033[0m")
         return 1
-    
+
     return 0
 
 

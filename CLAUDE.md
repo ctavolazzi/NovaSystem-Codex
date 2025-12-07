@@ -147,6 +147,7 @@ NovaSystem-Codex/
 ├── scripts/                     # Utility scripts
 ├── utils/                       # Dev utilities
 │
+├── nova                         # 🚀 Startup script (run ./nova)
 ├── pyproject.toml               # Project configuration
 ├── README.md                    # User documentation
 ├── CHANGELOG.md                 # Version history
@@ -162,16 +163,47 @@ NovaSystem-Codex/
 
 The primary interface for NovaSystem. CLI-first design.
 
+#### The Nova Launcher (`./nova`)
+
+The easiest way to start NovaSystem:
+
 ```bash
-# Entry points (both work)
+# Just run the launcher
+./nova
+
+# It shows a beautiful banner and quick start hints
+```
+
+Output:
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║   ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗     ███████╗██╗   ██╗███████╗████████╗  ║
+║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║    ███████║   ██║   ███████║   ██║     ║
+║   🧠 Multi-Agent Problem Solving System                              v2.0.0   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Commands:
+  • nova ask "question"      Quick AI response
+  • nova chat                Interactive chat session
+  • nova solve "problem"     Full Nova Process analysis
+  • nova experts "topic"     Multi-expert panel discussion
+  • nova status              Check system configuration
+```
+
+#### CLI Commands
+
+```bash
+# Entry points (all work)
+./nova --help
 novasystem --help
-nova --help
+python -m novasystem.cli --help
 
 # Common commands
-nova solve "How can I improve API performance?"
-nova remember "Important fact" --tags project,api
-nova recall "performance tips"
-nova report
+./nova ask "What is machine learning?"
+./nova solve "How can I improve API performance?"
+./nova chat  # Interactive session
+./nova experts "Design an API" -d "Backend,Security,DevOps"
+./nova status
 ```
 
 ### 2. Agent System (`novasystem/core/agents.py`)
@@ -348,15 +380,56 @@ class ExampleAgent(BaseAgent):
 
 ## Testing Strategy
 
+### Test Suite Overview
+
+**303 tests passing** with comprehensive coverage across all components.
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=novasystem
+
+# Run specific categories
+pytest tests/test_chaos_engineering.py  # Chaos tests
+pytest tests/test_concurrency_stress.py # Stress tests
+pytest tests/test_edge_cases_torture.py # Edge cases
+```
+
 ### Test Structure
 
 ```
 tests/
 ├── test_core_functions.py      # Core utility tests
-├── test_decision_matrix.py     # Decision matrix tests
-├── test_parser.py              # Parser tests
+├── test_memory_system.py       # MemoryManager async tests (17)
+├── test_vector_store.py        # Vector store tests (28)
+├── test_integration_full.py    # End-to-end tests (8)
+├── test_agents_mock.py         # Agent mocking tests (23)
+├── test_pipeline_advanced.py   # Pipeline patterns (21)
+├── test_performance.py         # Benchmarks (17)
+├── test_chaos_engineering.py   # 🔥 Chaos tests (20+)
+├── test_concurrency_stress.py  # ⚡ Stress tests (25+)
+├── test_edge_cases_torture.py  # 🔪 Edge cases (60+)
+├── test_cli_startup.py         # CLI startup tests (5)
 └── test_*.py                   # Other test modules
 ```
+
+### Test Categories
+
+| Category | Count | Description |
+|----------|-------|-------------|
+| Core Functions | 30+ | Basic utilities |
+| Memory System | 17 | Async memory operations |
+| Vector Store | 28 | RAG, similarity search |
+| Integration | 8 | End-to-end workflows |
+| Agents | 23 | Agent behavior with mocks |
+| Pipeline | 21 | Pipeline patterns |
+| Performance | 17 | Benchmarks |
+| **Chaos** | 20+ | Fault injection, cascading failures |
+| **Concurrency** | 25+ | Parallel execution, race conditions |
+| **Edge Cases** | 60+ | Unicode, extreme values, boundaries |
+| CLI | 5 | Startup and commands |
 
 ### Writing Tests
 
@@ -384,6 +457,7 @@ class TestDecisionMatrix:
 
 - Aim for **>80% coverage** on core modules
 - Focus on **critical paths** and **edge cases**
+- Chaos and stress tests for resilience
 
 ---
 
@@ -543,6 +617,7 @@ pytest --collect-only -v
 
 | File | Purpose |
 |------|---------|
+| `./nova` | 🚀 Startup script with banner |
 | `novasystem/core/process.py` | NovaProcess orchestrator |
 | `novasystem/core/agents.py` | Agent implementations |
 | `novasystem/cli/main.py` | CLI entry point |
@@ -552,16 +627,40 @@ pytest --collect-only -v
 ### Key Commands
 
 ```bash
-# CLI
-nova solve "problem"
-nova remember "fact" --tags tag1,tag2
-nova recall "query"
-nova report
+# Start NovaSystem (recommended)
+./nova
+
+# CLI commands
+./nova ask "question"
+./nova solve "problem"
+./nova chat
+./nova experts "topic" -d "Domain1,Domain2"
+./nova status
 
 # Development
-pytest
-pip install -e ".[dev]"
+pytest                    # Run 303 tests
+pip install -e ".[dev]"   # Install with dev deps
 ```
+
+### Interactive Demos
+
+```bash
+# Run demos to see NovaSystem in action
+python examples/novasystem_full_demo.py          # Full system demo
+python examples/multi_agent_collaboration_demo.py # Nova Process
+python examples/nova_problem_solving_demo.py      # Problem solving
+python examples/decision_matrix_ui_demo.py        # Decision matrix
+python examples/technical_debt_tracking_demo.py   # Tech debt
+python examples/event_driven_architecture_demo.py # Events
+```
+
+| Demo | Description |
+|------|-------------|
+| `novasystem_full_demo.py` | Full pipeline with memory, events, decisions |
+| `multi_agent_collaboration_demo.py` | DCE + CAE + Experts |
+| `nova_problem_solving_demo.py` | UNPACK → ANALYZE → SYNTHESIZE |
+| `decision_matrix_ui_demo.py` | LLM comparison with journaling |
+| `technical_debt_tracking_demo.py` | Debt tracking and analytics |
 
 ---
 
@@ -584,6 +683,7 @@ When working with this codebase:
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
+| 2.0.0 | 2025-12-07 | Nova launcher script, 303 tests, 6 demos, CLI v2 |
 | 0.3.0 | 2025-12-07 | Major consolidation: merged 4 implementations, includes all previous features |
 | 0.2.x | 2025-12-06 | (nova-mvp) Long-term memory, financial ledger, traffic control |
 | 0.1.x | 2025-12-06 | (novasystem-cli) Initial CLI tool, Decision Matrix, Docker |
