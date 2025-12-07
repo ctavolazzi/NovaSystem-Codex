@@ -31,6 +31,7 @@ from datetime import datetime
 
 from ..core.process import NovaProcess
 from ..core.memory import MemoryManager
+from ..core.agents import AgentFactory, Colors
 from ..utils.llm_service import LLMService
 
 # Configure detailed console logging
@@ -238,6 +239,163 @@ Performance Metrics:
             error_msg = f"Error: {str(e)}\n\nPlease try again with a more specific problem statement."
             return (error_msg, f"Session {session_id} failed", f"Error occurred after {duration:.2f} seconds")
 
+    def run_nova_process_streaming(
+        self,
+        problem: str,
+        domains: str = "General,Technology,Business",
+        model: str = "gemini-2.5-flash"
+    ):
+        """
+        Run the Nova Process with streaming output from each expert.
+
+        This is a generator function that yields partial updates as each
+        expert streams their response token by token.
+
+        Args:
+            problem: Problem statement
+            domains: Comma-separated list of domains
+            model: LLM model to use
+
+        Yields:
+            Partial output string with all expert responses so far
+        """
+        print("\n" + "="*80)
+        log_event("🎯", "NOVA/STREAM", "Starting Streaming Nova Process", {
+            "problem_length": len(problem),
+            "model": model,
+            "domains": domains
+        })
+        print("="*80)
+
+        if not problem.strip():
+            yield "❌ Please enter a problem statement first!"
+            return
+
+        # Validate model
+        model_error = self._validate_model_selection(model)
+        if model_error:
+            yield model_error
+            return
+
+        # Parse domains
+        domain_list = [d.strip() for d in domains.split(",") if d.strip()]
+
+        # Create agents
+        log_event("🔧", "NOVA/STREAM", "Creating expert agents...")
+        dce = AgentFactory.create_dce(model=model, llm_service=self.llm_service)
+        cae = AgentFactory.create_cae(model=model, llm_service=self.llm_service)
+        domain_experts = [
+            AgentFactory.create_domain_expert(domain, model=model, llm_service=self.llm_service)
+            for domain in domain_list
+        ]
+
+        output = []
+        output.append(f"# 🚀 Nova Process - Streaming Analysis\n")
+        output.append(f"**Problem:** {problem}\n")
+        output.append(f"**Model:** {model}\n")
+        output.append(f"**Domains:** {', '.join(domain_list)}\n")
+        output.append("\n---\n")
+        yield "".join(output)
+
+        accumulated_context = f"Problem: {problem}\n\n"
+
+        async def stream_experts():
+            nonlocal output, accumulated_context
+
+            # Phase 1: DCE Initial Analysis
+            output.append("\n## 🎯 Phase 1: Initial Analysis (DCE)\n\n")
+            yield "".join(output)
+
+            dce_response = []
+            async for chunk in dce.process_stream(
+                f"Analyze this problem and provide an initial assessment:\n\n{problem}",
+                context=None
+            ):
+                dce_response.append(chunk)
+                output.append(chunk)
+                yield "".join(output)
+
+            accumulated_context += f"DCE Analysis:\n{''.join(dce_response)}\n\n"
+            output.append("\n\n---\n")
+            yield "".join(output)
+
+            # Phase 2: Domain Experts
+            output.append("\n## 🎓 Phase 2: Domain Expert Insights\n")
+            yield "".join(output)
+
+            for expert in domain_experts:
+                output.append(f"\n### {expert.name}\n\n")
+                yield "".join(output)
+
+                expert_response = []
+                async for chunk in expert.process_stream(
+                    f"Provide your specialized perspective on this problem:\n\n{problem}",
+                    context=accumulated_context
+                ):
+                    expert_response.append(chunk)
+                    output.append(chunk)
+                    yield "".join(output)
+
+                accumulated_context += f"{expert.name}:\n{''.join(expert_response)}\n\n"
+                output.append("\n")
+                yield "".join(output)
+
+            output.append("\n---\n")
+            yield "".join(output)
+
+            # Phase 3: CAE Critical Analysis
+            output.append("\n## ⚠️ Phase 3: Critical Analysis (CAE)\n\n")
+            yield "".join(output)
+
+            cae_response = []
+            async for chunk in cae.process_stream(
+                "Review all the insights and identify potential issues, risks, or alternatives.",
+                context=accumulated_context
+            ):
+                cae_response.append(chunk)
+                output.append(chunk)
+                yield "".join(output)
+
+            accumulated_context += f"CAE Analysis:\n{''.join(cae_response)}\n\n"
+            output.append("\n\n---\n")
+            yield "".join(output)
+
+            # Phase 4: DCE Synthesis
+            output.append("\n## ✨ Phase 4: Final Synthesis (DCE)\n\n")
+            yield "".join(output)
+
+            async for chunk in dce.process_stream(
+                "Synthesize all insights and provide a comprehensive final response.",
+                context=accumulated_context
+            ):
+                output.append(chunk)
+                yield "".join(output)
+
+            output.append("\n\n---\n")
+            output.append("\n✅ **Nova Process Complete!**\n")
+            yield "".join(output)
+
+        # Run the async generator
+        async def run_stream():
+            async for partial in stream_experts():
+                yield partial
+
+        # Execute using asyncio
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            gen = run_stream()
+            while True:
+                try:
+                    result = loop.run_until_complete(gen.__anext__())
+                    yield result
+                except StopAsyncIteration:
+                    break
+        finally:
+            loop.close()
+
+        log_event("✅", "NOVA/STREAM", "Streaming Nova Process complete!")
+
     def _format_result(self, result: Dict[str, Any], format_type: str = "text") -> str:
         """Format the Nova Process result for display in different formats."""
         if not result:
@@ -350,6 +508,7 @@ Performance Metrics:
 
             with gr.Tabs():
                 self._build_problem_solver_tab()
+                self._build_streaming_tab()
                 self._build_session_history_tab()
                 self._build_performance_tab()
                 self._build_system_info_tab()
@@ -479,6 +638,59 @@ Performance Metrics:
                 fn=self.run_nova_process,
                 inputs=[problem_input, domains_input, iterations_input, model_input, save_session, export_format],
                 outputs=[results_output, session_info, performance_metrics]
+            )
+
+    def _build_streaming_tab(self):
+        """Streaming expert analysis tab - watch experts think token by token."""
+        model_choices = self.llm_service.get_available_models()
+        default_model = "gemini-2.5-flash" if "gemini-2.5-flash" in model_choices else (model_choices[0] if model_choices else "gemini-2.5-flash")
+
+        with gr.Tab("⚡ Streaming Analysis"):
+            gr.Markdown("## 🎭 Watch Experts Think in Real-Time")
+            gr.Markdown("See each expert's analysis stream **token by token**, one expert at a time.")
+
+            with gr.Row():
+                with gr.Column(scale=2):
+                    streaming_problem = gr.Textbox(
+                        lines=4,
+                        placeholder="Enter your problem here...",
+                        label="🧠 Problem Description"
+                    )
+
+                    with gr.Row():
+                        streaming_domains = gr.Textbox(
+                            value="Software Engineering,System Design",
+                            label="🎯 Expert Domains",
+                            info="Comma-separated"
+                        )
+                        streaming_model = gr.Dropdown(
+                            choices=model_choices if model_choices else ["gemini-2.5-flash"],
+                            value=default_model,
+                            label="🤖 Model"
+                        )
+
+                    stream_btn = gr.Button("⚡ Start Streaming Analysis", variant="primary")
+
+                with gr.Column(scale=1):
+                    gr.Markdown("### 📺 How It Works")
+                    gr.Markdown("""
+                    1. **DCE** analyzes the problem first
+                    2. **Domain Experts** provide specialized insights
+                    3. **CAE** identifies risks and issues
+                    4. **DCE** synthesizes everything
+
+                    Watch each expert stream their thoughts in real-time!
+                    """)
+
+            streaming_output = gr.Markdown(
+                value="*Enter a problem and click 'Start Streaming Analysis' to begin...*",
+                label="🎭 Expert Analysis (Streaming)"
+            )
+
+            stream_btn.click(
+                fn=self.run_nova_process_streaming,
+                inputs=[streaming_problem, streaming_domains, streaming_model],
+                outputs=[streaming_output]
             )
 
     def _build_session_history_tab(self):

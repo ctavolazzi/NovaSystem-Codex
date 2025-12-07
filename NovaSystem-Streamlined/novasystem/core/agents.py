@@ -10,7 +10,7 @@ Uses structured prompts following Gemini best practices.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, AsyncGenerator
 from datetime import datetime
 import asyncio
 import logging
@@ -20,6 +20,25 @@ from ..utils.prompt_builder import PromptBuilder, Verbosity, Tone, Example
 from ..config.models import get_model_for_agent, get_default_model
 
 logger = logging.getLogger(__name__)
+
+# ANSI colors for terminal output
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    END = '\033[0m'
+
+# Agent-specific colors
+AGENT_COLORS = {
+    "DCE": Colors.CYAN,
+    "CAE": Colors.YELLOW,
+    "Domain Expert": Colors.GREEN,
+}
 
 # Console logging helper
 def agent_log(emoji: str, agent: str, message: str, details: dict = None):
@@ -46,6 +65,16 @@ class BaseAgent(ABC):
     async def process(self, input_text: str, context: Optional[str] = None) -> str:
         """Process input and return response."""
         pass
+
+    async def process_stream(self, input_text: str, context: Optional[str] = None) -> AsyncGenerator[str, None]:
+        """
+        Process input and stream response token by token.
+
+        Yields:
+            Individual tokens/chunks as they are generated
+        """
+        async for chunk in self._call_llm_stream(input_text, context):
+            yield chunk
 
     def add_to_history(self, role: str, content: str):
         """Add message to conversation history."""
@@ -146,6 +175,83 @@ class BaseAgent(ABC):
     def _get_fallback_response(self, input_text: str) -> str:
         """Get a fallback response when LLM fails."""
         return f"[{self.name} - LLM Error] Processing: {input_text[:100]}..."
+
+    async def _call_llm_stream(self, input_text: str, context: Optional[str] = None) -> AsyncGenerator[str, None]:
+        """Stream tokens from the LLM service."""
+        try:
+            task_type = self._get_task_type()
+
+            # Get agent color
+            agent_color = AGENT_COLORS.get(self.name.split(" (")[0], Colors.BLUE)
+
+            agent_log("🎯", self.name, f"Starting streaming request", {
+                "task_type": task_type,
+                "input_preview": input_text[:60],
+            })
+
+            # Prefer the explicitly configured model when available
+            available_models = self.llm_service.get_available_models()
+            if self.model and self.llm_service.is_model_available(self.model):
+                model_to_use = self.model
+            elif available_models:
+                model_to_use = self.llm_service.get_best_model_for_task(
+                    task_type,
+                    available_models=available_models,
+                    prioritize_speed=True
+                )
+            else:
+                raise ValueError("No LLM models available.")
+
+            # Build structured messages using PromptBuilder
+            builder = self._build_structured_prompt()
+
+            user_prompt = builder.build_user_prompt(
+                task=input_text,
+                context=context,
+                final_instruction="Think step-by-step and provide a clear, structured response."
+            )
+
+            messages = [
+                {"role": "system", "content": builder.build_system_prompt()},
+                {"role": "user", "content": user_prompt}
+            ]
+
+            # Add conversation history
+            for msg in self.conversation_history[-5:]:
+                messages.append(msg)
+
+            # Print agent header
+            print(f"\n{agent_color}{Colors.BOLD}{'='*60}{Colors.END}")
+            print(f"{agent_color}{Colors.BOLD}📢 {self.name}{Colors.END}")
+            print(f"{agent_color}{'='*60}{Colors.END}")
+            print(f"{agent_color}", end="", flush=True)
+
+            # Stream tokens
+            full_response = []
+            async for chunk in self.llm_service.stream_completion(
+                messages=messages,
+                model=model_to_use,
+                temperature=0.7
+            ):
+                full_response.append(chunk)
+                # Print to console with color
+                print(f"{chunk}", end="", flush=True)
+                yield chunk
+
+            print(f"{Colors.END}\n")  # Reset color
+
+            # Add complete response to history
+            complete_text = "".join(full_response)
+            self.add_to_history("user", input_text)
+            self.add_to_history("assistant", complete_text)
+
+            agent_log("✅", self.name, f"Streaming complete", {
+                "total_tokens": len(complete_text.split())
+            })
+
+        except Exception as e:
+            agent_log("❌", self.name, f"Streaming error: {str(e)}")
+            yield self._get_fallback_response(input_text)
 
 class DCEAgent(BaseAgent):
     """
