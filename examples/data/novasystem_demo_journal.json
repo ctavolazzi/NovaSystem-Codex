@@ -1,0 +1,26 @@
+[
+  {
+    "timestamp": "2025-12-07T04:18:31.668882",
+    "run_id": 1765109911,
+    "success": true,
+    "status": "success",
+    "commands_executed": 6,
+    "testing_strategy": "Unit + Integration",
+    "event_metrics": {
+      "total_events": 32,
+      "by_type": {
+        "RunCreated": 1,
+        "RunStatusChanged": 3,
+        "StepStarted": 5,
+        "StepCompleted": 5,
+        "CommandQueued": 6,
+        "CommandStarted": 6,
+        "CommandCompleted": 6
+      },
+      "commands_executed": 6,
+      "commands_failed": 0,
+      "steps_completed": 5,
+      "steps_failed": 0
+    }
+  }
+]
