@@ -254,38 +254,40 @@ class Spinner:
 class Screensaver:
     """Sleeping wizard screensaver with floating dreams."""
 
-    # Beautifully shaded wizard using Unicode block characters
-    # ▏▎▍▌▋▊▉█ for gradients (light to dark)
+    # Beautifully shaded sleeping wizard - owl-style detail
+    # Using ▏▎▍▌▋▊▉█ (horizontal) and ▁▂▃▄▅▆▇█ (vertical) for gradients
     WIZARD_ART = [
-        "                                    ▄▀▀▀▄                                  ",
-        "                                   ▌ ✦  ▐                                  ",
-        "                                  ▗▀▀▀▀▀▀▖                                 ",
-        "                                 ▗▛▀▀▀▀▀▀▜▖                                ",
-        "                                ▗▛  ☆  ☆  ▜▖                               ",
-        "                               ▗▛▀▀▀▀▀▀▀▀▀▀▜▖                              ",
-        "                              ▗▛            ▜▖                             ",
-        "                             ▗▛   ▄▀▀▀▀▄    ▜▖                            ",
-        "                            ▐▛   ▐ ‿  ‿ ▌    ▜▌                           ",
-        "                            ▐     ▌  ◡  ▐     ▌                            ",
-        "                            ▐      ▀▄▄▀       ▌                            ",
-        "                            ▐    ░░░░░░░░     ▌                            ",
-        "                            ▐   ░▒▒▒▒▒▒▒▒░    ▌                            ",
-        "                           ▐▌  ░▒▓▓▓▓▓▓▓▓▒░   ▐▌                           ",
-        "                          ▐▌   ░▒▓██████▓▒░    ▐▌                          ",
-        "                         ▐▛     ░▒▓████▓▒░      ▜▌                         ",
-        "                        ▗▛       ░▒▓██▓▒░        ▜▖                        ",
-        "                       ▗▛         ░▒▓▓▒░          ▜▖                       ",
-        "                      ▗▛           ░▒▒░            ▜▖                      ",
-        "                     ▞▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▚                     ",
-        "                     ▌    ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄     ▐                     ",
-        "                     ▌   █ N O V A   W I Z A R D █   ▐                     ",
-        "                     ▌    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀     ▐                     ",
-        "                     ▚▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▞                     ",
+        "                                                                              ",
+        "                                        ▄▂▁                                   ",
+        "                                      ▄████▅▂                                 ",
+        "                                    ▂▆████████▃                               ",
+        "                                  ▁▅████████████▂                             ",
+        "                                 ▂███████████████▃                            ",
+        "                                ▂███████▀▀████████▂                           ",
+        "                               ▁██████▀ ✦  ▀██████▃                           ",
+        "                              ▂██████▀      ▀██████▂                          ",
+        "                             ▁██████▌   ☆   ▐██████▃                          ",
+        "                            ▂██████▀         ▀██████▁                         ",
+        "                           ▂██████▌           ▐██████▂                        ",
+        "                          ▁██████▀   ▄▅▅▅▅▄    ▀█████▃                        ",
+        "                         ▂█████▀   ▐▌ ‿  ‿▐▌   ▀█████▂                        ",
+        "                        ▁█████▌    ▐   ◡   ▌    ▐█████▂                       ",
+        "                       ▂█████▀      ▀▄▃▃▃▄▀      ▀█████▁                      ",
+        "                      ▁█████▌     ░░░░░░░░░░     ▐█████▂                      ",
+        "                     ▂█████▀    ░░▒▒▒▒▒▒▒▒▒▒░░    ▀█████▁                     ",
+        "                    ▁█████▌   ░░▒▒▓▓▓▓▓▓▓▓▓▓▒▒░░   ▐█████▂                    ",
+        "                   ▂█████▀   ░▒▒▓▓████████▓▓▒▒░░   ▀█████▁                    ",
+        "                  ▂█████▌   ░▒▓▓██████████▓▓▓▒░░    ▐█████▂                   ",
+        "                 ▂█████▀   ░▒▓████████████████▓▒░    ▀█████▃                  ",
+        "                ▃█████▌   ░▒▓██████████████████▓▒░   ▐██████▂                 ",
+        "               ▂█████▀   ░▒▓████████████████████▓▒░   ▀██████▃                ",
+        "              ▃█████▀   ░▒▓██████████████████████▓▒░   ▀██████▂               ",
+        "             ▂██████▃▂▁▁▂▃▅███████████████████████▅▃▂▁▁▂▃██████▃              ",
+        "            ▄████████████████████████████████████████████████████▄            ",
+        "           ▌░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░▐           ",
+        "           ▌░▒  N O V A   W I Z A R D  ░░  s l e e p i n g  ░▒░░░▐           ",
+        "           ▀▄▃▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▂▃▄▀           ",
     ]
-    
-    # Breathing frames - just the face area changes
-    FACE_AWAKE = "▐ ‿  ‿ ▌"
-    FACE_SLEEP = "▐ ─  ─ ▌"
 
     # Dreams that float in and out
     DREAMS = [
@@ -375,57 +377,41 @@ class Screensaver:
         self.update_dreams()
 
         lines = []
-        
-        # Night sky with twinkling stars
-        stars_line = ""
-        for i in range(78):
-            if (i * 7 + self.frame // 2) % 40 == 0:
-                stars_line += f"{Colors.YELLOW}✦{Colors.RESET}"
-            elif (i * 11 + self.frame // 3) % 50 == 0:
-                stars_line += f"{Colors.DIM}·{Colors.RESET}"
-            elif (i * 13 + self.frame) % 60 == 0:
-                stars_line += f"{Colors.CYAN}✧{Colors.RESET}"
-            else:
-                stars_line += " "
-        lines.append(stars_line)
-
-        # Moon
-        moons = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
-        moon = moons[(self.frame // 100) % len(moons)]
-        lines.append(f"  {moon}")
-        lines.append("")
 
         # Draw wizard with colors
         breathing = (self.frame // 25) % 2 == 0
-        
+
         for i, row in enumerate(self.WIZARD_ART):
-            # Animate the face (line 8 has the eyes)
-            if i == 8:
+            # Animate the face (line 13 has the eyes in new art)
+            if "‿  ‿" in row:
                 if breathing:
                     row = row.replace("‿  ‿", "─  ─")
-            
+
             colored_row = ""
             for char in row:
                 if char in '✦☆':
                     colored_row += f"{Colors.YELLOW}{char}{Colors.RESET}"
-                elif char in '▄▀▌▐▗▖▛▜▞▚█▀':
+                elif char in '█▄▅▆▇':
                     colored_row += f"{Colors.MAGENTA}{char}{Colors.RESET}"
-                elif char in '░':
+                elif char in '▀▐▌▃▂▁':
                     colored_row += f"{Colors.BLUE}{char}{Colors.RESET}"
+                elif char in '░':
+                    colored_row += f"{Colors.DIM}{char}{Colors.RESET}"
                 elif char in '▒':
                     colored_row += f"{Colors.CYAN}{char}{Colors.RESET}"
                 elif char in '▓':
                     colored_row += f"{Colors.WHITE}{char}{Colors.RESET}"
                 elif char in '‿─◡':
-                    colored_row += f"{Colors.WHITE}{char}{Colors.RESET}"
+                    colored_row += f"{Colors.YELLOW}{char}{Colors.RESET}"
                 else:
                     colored_row += char
             lines.append(colored_row)
 
-        # Insert floating dreams
+        # Insert floating dreams on left/right sides only
         for dream in self.active_dreams:
             x, y = int(dream['x']), int(dream['y'])
-            if 3 <= y < len(lines) and 0 <= x < 76:
+            # Only show dreams on sides, not over wizard
+            if 0 <= y < len(lines) and (x < 12 or x > 68):
                 emoji = self.DREAMS[dream['idx']]
                 age_ratio = dream['age'] / dream['life']
                 if age_ratio < 0.15 or age_ratio > 0.85:
@@ -433,15 +419,14 @@ class Screensaver:
                 else:
                     lines[y] = lines[y][:x] + emoji + lines[y][x+2:]
 
-        # Floating Z's
+        # Floating Z's on right side
         z_chars = ['z', 'z', 'Z', 'Z']
         for i, z in enumerate(z_chars):
-            x = 58 + i * 3
-            y = 10 - i + ((self.frame // 6) % 5)
-            if 0 <= y < len(lines) and x < 76:
+            x = 72 + i * 2
+            y = 8 + ((self.frame // 8 + i * 3) % 8)
+            if 0 <= y < len(lines) and x < len(lines[0]) - 1:
                 color = Colors.CYAN if z == 'z' else Colors.WHITE
-                if y < len(lines):
-                    lines[y] = lines[y][:x] + f"{color}{z}{Colors.RESET}" + lines[y][x+1:]
+                lines[y] = lines[y][:x] + f"{color}{z}{Colors.RESET}" + lines[y][x+1:]
 
         # Update message
         self.message_timer += 1
@@ -454,12 +439,12 @@ class Screensaver:
         # Message box
         lines.append("")
         box_w = len(msg) + 6
-        pad = " " * 15
+        pad = " " * 18
         lines.append(f"{pad}{Colors.DIM}╭{'─' * box_w}╮{Colors.RESET}")
         lines.append(f"{pad}{Colors.DIM}│{Colors.RESET}  💤 {Colors.WHITE}{msg}{Colors.RESET}  {Colors.DIM}│{Colors.RESET}")
         lines.append(f"{pad}{Colors.DIM}╰{'─' * box_w}╯{Colors.RESET}")
         lines.append("")
-        lines.append(f"{pad}       {Colors.DIM}press any key to wake{Colors.RESET}")
+        lines.append(f"{pad}      {Colors.DIM}press any key to wake{Colors.RESET}")
 
         return lines
 
