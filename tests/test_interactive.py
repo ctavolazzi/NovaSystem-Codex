@@ -38,11 +38,11 @@ class TestInteractiveApp:
         """Test that Screensaver class works."""
         from novasystem_interactive import Screensaver
         ss = Screensaver()
-        
+
         # Test neural pulse
         lines = ss.render("neural")
         assert len(lines) > 0
-        
+
         # Test starfield
         lines = ss.render("stars")
         assert len(lines) > 0

@@ -78,6 +78,7 @@ dev = [
 [project.scripts]
 novasystem = "novasystem.cli:main"
 nova = "novasystem.cli:main"
+nova-interactive = "novasystem_interactive:main"
 novasystem-web = "novasystem.ui.web:main"
 novasystem-gradio = "novasystem.ui.gradio:main"
 

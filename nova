@@ -91,24 +91,22 @@ def main():
     except ImportError:
         pass  # dotenv not required
 
-    # Show banner only for interactive use (no args or just --help)
+    # No args = launch interactive mode by default
     if len(sys.argv) == 1:
-        print_startup_banner()
+        try:
+            from novasystem_interactive import main as interactive_main
+            interactive_main()
+            return 0
+        except ImportError as e:
+            # Fallback to banner if interactive not available
+            print_startup_banner()
+            print("\033[93m⚠️  Interactive mode not available. Run 'nova --help' for commands.\033[0m\n")
+            return 0
+        except KeyboardInterrupt:
+            print("\n\033[90m👋 Goodbye!\033[0m")
+            return 0
 
-        # Check environment
-        issues = check_environment()
-        if issues:
-            print("\033[93m" + "\n".join(issues) + "\033[0m\n")
-
-        print("\033[90mRun 'nova --help' for available commands.\033[0m\n")
-
-        # Show interactive hint
-        print("\033[97m🚀 Quick Start:\033[0m")
-        print("   \033[96mnova ask \"What is machine learning?\"\033[0m")
-        print("   \033[96mnova solve \"How do I optimize my database?\"\033[0m\n")
-        return 0
-
-    # Check for interactive mode
+    # Check for explicit interactive mode
     if len(sys.argv) > 1 and sys.argv[1].lower() == "interactive":
         try:
             from novasystem_interactive import main as interactive_main

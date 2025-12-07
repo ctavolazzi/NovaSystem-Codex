@@ -131,17 +131,17 @@ def print_prompt():
 
 class Screensaver:
     """Animated screensaver with multiple effects."""
-    
+
     # Matrix-style characters
     MATRIX_CHARS = "ノバシステム0123456789ABCDEFabcdef@#$%&*"
-    
+
     # Bouncing logo frames
     LOGO_MINI = [
         "╔═══╗",
         "║ N ║",
         "╚═══╝",
     ]
-    
+
     # Thinking dots animation
     THINKING_FRAMES = [
         "🧠 Thinking   ",
@@ -149,7 +149,7 @@ class Screensaver:
         "🧠 Thinking.. ",
         "🧠 Thinking...",
     ]
-    
+
     # Neural network visualization
     NEURAL_FRAMES = [
         "◯───◯───◯",
@@ -159,12 +159,12 @@ class Screensaver:
         "◯───●───◯",
         "●───◯───◯",
     ]
-    
+
     def __init__(self, width=80, height=24):
         self.width = width
         self.height = height
         self.frame = 0
-        
+
     def get_terminal_size(self):
         """Get terminal dimensions."""
         try:
@@ -172,12 +172,12 @@ class Screensaver:
             return size.columns, size.lines
         except:
             return self.width, self.height
-    
+
     def matrix_effect(self):
         """Generate a matrix-style rain effect."""
         width, height = self.get_terminal_size()
         drops = [random.randint(0, height) for _ in range(width)]
-        
+
         lines = []
         for y in range(min(height - 4, 20)):
             line = ""
@@ -194,30 +194,30 @@ class Screensaver:
                 else:
                     line += " "
             lines.append(line)
-        
+
         # Update drops
         for i in range(len(drops)):
             if random.random() > 0.95:
                 drops[i] = 0
             else:
                 drops[i] = (drops[i] + 1) % (height + 5)
-        
+
         return lines
-    
+
     def bouncing_logo(self):
         """Generate bouncing logo animation."""
         width, height = self.get_terminal_size()
         max_x = width - 10
         max_y = height - 8
-        
+
         # Calculate position using sine/cosine for smooth motion
         t = self.frame * 0.1
         x = int((max_x / 2) * (1 + 0.8 * abs(((t % 4) - 2) / 2 - 0.5) * 2))
         y = int((max_y / 2) * (1 + 0.6 * abs(((t * 1.3 % 4) - 2) / 2 - 0.5) * 2))
-        
+
         x = max(0, min(x, max_x))
         y = max(0, min(y, max_y))
-        
+
         lines = []
         for row in range(min(height - 4, 15)):
             if row >= y and row < y + len(self.LOGO_MINI):
@@ -227,20 +227,20 @@ class Screensaver:
             else:
                 line = ""
             lines.append(line)
-        
+
         return lines
-    
+
     def neural_pulse(self):
         """Generate neural network pulse animation."""
         width, _ = self.get_terminal_size()
         frame_idx = self.frame % len(self.NEURAL_FRAMES)
         neural = self.NEURAL_FRAMES[frame_idx]
-        
+
         lines = []
         lines.append("")
         lines.append(f"{Colors.DIM}{'─' * 30}{Colors.RESET}")
         lines.append("")
-        
+
         # Build neural network visualization
         layers = [
             f"    {Colors.CYAN}◯{Colors.RESET}",
@@ -249,25 +249,25 @@ class Screensaver:
             f"   {Colors.CYAN}\\ /{Colors.RESET}",
             f"    {Colors.CYAN}◯{Colors.RESET}",
         ]
-        
+
         center_pad = " " * ((width // 2) - 15)
         for layer in layers:
             lines.append(f"{center_pad}{layer}")
-        
+
         lines.append("")
         lines.append(f"{Colors.DIM}{'─' * 30}{Colors.RESET}")
         lines.append("")
         lines.append(f"{center_pad}{Colors.YELLOW}{self.THINKING_FRAMES[self.frame % 4]}{Colors.RESET}")
         lines.append("")
         lines.append(f"{Colors.DIM}Press any key to wake up...{Colors.RESET}")
-        
+
         return lines
-    
+
     def starfield(self):
         """Generate starfield animation."""
         width, height = self.get_terminal_size()
         stars = "·.+*✦✧"
-        
+
         lines = []
         for y in range(min(height - 4, 18)):
             line = ""
@@ -282,20 +282,20 @@ class Screensaver:
                 else:
                     line += " "
             lines.append(line)
-        
+
         # Add centered text
         center_y = len(lines) // 2
         msg = f"  {Colors.CYAN}🧠 NovaSystem v{VERSION} - Idle{Colors.RESET}  "
         if center_y < len(lines):
             pad = (width - 40) // 2
             lines[center_y] = " " * pad + msg
-        
+
         return lines
-    
+
     def render(self, effect="neural"):
         """Render a frame of the screensaver."""
         self.frame += 1
-        
+
         if effect == "matrix":
             return self.matrix_effect()
         elif effect == "bounce":
@@ -312,27 +312,27 @@ def run_screensaver():
     current_effect = 0
     effect_duration = 100  # frames before switching
     frame_in_effect = 0
-    
+
     clear_screen()
-    
+
     while state.screensaver_active and state.running:
         # Switch effects periodically
         if frame_in_effect >= effect_duration:
             frame_in_effect = 0
             current_effect = (current_effect + 1) % len(effects)
             clear_screen()
-        
+
         # Render frame
         lines = screensaver.render(effects[current_effect])
-        
+
         # Move cursor to top and print
         print("\033[H", end="")  # Move cursor to home
         for line in lines:
             print(f"\033[K{line}")  # Clear line and print
-        
+
         frame_in_effect += 1
         time.sleep(ANIMATION_SPEED)
-    
+
     clear_screen()
 
 # =============================================================================
@@ -343,13 +343,13 @@ def activity_monitor():
     """Monitor for inactivity and trigger screensaver."""
     while state.running:
         time.sleep(1)
-        
+
         with state.lock:
             if state.screensaver_active:
                 continue
-            
+
             elapsed = time.time() - state.last_activity
-            
+
             if elapsed >= SCREENSAVER_TIMEOUT:
                 state.screensaver_active = True
                 state.stats["screensaver_activations"] += 1
@@ -390,17 +390,17 @@ def cmd_ask(question):
     if not question:
         print(f"{Colors.YELLOW}Usage: ask <your question>{Colors.RESET}")
         return
-    
+
     print(f"\n{Colors.CYAN}🤔 Processing:{Colors.RESET} {question}\n")
-    
+
     # Animated thinking
     frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
     for i in range(20):
         print(f"\r{Colors.YELLOW}{frames[i % len(frames)]} Thinking...{Colors.RESET}", end="", flush=True)
         time.sleep(0.1)
-    
+
     print(f"\r{Colors.GREEN}✓ Analysis complete!{Colors.RESET}          \n")
-    
+
     # Simulated response
     responses = [
         "Based on my analysis, this is a fascinating question that touches on multiple domains.",
@@ -408,40 +408,40 @@ def cmd_ask(question):
         "This requires considering several perspectives from different expert agents.",
         "The Nova Process suggests examining this from technical, strategic, and practical angles.",
     ]
-    
+
     print(f"{Colors.WHITE}{random.choice(responses)}{Colors.RESET}")
     print(f"\n{Colors.DIM}[This is a simulated response - connect to an LLM for real answers]{Colors.RESET}")
 
 def cmd_think():
     """Show animated thinking process."""
     print(f"\n{Colors.CYAN}🧠 Nova Process Visualization{Colors.RESET}\n")
-    
+
     agents = [
         ("DCE", "Discussion Continuity Expert", "cyan"),
         ("Expert 1", "Domain Specialist", "green"),
         ("Expert 2", "Technical Analyst", "green"),
         ("CAE", "Critical Analysis Expert", "yellow"),
     ]
-    
+
     for agent, role, color in agents:
         color_code = getattr(Colors, color.upper())
         print(f"  {color_code}▶ {agent}{Colors.RESET} ({role})")
-        
+
         # Animate thinking
         for _ in range(3):
             for dots in [".", "..", "..."]:
                 print(f"\r    {Colors.DIM}Processing{dots}   {Colors.RESET}", end="", flush=True)
                 time.sleep(0.15)
-        
+
         print(f"\r    {Colors.GREEN}✓ Complete{Colors.RESET}        ")
         time.sleep(0.2)
-    
+
     print(f"\n{Colors.GREEN}✨ Synthesis complete!{Colors.RESET}\n")
 
 def cmd_status():
     """Show system status."""
     uptime = datetime.now() - state.stats["session_start"]
-    
+
     print(f"""
 {Colors.CYAN}╭─────────────────────────────────────╮
 │         System Status               │
@@ -450,13 +450,13 @@ def cmd_status():
   {Colors.GREEN}●{Colors.RESET} NovaSystem v{VERSION}
   {Colors.GREEN}●{Colors.RESET} Status: Running
   {Colors.GREEN}●{Colors.RESET} Uptime: {str(uptime).split('.')[0]}
-  
+
 {Colors.CYAN}Components:{Colors.RESET}
   {Colors.GREEN}✓{Colors.RESET} Memory Manager
-  {Colors.GREEN}✓{Colors.RESET} Vector Store  
+  {Colors.GREEN}✓{Colors.RESET} Vector Store
   {Colors.GREEN}✓{Colors.RESET} Event Bus
   {Colors.GREEN}✓{Colors.RESET} Agent Factory
-  
+
 {Colors.YELLOW}API Keys:{Colors.RESET}
   {Colors.GREEN if os.getenv('ANTHROPIC_API_KEY') else Colors.DIM}{'✓' if os.getenv('ANTHROPIC_API_KEY') else '○'}{Colors.RESET} Anthropic (Claude)
   {Colors.GREEN if os.getenv('OPENAI_API_KEY') else Colors.DIM}{'✓' if os.getenv('OPENAI_API_KEY') else '○'}{Colors.RESET} OpenAI
@@ -467,7 +467,7 @@ def cmd_stats():
     """Show session statistics."""
     uptime = datetime.now() - state.stats["session_start"]
     idle_time = time.time() - state.last_activity
-    
+
     print(f"""
 {Colors.CYAN}╭─────────────────────────────────────╮
 │       Session Statistics            │
@@ -484,7 +484,7 @@ def cmd_stats():
 def cmd_demo():
     """Run a quick demo."""
     print(f"\n{Colors.CYAN}🎬 Running NovaSystem Demo...{Colors.RESET}\n")
-    
+
     steps = [
         ("Initializing agents", 0.5),
         ("Loading knowledge base", 0.3),
@@ -494,12 +494,12 @@ def cmd_demo():
         ("Critical analysis", 0.4),
         ("Synthesizing results", 0.5),
     ]
-    
+
     for step, duration in steps:
         print(f"  {Colors.YELLOW}▶{Colors.RESET} {step}...", end="", flush=True)
         time.sleep(duration)
         print(f" {Colors.GREEN}✓{Colors.RESET}")
-    
+
     print(f"""
 {Colors.GREEN}╭─────────────────────────────────────╮
 │          Demo Complete! ✨          │
@@ -519,7 +519,7 @@ def cmd_history():
     if not state.history:
         print(f"{Colors.DIM}No commands in history yet.{Colors.RESET}")
         return
-    
+
     print(f"\n{Colors.CYAN}Command History:{Colors.RESET}\n")
     for i, cmd in enumerate(state.history[-10:], 1):
         print(f"  {Colors.DIM}{i}.{Colors.RESET} {cmd}")
@@ -529,14 +529,14 @@ def process_command(cmd_line):
     """Process a command."""
     state.stats["commands_run"] += 1
     state.history.append(cmd_line)
-    
+
     parts = cmd_line.strip().split(maxsplit=1)
     if not parts:
         return True
-    
+
     cmd = parts[0].lower()
     args = parts[1] if len(parts) > 1 else ""
-    
+
     if cmd in ["quit", "exit", "q"]:
         print(f"\n{Colors.CYAN}👋 Goodbye! Thanks for using NovaSystem.{Colors.RESET}\n")
         return False
@@ -560,7 +560,7 @@ def process_command(cmd_line):
     else:
         print(f"{Colors.RED}Unknown command:{Colors.RESET} {cmd}")
         print(f"{Colors.DIM}Type 'help' for available commands.{Colors.RESET}")
-    
+
     return True
 
 # =============================================================================
@@ -577,44 +577,44 @@ def signal_handler(sig, frame):
 def main():
     """Main entry point."""
     signal.signal(signal.SIGINT, signal_handler)
-    
+
     # Start activity monitor thread
     monitor_thread = threading.Thread(target=activity_monitor, daemon=True)
     monitor_thread.start()
-    
+
     # Startup sequence
     clear_screen()
     print_banner()
-    
+
     print(f"{Colors.GREEN}✓ NovaSystem initialized successfully!{Colors.RESET}")
     print(f"{Colors.DIM}Type 'help' for available commands or just start typing.{Colors.RESET}")
-    
+
     # Main loop
     while state.running:
         try:
             print_prompt()
-            
+
             # Read input (this blocks, so screensaver can activate)
             cmd_line = input()
-            
+
             # Update activity (wake from screensaver if needed)
             update_activity()
-            
+
             # If we were in screensaver, redraw
             if not cmd_line and state.stats["screensaver_activations"] > 0:
                 clear_screen()
                 print_banner()
                 continue
-            
+
             # Process command
             if not process_command(cmd_line):
                 break
-                
+
         except EOFError:
             break
         except KeyboardInterrupt:
             break
-    
+
     state.running = False
     print(f"\n{Colors.CYAN}Session ended. Total commands: {state.stats['commands_run']}{Colors.RESET}\n")
 
