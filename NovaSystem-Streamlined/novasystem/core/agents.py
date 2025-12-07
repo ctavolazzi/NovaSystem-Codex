@@ -5,17 +5,31 @@ This module defines the specialized agents used in the Nova Process:
 - DCE (Discussion Continuity Expert): Manages conversation flow
 - CAE (Critical Analysis Expert): Provides critical evaluation
 - Domain Expert: Provides specialized knowledge
+
+Uses structured prompts following Gemini best practices.
 """
 
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
+from datetime import datetime
 import asyncio
 import logging
 
 from ..utils.llm_service import LLMService
+from ..utils.prompt_builder import PromptBuilder, Verbosity, Tone, Example
 from ..config.models import get_model_for_agent, get_default_model
 
 logger = logging.getLogger(__name__)
+
+# Console logging helper
+def agent_log(emoji: str, agent: str, message: str, details: dict = None):
+    """Log an agent event with emoji prefix."""
+    timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+    print(f"{timestamp} | {emoji} [AGENT/{agent}] {message}")
+    if details:
+        for key, value in details.items():
+            val_str = str(value)[:80] + "..." if len(str(value)) > 80 else str(value)
+            print(f"           └─ {key}: {val_str}")
 
 class BaseAgent(ABC):
     """Base class for all Nova Process agents."""
@@ -41,10 +55,26 @@ class BaseAgent(ABC):
         """Get the system message for this agent."""
         return f"You are {self.name}. {self.role_description}"
 
+    def _build_structured_prompt(self) -> PromptBuilder:
+        """Build a structured prompt using the PromptBuilder."""
+        builder = PromptBuilder()
+        builder.set_role(f"You are {self.name}. {self.role_description}")
+        builder.set_verbosity(Verbosity.MEDIUM)
+        builder.set_tone(Tone.TECHNICAL)
+        builder.add_constraint("Be precise and analytical")
+        builder.add_constraint("Support conclusions with reasoning")
+        return builder
+
     async def _call_llm(self, input_text: str, context: Optional[str] = None) -> str:
-        """Make a call to the LLM service."""
+        """Make a call to the LLM service with structured prompts."""
         try:
             task_type = self._get_task_type()
+
+            agent_log("🎯", self.name, f"Processing request", {
+                "task_type": task_type,
+                "input_preview": input_text[:60],
+                "has_context": bool(context)
+            })
 
             # Prefer the explicitly configured model when available
             available_models = self.llm_service.get_available_models()
@@ -57,24 +87,33 @@ class BaseAgent(ABC):
                     prioritize_speed=True
                 )
                 if model_to_use != self.model:
-                    logger.warning(f"{self.name}: Preferred model '{self.model}' unavailable, falling back to '{model_to_use}'")
+                    agent_log("⚠️", self.name, f"Model fallback: {self.model} → {model_to_use}")
             else:
                 raise ValueError("No LLM models available. Please configure API keys or ensure Ollama is running with models.")
 
-            # Build messages
+            # Build structured messages using PromptBuilder
+            builder = self._build_structured_prompt()
+
+            # Build the user prompt with context
+            user_prompt = builder.build_user_prompt(
+                task=input_text,
+                context=context,
+                final_instruction="Think step-by-step and provide a clear, structured response."
+            )
+
             messages = [
-                {"role": "system", "content": self.get_system_message()}
+                {"role": "system", "content": builder.build_system_prompt()},
+                {"role": "user", "content": user_prompt}
             ]
 
-            # Add context if provided
-            if context:
-                messages.append({"role": "user", "content": f"Context: {context}\n\nInput: {input_text}"})
-            else:
-                messages.append({"role": "user", "content": input_text})
-
-            # Add conversation history
-            for msg in self.conversation_history[-5:]:  # Last 5 messages for context
+            # Add conversation history (last 5 messages for continuity)
+            for msg in self.conversation_history[-5:]:
                 messages.append(msg)
+
+            agent_log("📤", self.name, f"Calling LLM", {
+                "model": model_to_use,
+                "messages": len(messages)
+            })
 
             # Call LLM service with the best model for the task
             response = await self.llm_service.get_completion(
@@ -87,9 +126,14 @@ class BaseAgent(ABC):
             self.add_to_history("user", input_text)
             self.add_to_history("assistant", response)
 
+            agent_log("✅", self.name, f"Response received", {
+                "response_length": len(response)
+            })
+
             return response
 
         except Exception as e:
+            agent_log("❌", self.name, f"Error: {str(e)}")
             logger.error(f"Error calling LLM for {self.name}: {str(e)}")
             # Fallback to mock response if LLM fails
             return self._get_fallback_response(input_text)
