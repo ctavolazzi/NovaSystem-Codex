@@ -184,6 +184,8 @@ Thumbs.db
 # Other generated files
 *.tsbuildinfo
 directory_tree.txt
+examples/generated/
+examples/generated_pixellab_client.py
 
 # Backup and temporary files
 backup_requirements.txt
@@ -229,3 +231,6 @@ release_test_*.json
 
 # Mining results
 mining_results.json
+
+# Generated Gemini demo images
+Gemini_Generated_Image_*.png
