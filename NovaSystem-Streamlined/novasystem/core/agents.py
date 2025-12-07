@@ -44,12 +44,22 @@ class BaseAgent(ABC):
     async def _call_llm(self, input_text: str, context: Optional[str] = None) -> str:
         """Make a call to the LLM service."""
         try:
-            # Get the best model for this agent's task type
             task_type = self._get_task_type()
-            best_model = self.llm_service.get_best_model_for_task(task_type)
 
-            # Use the best model if different from current
-            model_to_use = best_model if best_model != self.model else self.model
+            # Prefer the explicitly configured model when available
+            available_models = self.llm_service.get_available_models()
+            if self.model and self.llm_service.is_model_available(self.model):
+                model_to_use = self.model
+            elif available_models:
+                model_to_use = self.llm_service.get_best_model_for_task(
+                    task_type,
+                    available_models=available_models,
+                    prioritize_speed=True
+                )
+                if model_to_use != self.model:
+                    logger.warning(f"{self.name}: Preferred model '{self.model}' unavailable, falling back to '{model_to_use}'")
+            else:
+                raise ValueError("No LLM models available. Please configure API keys or ensure Ollama is running with models.")
 
             # Build messages
             messages = [

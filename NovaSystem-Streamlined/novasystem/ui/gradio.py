@@ -4,28 +4,62 @@ Gradio Interface for NovaSystem.
 This module provides a simple Gradio-based web interface for the Nova Process.
 """
 
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env from project root (NovaSystem-Codex) or current directory
+_env_paths = [
+    Path(__file__).parent.parent.parent.parent / ".env",  # NovaSystem-Codex/.env
+    Path(__file__).parent.parent.parent / ".env",  # NovaSystem-Streamlined/.env
+    Path.cwd() / ".env",  # Current working directory
+]
+for _env_path in _env_paths:
+    if _env_path.exists():
+        load_dotenv(_env_path)
+        break
+
 import gradio as gr
 import asyncio
 import json
 import time
-import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import logging
 from datetime import datetime
 
 from ..core.process import NovaProcess
 from ..core.memory import MemoryManager
+from ..utils.llm_service import LLMService
 
 logger = logging.getLogger(__name__)
 
 class GradioInterface:
     """Gradio interface for NovaSystem."""
 
-    def __init__(self):
+    def __init__(self, llm_service: Optional[LLMService] = None):
         self.current_process = None
         self.session_history = []
         self.performance_metrics = {}
         self.model_performance = {}
+        # Share a single LLM service instance so model availability checks are consistent
+        self.llm_service = llm_service or LLMService()
+
+    def _validate_model_selection(self, model: str) -> Optional[str]:
+        """Ensure the requested model is available before starting a run."""
+        if self.llm_service.is_model_available(model):
+            return None
+
+        available_models = self.llm_service.get_available_models()
+        if not available_models:
+            return (
+                "Error: No LLMs are available. Please set OPENAI_API_KEY/ANTHROPIC_API_KEY "
+                "or start Ollama with at least one pulled model."
+            )
+
+        return (
+            f"Error: The selected model '{model}' is not available.\n\n"
+            f"Available models: {', '.join(available_models)}"
+        )
 
     def run_nova_process(self,
                         problem: str,
@@ -51,6 +85,11 @@ class GradioInterface:
         if not problem.strip():
             return ("Please enter a problem statement first!", "", "")
 
+        # Fail fast if the selected model cannot be used
+        model_error = self._validate_model_selection(model)
+        if model_error:
+            return (model_error, "", "")
+
         start_time = time.time()
         session_id = f"session_{int(time.time())}"
 
@@ -63,7 +102,8 @@ class GradioInterface:
             nova_process = NovaProcess(
                 domains=domain_list,
                 model=model,
-                memory_manager=memory_manager
+                memory_manager=memory_manager,
+                llm_service=self.llm_service
             )
 
             # Run the process
@@ -237,163 +277,198 @@ Performance Metrics:
             gr.Markdown("# 🚀 NovaSystem - Advanced Multi-Agent Problem Solver")
             gr.Markdown("**Transform complex challenges into actionable solutions** with our advanced multi-agent AI system.")
 
-            with gr.Tab("🎯 Problem Solver"):
-                with gr.Row():
-                    with gr.Column(scale=2):
-                        problem_input = gr.Textbox(
-                            lines=6,
-                            placeholder="Describe your problem or challenge in detail. Be specific about context, constraints, and desired outcomes...",
-                            label="🧠 Problem Description",
-                            info="💡 The more detailed your description, the better our AI experts can help you"
-                        )
-
-                        with gr.Row():
-                            domains_input = gr.Textbox(
-                                value="General,Technology,Business",
-                                label="🎯 Expert Domains",
-                                info="💡 Comma-separated expertise areas"
-                            )
-                            iterations_input = gr.Slider(
-                                minimum=1,
-                                maximum=20,
-                                value=3,
-                                step=1,
-                                label="🔄 Max Iterations",
-                                info="💡 More iterations = deeper analysis"
-                            )
-
-                        with gr.Row():
-                            model_input = gr.Dropdown(
-                                choices=[
-                                    "gpt-4",
-                                    "gpt-3.5-turbo",
-                                    "claude-3",
-                                    "claude-3-haiku",
-                                    "claude-3-sonnet",
-                                    "ollama:phi3",
-                                    "ollama:llama2",
-                                    "ollama:gpt-oss:20b",
-                                    "ollama:mistral"
-                                ],
-                                value="gpt-4",
-                                label="🤖 AI Model",
-                                info="💡 Choose your preferred AI model"
-                            )
-                            export_format = gr.Dropdown(
-                                choices=["text", "markdown", "json"],
-                                value="text",
-                                label="📄 Export Format",
-                                info="💡 Choose output format"
-                            )
-
-                        with gr.Row():
-                            save_session = gr.Checkbox(
-                                label="💾 Save Session",
-                                value=False,
-                                info="💡 Save this session for later reference"
-                            )
-                            solve_btn = gr.Button("🚀 Solve Problem", variant="primary")
-
-                    with gr.Column(scale=1):
-                        gr.Markdown("### 🤖 Our AI Expert Team:")
-                        gr.Markdown("""
-                        - **🧠 DCE (Discussion Continuity Expert)**: Maintains conversation flow and coherence
-                        - **🔍 CAE (Critical Analysis Expert)**: Provides rigorous evaluation and identifies potential issues
-                        - **🎯 Domain Experts**: Deliver specialized knowledge in your specified expertise areas
-                        """)
-
-                        gr.Markdown("### 💡 Pro Tips:")
-                        gr.Markdown("""
-                        - **Be Specific**: Include context, constraints, and desired outcomes
-                        - **Choose Wisely**: Select 2-4 relevant expert domains
-                        - **Iterate Deeply**: More iterations = more thorough analysis
-                        - **Model Selection**: GPT-4 or Claude-3 for complex problems
-                        """)
-
-                with gr.Row():
-                    results_output = gr.Textbox(
-                        lines=25,
-                        label="🎯 Nova Process Results",
-                        show_copy_button=True,
-                        max_lines=50
-                    )
-
-                with gr.Row():
-                    session_info = gr.Textbox(
-                        lines=2,
-                        label="📋 Session Information",
-                        show_copy_button=True
-                    )
-
-                with gr.Row():
-                    performance_metrics = gr.Textbox(
-                        lines=3,
-                        label="📊 Performance Metrics",
-                        show_copy_button=True
-                    )
-
-                solve_btn.click(
-                    fn=self.run_nova_process,
-                    inputs=[problem_input, domains_input, iterations_input, model_input, save_session, export_format],
-                    outputs=[results_output, session_info, performance_metrics]
-                )
-
-            with gr.Tab("📚 Session History"):
-                history_btn = gr.Button("📖 Load Session History")
-                history_output = gr.Textbox(
-                    lines=20,
-                    label="📚 Recent Sessions",
-                    show_copy_button=True
-                )
-                history_btn.click(
-                    fn=self.get_session_history,
-                    outputs=[history_output]
-                )
-
-            with gr.Tab("📈 Performance Analytics"):
-                stats_btn = gr.Button("📊 Load Performance Statistics")
-                stats_output = gr.Textbox(
-                    lines=20,
-                    label="📈 Performance Statistics",
-                    show_copy_button=True
-                )
-                stats_btn.click(
-                    fn=self.get_performance_stats,
-                    outputs=[stats_output]
-                )
-
-            with gr.Tab("⚙️ System Info"):
-                gr.Markdown("### 🔧 System Information")
-                gr.Markdown(f"""
-                - **Version**: NovaSystem v2.0
-                - **Interface**: Advanced Gradio Interface
-                - **Features**: Multi-agent AI, Session Management, Performance Tracking
-                - **Supported Models**: OpenAI, Anthropic, Ollama
-                - **Export Formats**: Text, Markdown, JSON
-                - **Session Storage**: In-memory (temporary)
-                """)
-
-                gr.Markdown("### 🚀 Quick Start Guide")
-                gr.Markdown("""
-                1. **Describe your problem** in detail in the Problem Description field
-                2. **Select expertise domains** relevant to your challenge
-                3. **Choose iteration depth** based on problem complexity
-                4. **Select AI model** based on your needs and availability
-                5. **Click Solve Problem** and watch our AI experts collaborate!
-                """)
+            with gr.Tabs():
+                self._build_problem_solver_tab()
+                self._build_session_history_tab()
+                self._build_performance_tab()
+                self._build_system_info_tab()
 
         return interface
 
-    def launch(self, share: bool = False, server_name: str = "0.0.0.0", server_port: int = 7860, mcp_server: bool = True):
-        """Launch the Gradio interface with optional MCP server."""
+    def _build_problem_solver_tab(self):
+        """Problem solver tab components and wiring."""
+        model_choices = self.llm_service.get_available_models()
+        if not model_choices:
+            # Fallback to a static list so the UI still renders, validation will guard execution
+            model_choices = [
+                "gpt-4",
+                "gpt-3.5-turbo",
+                "claude-3",
+                "claude-3-haiku",
+                "claude-3-sonnet",
+                "ollama:phi3",
+                "ollama:llama2",
+                "ollama:gpt-oss:20b",
+                "ollama:mistral"
+            ]
+        default_model = model_choices[0] if model_choices else "gpt-4"
+
+        # Example problems for users to try
+        example_problems = [
+            ["How can I improve the performance of my Python web application that's experiencing slow response times under heavy load? The app uses Flask, PostgreSQL, and serves about 10,000 requests per hour."],
+            ["I'm designing a new mobile app for personal finance management. What features should I prioritize for the MVP, and what's the best tech stack for cross-platform development?"],
+            ["Our team is struggling with code review bottlenecks. Reviews take too long and developers are getting blocked. How can we streamline the process while maintaining code quality?"],
+            ["I need to explain machine learning concepts to non-technical stakeholders. What analogies and examples work best for explaining neural networks, training data, and model accuracy?"],
+            ["What are the key considerations for migrating a monolithic application to microservices? Our current system is a 5-year-old Java application with tight coupling between components."]
+        ]
+
+        with gr.Tab("🎯 Problem Solver"):
+            with gr.Row():
+                with gr.Column(scale=2):
+                    problem_input = gr.Textbox(
+                        lines=6,
+                        placeholder="Describe your problem or challenge in detail. Be specific about context, constraints, and desired outcomes...",
+                        label="🧠 Problem Description",
+                        info="💡 The more detailed your description, the better our AI experts can help you"
+                    )
+
+                    # Add example problems
+                    gr.Examples(
+                        examples=example_problems,
+                        inputs=problem_input,
+                        label="📝 Try an Example Problem"
+                    )
+
+                    with gr.Row():
+                        domains_input = gr.Textbox(
+                            value="General,Technology,Business",
+                            label="🎯 Expert Domains",
+                            info="💡 Comma-separated expertise areas"
+                        )
+                        iterations_input = gr.Slider(
+                            minimum=1,
+                            maximum=20,
+                            value=3,
+                            step=1,
+                            label="🔄 Max Iterations",
+                            info="💡 More iterations = deeper analysis"
+                        )
+
+                    with gr.Row():
+                        model_input = gr.Dropdown(
+                            choices=model_choices,
+                            value=default_model,
+                            label="🤖 AI Model",
+                            info="💡 Choose your preferred AI model"
+                        )
+                        export_format = gr.Dropdown(
+                            choices=["text", "markdown", "json"],
+                            value="text",
+                            label="📄 Export Format",
+                            info="💡 Choose output format"
+                        )
+
+                    with gr.Row():
+                        save_session = gr.Checkbox(
+                            label="💾 Save Session",
+                            value=False,
+                            info="💡 Save this session for later reference"
+                        )
+                        solve_btn = gr.Button("🚀 Solve Problem", variant="primary")
+
+                with gr.Column(scale=1):
+                    gr.Markdown("### 🤖 Our AI Expert Team:")
+                    gr.Markdown("""
+                    - **🧠 DCE (Discussion Continuity Expert)**: Maintains conversation flow and coherence
+                    - **🔍 CAE (Critical Analysis Expert)**: Provides rigorous evaluation and identifies potential issues
+                    - **🎯 Domain Experts**: Deliver specialized knowledge in your specified expertise areas
+                    """)
+
+                    gr.Markdown("### 💡 Pro Tips:")
+                    gr.Markdown("""
+                    - **Be Specific**: Include context, constraints, and desired outcomes
+                    - **Choose Wisely**: Select 2-4 relevant expert domains
+                    - **Iterate Deeply**: More iterations = more thorough analysis
+                    - **Model Selection**: GPT-4 or Claude-3 for complex problems
+                    """)
+
+            with gr.Row():
+                results_output = gr.Textbox(
+                    lines=25,
+                    label="🎯 Nova Process Results",
+                    show_copy_button=True,
+                    max_lines=50
+                )
+
+            with gr.Row():
+                session_info = gr.Textbox(
+                    lines=2,
+                    label="📋 Session Information",
+                    show_copy_button=True
+                )
+
+            with gr.Row():
+                performance_metrics = gr.Textbox(
+                    lines=3,
+                    label="📊 Performance Metrics",
+                    show_copy_button=True
+                )
+
+            solve_btn.click(
+                fn=self.run_nova_process,
+                inputs=[problem_input, domains_input, iterations_input, model_input, save_session, export_format],
+                outputs=[results_output, session_info, performance_metrics]
+            )
+
+    def _build_session_history_tab(self):
+        """Session history tab."""
+        with gr.Tab("📚 Session History"):
+            history_btn = gr.Button("📖 Load Session History")
+            history_output = gr.Textbox(
+                lines=20,
+                label="📚 Recent Sessions",
+                show_copy_button=True
+            )
+            history_btn.click(
+                fn=self.get_session_history,
+                outputs=[history_output]
+            )
+
+    def _build_performance_tab(self):
+        """Performance analytics tab."""
+        with gr.Tab("📈 Performance Analytics"):
+            stats_btn = gr.Button("📊 Load Performance Statistics")
+            stats_output = gr.Textbox(
+                lines=20,
+                label="📈 Performance Statistics",
+                show_copy_button=True
+            )
+            stats_btn.click(
+                fn=self.get_performance_stats,
+                outputs=[stats_output]
+            )
+
+    def _build_system_info_tab(self):
+        """System info/help tab."""
+        with gr.Tab("⚙️ System Info"):
+            gr.Markdown("### 🔧 System Information")
+            gr.Markdown(f"""
+            - **Version**: NovaSystem v2.0
+            - **Interface**: Advanced Gradio Interface
+            - **Features**: Multi-agent AI, Session Management, Performance Tracking
+            - **Supported Models**: OpenAI, Anthropic, Ollama
+            - **Export Formats**: Text, Markdown, JSON
+            - **Session Storage**: In-memory (temporary)
+            """)
+
+            gr.Markdown("### 🚀 Quick Start Guide")
+            gr.Markdown("""
+            1. **Describe your problem** in detail in the Problem Description field
+            2. **Select expertise domains** relevant to your challenge
+            3. **Choose iteration depth** based on problem complexity
+            4. **Select AI model** based on your needs and availability
+            5. **Click Solve Problem** and watch our AI experts collaborate!
+            """)
+
+    def launch(self, share: bool = False, server_name: str = "0.0.0.0", server_port: int = 7860):
+        """Launch the Gradio interface."""
         interface = self.create_interface()
         interface.launch(
             share=share,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            quiet=False,
-            mcp_server=mcp_server
+            quiet=False
         )
 
 def main():
