@@ -230,47 +230,37 @@ class Spinner:
 # =============================================================================
 
 class Screensaver:
-    """Whimsical animated screensaver with sleeping wizard and magical effects."""
+    """Sleeping wizard screensaver - he's worked SO hard."""
 
-    # Sleeping wizard ASCII art frames
-    WIZARD_BASE = [
-        r"        ⭐",
-        r"    ___/\___",
-        r"   /   🌙   \    ",
-        r"  |  ◡   ◡  |   ",
-        r"  |    ω    |   ",
-        r"   \  ___  /    ",
-        r"    \_____/     ",
-        r"      |||       ",
-        r"   ___|||___    ",
-        r"  /  ~~~~~  \   ",
-        r" |  NovaBot  |  ",
-        r"  \  zzZZZ  /   ",
-        r"   ‾‾‾‾‾‾‾‾‾    ",
+    # Clever messages about how hard the wizard worked
+    HARD_WORK_MESSAGES = [
+        "Solved 47 impossible problems today",
+        "Debugged the meaning of life",
+        "Optimized infinity (twice)",
+        "Refactored the space-time continuum",
+        "Merged 1,000 pull requests in one commit",
+        "Fixed a bug that didn't exist yet",
+        "Trained a model on pure vibes",
+        "Achieved O(1) on an O(n!) problem",
+        "Convinced the AI to be nice",
+        "Wrote documentation (a miracle)",
+        "Made tests pass on the first try",
+        "Explained recursion without recursion",
+        "Deployed on Friday and lived",
+        "Understood the legacy code",
+        "Made the client happy (impossible)",
+        "Turned coffee into algorithms",
+        "Divided by zero (safely)",
+        "Found the missing semicolon",
+        "Centered a div (vertically!)",
+        "Exited vim on purpose",
     ]
-
-    # Floating Z positions (will animate)
-    ZZZ_FRAMES = [
-        ["  z", "   z", "    Z"],
-        [" z", "  z", "   Z"],
-        ["z", " z", "  Z"],
-        [" z", "  z", "   Z"],
-    ]
-
-    # Moon phases
-    MOONS = ["🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"]
-
-    # Sparkle characters
-    SPARKLES = ["✨", "⭐", "✦", "✧", "⋆", "｡", "°", "･ﾟ"]
-
-    # Dream bubbles
-    DREAMS = ["💭", "☁️", "🌈", "🔮", "📚", "💡", "🎯", "🚀"]
 
     def __init__(self):
         self.frame = 0
         self.width, self.height = self.get_terminal_size()
-        # Random sparkle positions
-        self.sparkle_positions = [(random.randint(5, 70), random.randint(1, 12)) for _ in range(8)]
+        self.current_message_idx = 0
+        self.message_timer = 0
 
     def get_terminal_size(self):
         """Get terminal dimensions."""
@@ -281,193 +271,102 @@ class Screensaver:
             return 80, 24
 
     def sleeping_wizard(self):
-        """Adorable sleeping wizard animation."""
+        """The wizard sleeps - he's earned it."""
         self.width, self.height = self.get_terminal_size()
         lines = []
-        center_w = self.width // 2
 
-        # Moon phase (changes slowly)
-        moon = self.MOONS[(self.frame // 20) % len(self.MOONS)]
+        # Floating Z animation (rises up)
+        z_positions = [
+            (1, "z"),
+            (2, "z"),
+            (3, "Z"),
+            (4, "Z"),
+        ]
+        z_offset = self.frame % 8
 
-        # Floating Z animation
-        z_frame = self.ZZZ_FRAMES[self.frame % len(self.ZZZ_FRAMES)]
-        z_offset = (self.frame // 3) % 4
-
-        # Dream bubble (changes occasionally)
-        dream = self.DREAMS[(self.frame // 30) % len(self.DREAMS)]
+        # Stars twinkle
+        star1 = "✦" if self.frame % 6 < 3 else "✧"
+        star2 = "✧" if self.frame % 8 < 4 else "✦"
+        star3 = "⋆" if self.frame % 10 < 5 else "✦"
 
         # Build the scene
         scene = []
         scene.append("")
-        scene.append(f"  {Colors.DIM}·  ·    ·      ·   ·    {moon}   ·      ·  ·{Colors.RESET}")
-        scene.append(f"    {Colors.DIM}·      ·   ✦    ·       ·    ·  ✧{Colors.RESET}")
+        scene.append(f"       {Colors.DIM}{star1}        {star2}                    {star3}        ✧{Colors.RESET}")
+        scene.append(f"                  {Colors.DIM}·    ✦          ·{Colors.RESET}")
         scene.append("")
 
-        # Wizard with animated Z's
-        wizard_art = [
-            f"                    {Colors.YELLOW}⭐{Colors.RESET}",
-            f"                {Colors.MAGENTA}___/\\___{Colors.RESET}",
-            f"               {Colors.MAGENTA}/        \\{Colors.RESET}   {Colors.CYAN}{z_frame[0]}{Colors.RESET}",
-            f"              {Colors.MAGENTA}|{Colors.RESET}  {Colors.WHITE}◡   ◡{Colors.RESET}  {Colors.MAGENTA}|{Colors.RESET}    {Colors.CYAN}{z_frame[1]}{Colors.RESET}",
-            f"              {Colors.MAGENTA}|{Colors.RESET}    {Colors.WHITE}ω{Colors.RESET}    {Colors.MAGENTA}|{Colors.RESET}      {Colors.CYAN}{z_frame[2]}{Colors.RESET}",
-            f"               {Colors.MAGENTA}\\  ___  /{Colors.RESET}        {dream}",
-            f"                {Colors.MAGENTA}‾‾‾‾‾‾‾{Colors.RESET}",
-            f"                  {Colors.BLUE}│││{Colors.RESET}",
-            f"              {Colors.BLUE}____│││____{Colors.RESET}",
-            f"             {Colors.BLUE}/  ~~~~~~~~  \\{Colors.RESET}",
-            f"            {Colors.BLUE}|{Colors.RESET}   {Colors.CYAN}NovaBot{Colors.RESET}    {Colors.BLUE}|{Colors.RESET}",
-            f"             {Colors.BLUE}\\   {Colors.DIM}sleeping{Colors.RESET}  {Colors.BLUE}/{Colors.RESET}",
-            f"              {Colors.BLUE}‾‾‾‾‾‾‾‾‾‾‾‾{Colors.RESET}",
+        # Animated Z's floating up
+        z_art = ["    ", "    ", "    ", "    "]
+        for i, (base_y, char) in enumerate(z_positions):
+            y_pos = (base_y + z_offset // 2) % 4
+            if y_pos < len(z_art):
+                spaces = "  " * (i + 1)
+                z_art[y_pos] = f"{spaces}{Colors.CYAN}{char}{Colors.RESET}"
+
+        # The wizard
+        wizard = [
+            f"                       {Colors.YELLOW}★{Colors.RESET}",
+            f"                   {Colors.MAGENTA}__/|\\___{Colors.RESET}",
+            f"                  {Colors.MAGENTA}/{Colors.RESET}  {Colors.YELLOW}🌙{Colors.RESET}   {Colors.MAGENTA}\\{Colors.RESET}      {z_art[0]}",
+            f"                 {Colors.MAGENTA}|{Colors.RESET}        {Colors.MAGENTA}|{Colors.RESET}      {z_art[1]}",
+            f"                 {Colors.MAGENTA}|{Colors.RESET}  {Colors.WHITE}—   —{Colors.RESET}  {Colors.MAGENTA}|{Colors.RESET}       {z_art[2]}",
+            f"                 {Colors.MAGENTA}|{Colors.RESET}    {Colors.WHITE}ᵕ{Colors.RESET}    {Colors.MAGENTA}|{Colors.RESET}        {z_art[3]}",
+            f"                  {Colors.MAGENTA}\\______/{Colors.RESET}",
+            f"                   {Colors.BLUE}│{Colors.RESET}    {Colors.BLUE}│{Colors.RESET}",
+            f"               {Colors.BLUE}┌───┴────┴───┐{Colors.RESET}",
+            f"               {Colors.BLUE}│{Colors.RESET} {Colors.CYAN}~ ~ ~ ~ ~{Colors.RESET} {Colors.BLUE}│{Colors.RESET}",
+            f"               {Colors.BLUE}│{Colors.RESET}  {Colors.WHITE}NOVA{Colors.RESET}     {Colors.BLUE}│{Colors.RESET}",
+            f"               {Colors.BLUE}│{Colors.RESET}  {Colors.WHITE}WIZARD{Colors.RESET}   {Colors.BLUE}│{Colors.RESET}",
+            f"               {Colors.BLUE}└───────────┘{Colors.RESET}",
         ]
 
-        for line in wizard_art:
+        for line in wizard:
             scene.append(line)
 
-        # Animated sparkles at bottom
-        sparkle_line = "    "
-        for i in range(12):
-            if (i + self.frame) % 5 == 0:
-                sparkle = self.SPARKLES[(i + self.frame) % len(self.SPARKLES)]
-                sparkle_line += f"{Colors.YELLOW}{sparkle}{Colors.RESET}  "
-            else:
-                sparkle_line += "   "
-
         scene.append("")
-        scene.append(sparkle_line)
         scene.append("")
 
-        # Status message
-        messages = [
-            "Sweet dreams in the cloud...",
-            "Dreaming of algorithms...",
-            "Recharging neural networks...",
-            "Counting electric sheep...",
-        ]
-        msg = messages[(self.frame // 40) % len(messages)]
-        scene.append(f"            {Colors.DIM}💤 {msg}{Colors.RESET}")
+        # Update message every ~4 seconds (50 frames)
+        self.message_timer += 1
+        if self.message_timer >= 50:
+            self.message_timer = 0
+            self.current_message_idx = (self.current_message_idx + 1) % len(self.HARD_WORK_MESSAGES)
+
+        msg = self.HARD_WORK_MESSAGES[self.current_message_idx]
+
+        # Fancy message box
+        box_width = len(msg) + 4
+        scene.append(f"          {Colors.DIM}╭{'─' * box_width}╮{Colors.RESET}")
+        scene.append(f"          {Colors.DIM}│{Colors.RESET}  {Colors.YELLOW}💤{Colors.RESET} {Colors.WHITE}{msg}{Colors.RESET}  {Colors.DIM}│{Colors.RESET}")
+        scene.append(f"          {Colors.DIM}╰{'─' * box_width}╯{Colors.RESET}")
 
         scene.append("")
-        scene.append(f"{Colors.DIM}Press Enter to wake the wizard...{Colors.RESET}")
+        scene.append(f"               {Colors.DIM}Shhh... the wizard is resting.{Colors.RESET}")
+        scene.append(f"               {Colors.DIM}Press Enter to wake...{Colors.RESET}")
 
-        # Center everything
         for line in scene:
             lines.append(line)
-
-        return lines
-
-    def starfield(self):
-        """Starfield with shooting stars."""
-        self.width, self.height = self.get_terminal_size()
-        stars = "·.+*✦✧⋆"
-        lines = []
-
-        for y in range(min(self.height - 5, 16)):
-            line = ""
-            for x in range(min(self.width - 2, 78)):
-                seed = (x * 7 + y * 13 + self.frame * 2) % 100
-                if seed < 2:
-                    star = stars[seed % len(stars)]
-                    colors = [Colors.WHITE, Colors.CYAN, Colors.YELLOW]
-                    color = colors[(x + y + self.frame) % len(colors)]
-                    line += f"{color}{star}{Colors.RESET}"
-                # Shooting star
-                elif x == (self.frame * 3 + y * 2) % 78 and y == (self.frame // 2) % 16:
-                    line += f"{Colors.YELLOW}━━✦{Colors.RESET}"
-                else:
-                    line += " "
-            lines.append(line)
-
-        # Center text with moon
-        center_y = len(lines) // 2
-        center_x = (self.width - 40) // 2
-        moon = self.MOONS[(self.frame // 15) % len(self.MOONS)]
-        logo = f"  {Colors.CYAN}✨ NovaSystem v{VERSION} {moon}{Colors.RESET}  "
-        if 0 <= center_y < len(lines):
-            lines[center_y] = " " * max(0, center_x) + logo
-
-        lines.append("")
-        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
-
-        return lines
-
-    def floating_dreams(self):
-        """Floating dream bubbles animation."""
-        self.width, self.height = self.get_terminal_size()
-        lines = []
-
-        # Create a field of floating elements
-        for y in range(min(self.height - 5, 14)):
-            line = " " * min(self.width - 2, 78)
-            line_list = list(line)
-
-            for i, (bx, by) in enumerate(self.sparkle_positions):
-                # Make positions float up and wrap
-                float_y = (by + self.frame // 4) % 14
-                float_x = bx + int(2 * ((self.frame + i * 10) % 20 - 10) / 10)
-                float_x = max(0, min(float_x, len(line_list) - 3))
-
-                if float_y == y:
-                    bubble = self.DREAMS[(i + self.frame // 20) % len(self.DREAMS)]
-                    if float_x < len(line_list):
-                        line_list[float_x] = f"{bubble}"
-
-            # Add twinkling stars
-            for x in range(len(line_list)):
-                if line_list[x] == " ":
-                    seed = (x * 11 + y * 17 + self.frame) % 150
-                    if seed < 2:
-                        star = self.SPARKLES[seed % len(self.SPARKLES)]
-                        colors = [Colors.CYAN, Colors.YELLOW, Colors.WHITE]
-                        color = colors[(x + self.frame) % len(colors)]
-                        line_list[x] = f"{color}{star}{Colors.RESET}"
-
-            lines.append("".join(line_list))
-
-        # Center message
-        center_y = len(lines) // 2
-        msg = f"  {Colors.MAGENTA}🔮 Nova is dreaming... 🔮{Colors.RESET}  "
-        center_x = max(0, (self.width - 30) // 2)
-        if 0 <= center_y < len(lines):
-            lines[center_y] = " " * center_x + msg
-
-        lines.append("")
-        lines.append(f"{Colors.DIM}Press Enter to wake up...{Colors.RESET}")
 
         return lines
 
     def render(self, effect="wizard"):
         """Render a frame."""
         self.frame += 1
-        if effect == "stars":
-            return self.starfield()
-        elif effect == "dreams":
-            return self.floating_dreams()
         return self.sleeping_wizard()
 
 def run_screensaver():
     """Run the screensaver loop."""
     screensaver = Screensaver()
-    effects = ["wizard", "stars", "wizard", "dreams"]
-    current = 0
-    effect_frames = 200  # Longer time per effect
-    frame_count = 0
 
     clear_screen()
 
     while state.screensaver_active and state.running:
-        if frame_count >= effect_frames:
-            frame_count = 0
-            current = (current + 1) % len(effects)
-            clear_screen()
-            # Refresh sparkle positions for variety
-            screensaver.sparkle_positions = [(random.randint(5, 70), random.randint(1, 12)) for _ in range(8)]
-
-        lines = screensaver.render(effects[current])
+        lines = screensaver.render()
         print("\033[H", end="")  # Home cursor
         for line in lines:
             print(f"\033[K{line}")
 
-        frame_count += 1
         time.sleep(ANIMATION_SPEED)
 
     clear_screen()
