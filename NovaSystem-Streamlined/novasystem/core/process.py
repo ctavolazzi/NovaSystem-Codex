@@ -1,23 +1,32 @@
 """
 Nova Process Orchestration.
 
-This module implements the core Nova Process workflow that coordinates
-multiple agents to solve complex problems through iterative refinement.
+Coordinates multiple agents to solve complex problems through iterative refinement.
 """
 
 from typing import Dict, List, Any, Optional, AsyncGenerator
 import asyncio
 import logging
-from datetime import datetime
 import json
+from datetime import datetime
 
-from .agents import BaseAgent, DCEAgent, CAEAgent, DomainExpert, AgentFactory
+from .agents import AgentFactory, BaseAgent
 from .memory import MemoryManager
 from ..utils.llm_service import LLMService
-from ..utils.metrics import get_metrics_collector, PerformanceMetrics
+from ..utils.metrics import get_metrics_collector
 from ..config.models import get_default_model
 
 logger = logging.getLogger(__name__)
+
+
+# Convergence indicators
+CONVERGENCE_INDICATORS = [
+    "solution is complete",
+    "no further improvements needed",
+    "ready for implementation",
+    "converged",
+]
+
 
 class NovaProcess:
     """
@@ -27,11 +36,13 @@ class NovaProcess:
     iterative refinement.
     """
 
-    def __init__(self,
-                 domains: List[str] = None,
-                 model: Optional[str] = None,
-                 memory_manager: Optional[MemoryManager] = None,
-                 llm_service: Optional[LLMService] = None):
+    def __init__(
+        self,
+        domains: List[str] = None,
+        model: Optional[str] = None,
+        memory_manager: Optional[MemoryManager] = None,
+        llm_service: Optional[LLMService] = None
+    ):
         """
         Initialize the Nova Process.
 
@@ -42,31 +53,30 @@ class NovaProcess:
             llm_service: Optional LLM service for AI calls
         """
         self.domains = domains or ["General"]
+        self.model = model or get_default_model()
         self.memory_manager = memory_manager or MemoryManager()
         self.llm_service = llm_service or LLMService()
         self.metrics_collector = get_metrics_collector()
 
-        # Use centralized model configuration
-        self.model = model or get_default_model()
-
-        # Create agent team with LLM service
+        # Create agent team
         self.agents = AgentFactory.create_agent_team(self.domains, self.model, self.llm_service)
         self.dce = self.agents["dce"]
         self.cae = self.agents["cae"]
-        self.domain_experts = {k: v for k, v in self.agents.items()
-                              if k.startswith("expert_")}
+        self.domain_experts = {k: v for k, v in self.agents.items() if k.startswith("expert_")}
 
         # Process state
         self.current_iteration = 0
         self.problem_statement = ""
-        self.solution_history = []
+        self.solution_history: List[Dict[str, Any]] = []
         self.is_active = False
 
-    async def solve_problem(self,
-                          problem_statement: str,
-                          max_iterations: int = 5,
-                          stream: bool = False,
-                          session_id: str = None):
+    async def solve_problem(
+        self,
+        problem_statement: str,
+        max_iterations: int = 5,
+        stream: bool = False,
+        session_id: str = None
+    ):
         """
         Solve a problem using the Nova Process.
 
@@ -77,124 +87,104 @@ class NovaProcess:
             session_id: Optional session ID for metrics tracking
 
         Returns:
-            Final result if not streaming, or AsyncGenerator if streaming
+            Final result dict if not streaming, or AsyncGenerator if streaming
         """
-        # Start metrics collection
         if session_id:
             self.metrics_collector.start_session(session_id)
             self.metrics_collector.record_memory_usage()
 
         try:
             if stream:
-                return self._solve_problem_streaming(problem_statement, max_iterations)
-            else:
-                return await self._solve_problem_sync(problem_statement, max_iterations)
+                return self._solve_streaming(problem_statement, max_iterations)
+            return await self._solve_sync(problem_statement, max_iterations)
         finally:
-            # End metrics collection
             if session_id:
                 self.metrics_collector.record_memory_usage()
                 metrics = self.metrics_collector.end_session(session_id)
                 if metrics:
-                    logger.info(f"Session {session_id} completed with metrics: {metrics.to_dict()}")
+                    logger.info(f"Session {session_id} completed: {metrics.to_dict()}")
 
-    async def _solve_problem_sync(self, problem_statement: str, max_iterations: int) -> Dict[str, Any]:
-        """Solve problem synchronously (no streaming)."""
-        self.problem_statement = problem_statement
-        self.current_iteration = 0
-        self.solution_history = []
-        self.is_active = True
-
-        # Store initial problem
-        await self.memory_manager.store_context("problem", problem_statement)
+    async def _solve_sync(self, problem: str, max_iterations: int) -> Dict[str, Any]:
+        """Solve problem synchronously."""
+        self._init_solve(problem)
 
         try:
-            # Problem Unpacking Phase
-            unpacking_result = await self._problem_unpacking_phase(False)
+            # Phase 1: Problem Unpacking
+            unpacking = await self._problem_unpacking_phase()
 
-            # Iterative Refinement Phase
-            for iteration in range(max_iterations):
-                self.current_iteration = iteration + 1
-                iteration_result = await self._iteration_phase(iteration + 1, False)
-                self.solution_history.append(iteration_result)
+            # Phase 2: Iterative Refinement
+            for i in range(max_iterations):
+                self.current_iteration = i + 1
+                result = await self._iteration_phase(i + 1)
+                self.solution_history.append(result)
 
-                # Record iteration metrics
                 self.metrics_collector.record_iteration()
                 self.metrics_collector.record_memory_usage()
 
-                # Check for convergence
-                if await self._check_convergence(iteration_result):
+                if self._check_convergence(result):
                     break
 
-            # Final Synthesis
-            final_result = await self._final_synthesis_phase(False)
-            return final_result
+            # Phase 3: Final Synthesis
+            return await self._final_synthesis_phase()
 
         except Exception as e:
-            logger.error(f"Error in Nova Process: {str(e)}")
+            logger.error(f"Error in Nova Process: {e}")
             raise
         finally:
             self.is_active = False
 
-    async def _solve_problem_streaming(self, problem_statement: str, max_iterations: int) -> AsyncGenerator[Dict[str, Any], None]:
+    async def _solve_streaming(self, problem: str, max_iterations: int) -> AsyncGenerator[Dict[str, Any], None]:
         """Solve problem with streaming updates."""
-        self.problem_statement = problem_statement
-        self.current_iteration = 0
-        self.solution_history = []
-        self.is_active = True
+        self._init_solve(problem)
 
-        # Store initial problem
-        await self.memory_manager.store_context("problem", problem_statement)
-
-        yield {
-            "type": "start",
-            "problem": problem_statement,
-            "timestamp": datetime.now().isoformat()
-        }
+        yield {"type": "start", "problem": problem, "timestamp": datetime.now().isoformat()}
 
         try:
-            # Problem Unpacking Phase
+            # Phase 1
             yield {"type": "phase", "phase": "problem_unpacking"}
+            unpacking = await self._problem_unpacking_phase()
+            yield {"type": "result", "phase": "problem_unpacking", "result": unpacking}
 
-            unpacking_result = await self._problem_unpacking_phase(True)
-            yield {"type": "result", "phase": "problem_unpacking", "result": unpacking_result}
-
-            # Iterative Refinement Phase
-            for iteration in range(max_iterations):
-                self.current_iteration = iteration + 1
-
+            # Phase 2
+            for i in range(max_iterations):
+                self.current_iteration = i + 1
                 yield {"type": "iteration", "number": self.current_iteration}
 
-                iteration_result = await self._iteration_phase(iteration + 1, True)
-                self.solution_history.append(iteration_result)
+                result = await self._iteration_phase(i + 1)
+                self.solution_history.append(result)
+                yield {"type": "result", "iteration": self.current_iteration, "result": result}
 
-                yield {"type": "result", "iteration": self.current_iteration, "result": iteration_result}
-
-                # Check for convergence
-                if await self._check_convergence(iteration_result):
+                if self._check_convergence(result):
                     yield {"type": "convergence", "iteration": self.current_iteration}
                     break
 
-            # Final Synthesis
+            # Phase 3
             yield {"type": "phase", "phase": "final_synthesis"}
-
-            final_result = await self._final_synthesis_phase(True)
-            yield {"type": "complete", "result": final_result}
+            final = await self._final_synthesis_phase()
+            yield {"type": "complete", "result": final}
 
         except Exception as e:
-            logger.error(f"Error in Nova Process: {str(e)}")
+            logger.error(f"Error in Nova Process: {e}")
             yield {"type": "error", "error": str(e)}
         finally:
             self.is_active = False
 
-    async def _problem_unpacking_phase(self, stream: bool = False) -> Dict[str, Any]:
-        """Phase 1: Problem Unpacking - Break down the problem."""
+    def _init_solve(self, problem: str):
+        """Initialize solve state."""
+        self.problem_statement = problem
+        self.current_iteration = 0
+        self.solution_history = []
+        self.is_active = True
+
+    async def _problem_unpacking_phase(self) -> Dict[str, Any]:
+        """Phase 1: Break down the problem."""
+        # Store problem
+        await self.memory_manager.store_context("problem", self.problem_statement)
 
         # Get domain expert analysis
         domain_insights = {}
         for domain, expert in self.domain_experts.items():
-            insight = await expert.process(
-                f"Analyze this problem in detail: {self.problem_statement}"
-            )
+            insight = await expert.process(f"Analyze this problem in detail: {self.problem_statement}")
             domain_insights[domain] = insight
 
         # DCE synthesis
@@ -203,9 +193,7 @@ class NovaProcess:
         )
 
         # CAE critical analysis
-        cae_analysis = await self.cae.process(
-            f"Critically analyze this problem breakdown: {dce_summary}"
-        )
+        cae_analysis = await self.cae.process(f"Critically analyze this breakdown: {dce_summary}")
 
         result = {
             "domain_insights": domain_insights,
@@ -217,13 +205,9 @@ class NovaProcess:
         await self.memory_manager.store_context("problem_unpacking", result)
         return result
 
-    async def _iteration_phase(self, iteration: int, stream: bool = False) -> Dict[str, Any]:
-        """Phase 2: Iterative Refinement - Refine solutions."""
-
-        # Get context from previous iterations
-        context = await self.memory_manager.get_relevant_context(
-            f"iteration {iteration} refinement"
-        )
+    async def _iteration_phase(self, iteration: int) -> Dict[str, Any]:
+        """Phase 2: Iterative refinement."""
+        context = await self.memory_manager.get_relevant_context(f"iteration {iteration} refinement")
 
         # Domain experts propose solutions
         expert_solutions = {}
@@ -238,10 +222,8 @@ class NovaProcess:
             f"Coordinate these solutions and identify next steps: {json.dumps(expert_solutions)}"
         )
 
-        # CAE critical evaluation
-        cae_evaluation = await self.cae.process(
-            f"Critically evaluate this iteration: {dce_coordination}"
-        )
+        # CAE evaluation
+        cae_evaluation = await self.cae.process(f"Critically evaluate this iteration: {dce_coordination}")
 
         result = {
             "iteration": iteration,
@@ -254,10 +236,8 @@ class NovaProcess:
         await self.memory_manager.store_context(f"iteration_{iteration}", result)
         return result
 
-    async def _final_synthesis_phase(self, stream: bool = False) -> Dict[str, Any]:
-        """Phase 3: Final Synthesis - Create final solution."""
-
-        # Get all context
+    async def _final_synthesis_phase(self) -> Dict[str, Any]:
+        """Phase 3: Create final solution."""
         all_context = await self.memory_manager.get_all_context()
 
         # DCE final synthesis
@@ -280,21 +260,10 @@ class NovaProcess:
         await self.memory_manager.store_context("final_result", result)
         return result
 
-    async def _check_convergence(self, iteration_result: Dict[str, Any]) -> bool:
-        """Check if the process has converged to a solution."""
-        # Simple convergence check - can be enhanced
-        cae_evaluation = iteration_result.get("cae_evaluation", "")
-
-        # Look for convergence indicators
-        convergence_indicators = [
-            "solution is complete",
-            "no further improvements needed",
-            "ready for implementation",
-            "converged"
-        ]
-
-        return any(indicator in cae_evaluation.lower()
-                  for indicator in convergence_indicators)
+    def _check_convergence(self, iteration_result: Dict[str, Any]) -> bool:
+        """Check if the process has converged."""
+        cae_evaluation = iteration_result.get("cae_evaluation", "").lower()
+        return any(indicator in cae_evaluation for indicator in CONVERGENCE_INDICATORS)
 
     def get_status(self) -> Dict[str, Any]:
         """Get current process status."""
@@ -312,11 +281,10 @@ class NovaProcess:
         return self.solution_history.copy()
 
     def get_performance_metrics(self, session_id: str = None) -> Dict[str, Any]:
-        """Get performance metrics for the current or specified session."""
+        """Get performance metrics."""
         if session_id:
             return self.metrics_collector.get_session_summary(session_id)
-        else:
-            return self.metrics_collector.get_performance_summary()
+        return self.metrics_collector.get_performance_summary()
 
     def get_system_metrics(self) -> Dict[str, Any]:
         """Get current system performance metrics."""
