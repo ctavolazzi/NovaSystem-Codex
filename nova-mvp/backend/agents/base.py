@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, AsyncIterator, Dict, Optional
 from datetime import datetime
 import uuid
 
@@ -66,6 +66,46 @@ class BaseAgent(ABC):
             system_prompt=self.system_prompt,
             user_message=user_message
         )
+
+    async def _call_llm_stream(self, user_message: str) -> AsyncIterator[str]:
+        """Stream LLM response token by token."""
+        if self.llm is None:
+            yield f"[{self.name}] LLM not configured - mock response for: {user_message[:100]}..."
+            return
+
+        async for chunk in self.llm.chat_stream(
+            system_prompt=self.system_prompt,
+            user_message=user_message
+        ):
+            yield chunk
+
+    async def process_stream(
+        self,
+        input_data: Dict[str, Any],
+        on_token: Optional[callable] = None
+    ) -> AgentResponse:
+        """
+        Process input with streaming output.
+
+        Args:
+            input_data: Dictionary containing 'problem' and optional context
+            on_token: Optional callback called for each token (for real-time display)
+
+        Returns:
+            AgentResponse with the complete content after streaming
+        """
+        # Default implementation: collect streamed tokens
+        # Subclasses can override for custom streaming behavior
+        problem = input_data.get("problem", "")
+        collected = []
+
+        async for token in self._call_llm_stream(problem):
+            collected.append(token)
+            if on_token:
+                on_token(token)
+
+        content = "".join(collected)
+        return self._create_response(content)
 
     def _create_response(
         self,

@@ -130,6 +130,42 @@ def print_agent_response(response: AgentResponse):
             print(f"  {Colors.RED}Error: {response.error}{Colors.RESET}")
 
 
+def print_agent_header(agent_name: str, agent_type: str, model: str):
+    """Print agent header before streaming content."""
+    type_colors = {
+        "dce": Colors.GREEN,
+        "cae": Colors.YELLOW,
+    }
+
+    col = Colors.BLUE
+    if agent_type in type_colors:
+        col = type_colors[agent_type]
+    elif "domain" in agent_type:
+        col = Colors.CYAN
+
+    print(f"\n{col}{'─' * 60}")
+    print(f"  {Colors.BOLD}{agent_name}{Colors.RESET} {Colors.DIM}({model}){Colors.RESET}")
+    print(f"{col}{'─' * 60}{Colors.RESET}")
+    print("  ", end="", flush=True)
+
+
+def print_streaming_token(token: str):
+    """Print a streaming token in real-time."""
+    import sys
+    # Handle newlines with proper indentation
+    if '\n' in token:
+        parts = token.split('\n')
+        for i, part in enumerate(parts):
+            if i > 0:
+                print()  # Newline
+                print("  ", end="", flush=True)  # Indent
+            sys.stdout.write(part)
+            sys.stdout.flush()
+    else:
+        sys.stdout.write(token)
+        sys.stdout.flush()
+
+
 def _get_ledger(db_path: str | None) -> UsageLedger:
     """Return a usage ledger, optionally pointing at a custom database file."""
     return UsageLedger(db_path) if db_path else get_usage_ledger()
@@ -307,14 +343,18 @@ def memory_command(action: str | None) -> int:
         return 1
 
 
-async def solve_command(problem: str, domains: list, provider: str, verbose: bool):
+async def solve_command(problem: str, domains: list, provider: str, verbose: bool, stream: bool = False):
     """Execute the solve command."""
     print_header()
 
     print(f"\n{Colors.BOLD}Problem:{Colors.RESET}")
     print(f"  {problem}")
     print(f"\n{Colors.DIM}Domains: {', '.join(domains)}")
-    print(f"Provider: {provider}{Colors.RESET}")
+    print(f"Provider: {provider}")
+    if stream:
+        print(f"Streaming: enabled{Colors.RESET}")
+    else:
+        print(f"{Colors.RESET}")
 
     # Get LLM provider
     llm = get_llm(provider)
@@ -362,9 +402,9 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
         print_phase(state.phase.value)
 
     def on_agent_response(response):
-        if verbose:
+        if verbose and not stream:
             print_agent_response(response)
-        else:
+        elif not stream:
             status = "✓" if response.success else "✗"
             col = Colors.GREEN if response.success else Colors.RED
             print(f"  {col}{status}{Colors.RESET} {response.agent_name} {Colors.DIM}({response.model}){Colors.RESET}")
@@ -377,15 +417,58 @@ async def solve_command(problem: str, domains: list, provider: str, verbose: boo
     )
 
     print(f"\n{Colors.DIM}Starting Nova process...{Colors.RESET}")
-    try:
-        result = await process.solve(problem, domains)
-    except RateLimitExceeded as exc:
-        cooldown = int(exc.retry_after) + (1 if exc.retry_after % 1 else 0)
-        print(f"{Colors.RED}Rate limit exceeded. Please retry in {cooldown}s{Colors.RESET}")
-        return 1
+
+    if stream:
+        # Use streaming mode
+        try:
+            result = None
+            async for event in process.solve_streaming(problem, domains):
+                if event["type"] == "phase_change":
+                    print_phase(event["phase"])
+                elif event["type"] == "agent_response":
+                    # Print header and stream content
+                    print_agent_header(
+                        event["agent_name"],
+                        event["agent_type"],
+                        event["model"]
+                    )
+                    # The content arrives complete in current implementation
+                    # For true token streaming, we'd need to modify solve_streaming
+                    content = event.get("content", "")
+                    for line in content.split('\n'):
+                        print(f"{line}")
+                        if line != content.split('\n')[-1]:
+                            print("  ", end="")
+                    print()  # End the streamed content
+                elif event["type"] == "complete":
+                    result = type('SessionState', (), event["session"])()
+                    result.phase = ProcessPhase(event["session"]["phase"])
+                    result.session_id = event["session"]["session_id"]
+                    result.execution_time = event["session"]["execution_time"]
+                    result.analysis_results = event["session"]["analysis_results"]
+                    result.synthesis_result = None
+                    if event["session"].get("synthesis_result"):
+                        result.synthesis_result = type('AgentResponse', (), event["session"]["synthesis_result"])()
+
+            if result is None:
+                print(f"{Colors.RED}No result received from streaming{Colors.RESET}")
+                return 1
+
+        except RateLimitExceeded as exc:
+            cooldown = int(exc.retry_after) + (1 if exc.retry_after % 1 else 0)
+            print(f"{Colors.RED}Rate limit exceeded. Please retry in {cooldown}s{Colors.RESET}")
+            return 1
+    else:
+        # Non-streaming mode
+        try:
+            result = await process.solve(problem, domains)
+        except RateLimitExceeded as exc:
+            cooldown = int(exc.retry_after) + (1 if exc.retry_after % 1 else 0)
+            print(f"{Colors.RED}Rate limit exceeded. Please retry in {cooldown}s{Colors.RESET}")
+            return 1
 
     # Print final synthesis if not verbose (verbose already shows it)
-    if not verbose and result.synthesis_result:
+    if not verbose and not stream and result.synthesis_result:
         print(f"\n{Colors.GREEN}{'═' * 60}")
         print(f"  {Colors.BOLD}SYNTHESIS{Colors.RESET}")
         print(f"{Colors.GREEN}{'═' * 60}{Colors.RESET}")
@@ -411,14 +494,16 @@ async def interactive_mode():
     print(f"\n{Colors.CYAN}Interactive Mode{Colors.RESET}")
     print(f"{Colors.DIM}Type your problem and press Enter. Commands:")
     print("  /domains <list>  - Set domains (e.g., /domains tech,security)")
-    print("  /provider <name> - Set provider (claude, openai, mock)")
+    print("  /provider <name> - Set provider (claude, openai, gemini, mock)")
     print("  /verbose         - Toggle verbose output")
+    print("  /stream          - Toggle streaming output")
     print("  /help            - Show this help")
     print("  /quit            - Exit{Colors.RESET}\n")
 
     domains = ["technology", "business"]
     provider = "auto"
     verbose = True
+    stream = True  # Default to streaming in interactive mode
 
     while True:
         try:
@@ -445,26 +530,30 @@ async def interactive_mode():
                     else:
                         print(f"{Colors.DIM}Current domains: {', '.join(domains)}{Colors.RESET}")
                 elif cmd == "/provider":
-                    if arg in ["claude", "openai", "mock", "auto"]:
+                    if arg in ["claude", "openai", "gemini", "mock", "auto"]:
                         provider = arg
                         print(f"{Colors.DIM}Provider set to: {provider}{Colors.RESET}")
                     else:
-                        print(f"{Colors.RED}Invalid provider. Use: claude, openai, mock, auto{Colors.RESET}")
+                        print(f"{Colors.RED}Invalid provider. Use: claude, openai, gemini, mock, auto{Colors.RESET}")
                 elif cmd == "/verbose":
                     verbose = not verbose
                     print(f"{Colors.DIM}Verbose: {'on' if verbose else 'off'}{Colors.RESET}")
+                elif cmd == "/stream":
+                    stream = not stream
+                    print(f"{Colors.DIM}Streaming: {'on' if stream else 'off'}{Colors.RESET}")
                 elif cmd == "/help":
                     print(f"{Colors.DIM}Commands:")
                     print("  /domains <list>  - Set domains")
                     print("  /provider <name> - Set provider")
                     print("  /verbose         - Toggle verbose")
+                    print("  /stream          - Toggle streaming")
                     print(f"  /quit            - Exit{Colors.RESET}")
                 else:
                     print(f"{Colors.YELLOW}Unknown command: {cmd}{Colors.RESET}")
                 continue
 
             # Solve the problem
-            await solve_command(user_input, domains, provider, verbose)
+            await solve_command(user_input, domains, provider, verbose, stream)
             print()  # Extra newline after result
 
         except KeyboardInterrupt:
@@ -482,12 +571,14 @@ def main():
         epilog="""
 Examples:
   nova solve "How do we scale our API?" --domains tech,security
-  nova solve "What's our go-to-market strategy?" --domains business,ux
+  nova solve "What's our go-to-market strategy?" --domains business,ux --stream
+  nova solve "Explain quantum computing" --provider gemini --stream
   nova interactive
 
 Environment variables:
   ANTHROPIC_API_KEY - For Claude provider
   OPENAI_API_KEY    - For OpenAI provider
+  GEMINI_API_KEY    - For Gemini provider
         """
     )
 
@@ -503,7 +594,7 @@ Environment variables:
     )
     solve_parser.add_argument(
         "--provider", "-p",
-        choices=["claude", "openai", "mock", "auto"],
+        choices=["claude", "openai", "gemini", "mock", "auto"],
         default="auto",
         help="LLM provider (default: auto)"
     )
@@ -511,6 +602,11 @@ Environment variables:
         "--verbose", "-v",
         action="store_true",
         help="Show full agent responses"
+    )
+    solve_parser.add_argument(
+        "--stream", "-s",
+        action="store_true",
+        help="Stream responses in real-time as they are generated"
     )
 
     # Interactive command
@@ -567,7 +663,8 @@ Environment variables:
             args.problem,
             domains,
             args.provider,
-            args.verbose
+            args.verbose,
+            args.stream
         ))
     elif args.command == "interactive":
         return asyncio.run(interactive_mode())
