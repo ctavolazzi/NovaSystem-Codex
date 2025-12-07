@@ -5,6 +5,30 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.0] - 2025-12-06
+
+### Added
+- **Long-Term Memory:** Full RAG pipeline with zero-cost local embeddings (`memory.py`)
+  - `LocalVectorStore`: JSON-backed vector storage with atomic writes
+  - `SimpleEmbedder`: Hash-based 256-dim embeddings (no API calls)
+  - Cosine similarity search with configurable thresholds
+  - Tag-based filtering for organized retrieval
+- **CLI Memory Commands:**
+  - `nova remember "text" --tags tag1,tag2` — Store memories with metadata
+  - `nova recall "query" --limit 5` — Semantic search
+  - `nova memory list` — View all stored memories
+  - `nova memory stats` — Usage statistics and tag breakdown
+  - `nova memory clear` — Clear with confirmation
+
+### Changed
+- Updated `backend/core/__init__.py` to export memory components
+- README updated with memory usage examples and architecture docs
+
+### Technical Notes
+- Memory persists to `.nova_memory.json` (gitignored)
+- Embedder interface allows swapping to GeminiEmbedder later
+- Zero external dependencies for basic RAG functionality
+
 ## [v0.2.1] - 2025-12-06
 
 ### Security
