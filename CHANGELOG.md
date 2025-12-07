@@ -5,6 +5,28 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.2.1] - 2025-12-06
+
+### Security
+- **Race Condition Fix:** Atomic write + merge strategy for `TrafficController`
+  - Write to temp file, then `os.replace()` (prevents corruption on crash)
+  - Merge existing disk state with in-memory state (prevents data loss)
+- **Budget Circuit Breaker:** New `BudgetExceededError` exception
+  - `check_budget()` method validates spend before API calls
+  - Default limits: $2/hour, $10/day (configurable per instance)
+  - `budget_status()` returns current spend vs limits
+
+### Added
+- **Security Probe:** `security_probe.py` vulnerability scanner
+  - Tests corruption resilience, race conditions, SQL injection, PII leakage
+- **API Miner:** `mine_apis.py` stress test tool
+  - Embedded 35 API catalog across 5 categories
+  - Tests Traffic Control, Budget, and Ledger under load
+  - Supports `--dry-run`, `--provider`, `--categories` flags
+
+### Fixed
+- `UsageLedger.summary()` key access in CLI report
+
 ## [v0.2.0] - 2025-12-06
 
 ### Added
