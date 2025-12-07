@@ -1,7 +1,13 @@
 """
 Command Line Interface for NovaSystem.
 
-This module provides a CLI for interacting with the Nova Process.
+This module provides a comprehensive CLI for interacting with the Nova Process
+and all NovaSystem services.
+
+Consolidated from:
+- NovaSystem-Streamlined CLI
+- nova-mvp CLI (memory, usage tracking)
+- novasystem root CLI (utilities)
 """
 
 import argparse
@@ -10,6 +16,7 @@ import sys
 import json
 import logging
 import uuid
+import os
 from typing import List, Optional
 from pathlib import Path
 from dotenv import load_dotenv
@@ -26,32 +33,64 @@ from ..utils.model_cache import get_model_cache
 
 logger = logging.getLogger(__name__)
 
-# ANSI colors for terminal
+
+# =============================================================================
+# TERMINAL COLORS AND FORMATTING
+# =============================================================================
+
 class Colors:
+    """ANSI color codes for terminal output."""
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
     CYAN = '\033[96m'
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
     BOLD = '\033[1m'
+    DIM = '\033[2m'
     END = '\033[0m'
+
+
+def color(text: str, code: str) -> str:
+    """Apply color code to text."""
+    return f"{code}{text}{Colors.END}"
+
 
 def setup_logging(verbose: bool = False):
     """Setup logging configuration."""
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
 
+
 def print_banner():
-    """Print the NovaSystem banner."""
-    banner = """
-    ╔══════════════════════════════════════════════════════════════╗
-    ║                    🧠 NovaSystem v2.0                        ║
-    ║              Multi-Agent Problem-Solving Framework           ║
-    ╚══════════════════════════════════════════════════════════════╝
-    """
+    """Print the NovaSystem ASCII banner."""
+    banner = f"""
+{Colors.CYAN}╔══════════════════════════════════════════════════════════════╗
+║                                                                ║
+║   ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗                         ║
+║   ████╗  ██║██╔═══██╗██║   ██║██╔══██╗                        ║
+║   ██╔██╗ ██║██║   ██║██║   ██║███████║                        ║
+║   ██║╚██╗██║██║   ██║╚██╗ ██╔╝██╔══██║                        ║
+║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║                        ║
+║   ╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝                        ║
+║                                                                ║
+║   {Colors.GREEN}Multi-Agent Problem Solving System{Colors.CYAN}                v2.0  ║
+╚══════════════════════════════════════════════════════════════╝{Colors.END}
+"""
     print(banner)
+
+
+def print_mini_banner():
+    """Print a compact banner for quick commands."""
+    print(f"\n{Colors.BOLD}{Colors.CYAN}🧠 NovaSystem{Colors.END}\n")
+
+
+# =============================================================================
+# RESULT FORMATTING
+# =============================================================================
 
 def format_result(result: dict) -> str:
     """Format the Nova Process result for CLI display."""
@@ -59,275 +98,35 @@ def format_result(result: dict) -> str:
         return "No result available."
 
     formatted = []
-    formatted.append("🚀 Nova Process Results")
+    formatted.append(f"\n{Colors.BOLD}🚀 Nova Process Results{Colors.END}")
     formatted.append("=" * 50)
 
-    # Add final synthesis
     if "final_synthesis" in result:
-        formatted.append("\n📋 Final Synthesis:")
+        formatted.append(f"\n{Colors.GREEN}📋 Final Synthesis:{Colors.END}")
         formatted.append("-" * 20)
         formatted.append(result["final_synthesis"])
 
-    # Add final validation
     if "final_validation" in result:
-        formatted.append("\n✅ Final Validation:")
+        formatted.append(f"\n{Colors.YELLOW}✅ Final Validation:{Colors.END}")
         formatted.append("-" * 20)
         formatted.append(result["final_validation"])
 
-    # Add iteration summary
     if "total_iterations" in result:
-        formatted.append(f"\n📊 Process Summary:")
+        formatted.append(f"\n{Colors.CYAN}📊 Process Summary:{Colors.END}")
         formatted.append("-" * 20)
         formatted.append(f"Total Iterations: {result['total_iterations']}")
         formatted.append(f"Process Phase: {result.get('phase', 'Unknown')}")
 
     return "\n".join(formatted)
 
-async def run_nova_process(problem: str,
-                          domains: List[str],
-                          max_iterations: int,
-                          model: str,
-                          output_format: str,
-                          verbose: bool) -> dict:
-    """Run the Nova Process."""
-    try:
-        # Create Nova Process
-        memory_manager = MemoryManager()
-        nova_process = NovaProcess(
-            domains=domains,
-            model=model,
-            memory_manager=memory_manager
-        )
 
-        if verbose:
-            print(f"Starting Nova Process with domains: {', '.join(domains)}")
-            print(f"Using model: {model}")
-            print(f"Max iterations: {max_iterations}")
-            print()
-
-        # Generate session ID for metrics tracking
-        session_id = str(uuid.uuid4())
-
-        if verbose:
-            print(f"Session ID: {session_id}")
-            print()
-
-        # Run the process with streaming
-        print("🚀 Starting Nova Process...")
-        print(f"📋 Problem: {problem}")
-        print(f"🧠 Model: {model}")
-        print(f"🔄 Max Iterations: {max_iterations}")
-        print(f"🆔 Session ID: {session_id}")
-        print("\n" + "="*60)
-
-        result = await nova_process.solve_problem(
-            problem,
-            max_iterations=max_iterations,
-            stream=True,  # Enable streaming
-            session_id=session_id
-        )
-
-        # Handle streaming results
-        if hasattr(result, '__aiter__'):
-            print("🧠 NovaSystem is working on your problem...\n")
-            final_result = None
-
-            async for update in result:
-                if isinstance(update, dict):
-                    if 'iteration' in update:
-                        print(f"\n🔄 Iteration {update['iteration']}:")
-                        print("-" * 40)
-
-                    if 'agent' in update and 'response' in update:
-                        agent_name = update['agent']
-                        response = update['response']
-                        print(f"\n🤖 {agent_name}:")
-                        print(f"{response}\n")
-
-                    if 'final_synthesis' in update:
-                        print("\n" + "="*60)
-                        print("🎯 FINAL SYNTHESIS")
-                        print("="*60)
-                        print(update['final_synthesis'])
-                        final_result = update
-
-            return final_result or {}
-        else:
-            return result
-
-    except Exception as e:
-        logger.error(f"Error in Nova Process: {str(e)}")
-        raise
-
-def solve_command(args):
-    """Handle the solve command."""
-    print_banner()
-
-    # Parse domains
-    domains = [d.strip() for d in args.domains.split(",") if d.strip()]
-
-    # Run the process
-    try:
-        result = asyncio.run(run_nova_process(
-            problem=args.problem,
-            domains=domains,
-            max_iterations=args.max_iterations,
-            model=args.model,
-            output_format=args.output,
-            verbose=args.verbose
-        ))
-
-        # Output result
-        if args.output == "json":
-            print(json.dumps(result, indent=2))
-        else:
-            print(format_result(result))
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-        sys.exit(1)
-
-def interactive_command(args):
-    """Handle the interactive command."""
-    print_banner()
-    print("🧠 NovaSystem Interactive Mode")
-    print("Type 'quit' to exit, 'help' for commands")
-    print()
-
-    # Initialize Nova Process
-    memory_manager = MemoryManager()
-    nova_process = NovaProcess(
-        domains=args.domains.split(",") if args.domains else ["General"],
-        model=args.model,
-        memory_manager=memory_manager
-    )
-
-    while True:
-        try:
-            problem = input("Enter your problem: ").strip()
-
-            if problem.lower() in ['quit', 'exit', 'q']:
-                print("Goodbye! 👋")
-                break
-
-            if problem.lower() == 'help':
-                print("Commands:")
-                print("  help - Show this help")
-                print("  quit/exit/q - Exit the program")
-                print("  status - Show current process status")
-                print("  history - Show solution history")
-                continue
-
-            if problem.lower() == 'status':
-                status = nova_process.get_status()
-                print(f"Status: {json.dumps(status, indent=2)}")
-                continue
-
-            if problem.lower() == 'history':
-                history = nova_process.get_solution_history()
-                print(f"History: {json.dumps(history, indent=2)}")
-                continue
-
-            if not problem:
-                print("Please enter a problem statement.")
-                continue
-
-            print("\n🤔 Thinking...")
-            result = asyncio.run(nova_process.solve_problem(
-                problem,
-                max_iterations=args.max_iterations,
-                stream=False
-            ))
-
-            print("\n" + format_result(result))
-            print("\n" + "="*60 + "\n")
-
-        except KeyboardInterrupt:
-            print("\nGoodbye! 👋")
-            break
-        except Exception as e:
-            print(f"Error: {str(e)}")
-
-def list_models_command(args):
-    """Handle the list-models command."""
-    print_banner()
-
-    try:
-        # Create LLM service
-        llm_service = LLMService()
-
-        # Get available models
-        models = llm_service.get_available_models()
-
-        if not models:
-            print("❌ No models available")
-            print("\nTo use models:")
-            print("1. Set OPENAI_API_KEY for OpenAI models")
-            print("2. Install and run Ollama for local models")
-            print("3. Run 'ollama pull <model>' to download models")
-            return
-
-        print("🤖 Available Models:")
-        print("=" * 50)
-
-        for i, model in enumerate(models, 1):
-            clean_name = model.replace("ollama:", "")
-            caps = llm_service.get_model_capabilities(model)
-
-            print(f"\n{i}. {clean_name}")
-            print(f"   Type: {caps.get('type', 'unknown').upper()}")
-            print(f"   Description: {caps.get('description', 'No description')}")
-
-            if args.detailed:
-                print(f"   Capabilities:")
-                print(f"     Reasoning: {caps.get('reasoning', 0)}/100")
-                print(f"     Coding: {caps.get('coding', 0)}/100")
-                print(f"     Analysis: {caps.get('analysis', 0)}/100")
-                print(f"     Creativity: {caps.get('creativity', 0)}/100")
-                print(f"     Speed: {caps.get('speed', 0)}/100")
-                print(f"     Context: {caps.get('context_length', 0):,} tokens")
-
-        # Show best models for different tasks
-        print(f"\n🎯 Best Models for Different Tasks:")
-        print("-" * 40)
-
-        tasks = ["reasoning", "coding", "analysis", "creativity", "dce", "cae", "domain"]
-        for task in tasks:
-            best_model = llm_service.get_best_model_for_task(task, models)
-            clean_name = best_model.replace("ollama:", "")
-            print(f"  {task.upper():<12}: {clean_name}")
-
-        print(f"\n💡 Current default model: {llm_service.get_default_model().replace('ollama:', '')}")
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-def model_info_command(args):
-    """Handle the model-info command."""
-    print_banner()
-
-    try:
-        # Create LLM service
-        llm_service = LLMService()
-
-        # Add ollama: prefix if not present
-        model_name = args.model
-        if not model_name.startswith("ollama:") and not model_name.startswith("gpt") and not model_name.startswith("claude"):
-            model_name = f"ollama:{model_name}"
-
-        # Get model info
-        info = llm_service.get_model_info(model_name)
-        print(f"🔍 Model Information:")
-        print("=" * 50)
-        print(info)
-
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
+# =============================================================================
+# ASK COMMAND - Quick single question
+# =============================================================================
 
 def ask_command(args):
-    """Handle the ask command - quick single question."""
-    print(f"\n{Colors.BOLD}🧠 NovaSystem Quick Ask{Colors.END}\n")
+    """Handle the ask command - quick single question with streaming."""
+    print_mini_banner()
 
     try:
         llm_service = LLMService()
@@ -341,7 +140,7 @@ def ask_command(args):
                 print(f"{Colors.YELLOW}⚠️  Using {model} (requested model not available){Colors.END}")
             else:
                 print(f"{Colors.RED}❌ No models available{Colors.END}")
-                return
+                return 1
 
         messages = [
             {"role": "system", "content": args.system or "You are a helpful assistant. Be concise and direct."},
@@ -349,36 +148,38 @@ def ask_command(args):
         ]
 
         print(f"{Colors.CYAN}📤 Question:{Colors.END} {args.question}")
-        print(f"{Colors.CYAN}🤖 Model:{Colors.END} {model}\n")
+        print(f"{Colors.DIM}🤖 Model: {model}{Colors.END}\n")
 
         if args.stream:
             print(f"{Colors.GREEN}📥 Answer:{Colors.END} ", end="", flush=True)
-            response_text = []
 
             async def stream_response():
                 async for chunk in llm_service.stream_completion(messages, model=model):
                     print(chunk, end="", flush=True)
-                    response_text.append(chunk)
 
             asyncio.run(stream_response())
             print("\n")
         else:
-            print(f"{Colors.GREEN}📥 Answer:{Colors.END}")
             response = asyncio.run(llm_service.get_completion(messages, model=model))
-            print(response)
-            print()
+            print(f"{Colors.GREEN}📥 Answer:{Colors.END}\n{response}\n")
+
+        return 0
 
     except Exception as e:
         print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+        return 1
 
+
+# =============================================================================
+# CHAT COMMAND - Interactive streaming chat
+# =============================================================================
 
 def chat_command(args):
-    """Handle the chat command - interactive streaming chat."""
+    """Handle the chat command - interactive streaming conversation."""
     print_banner()
-    print(f"{Colors.BOLD}💬 NovaSystem Interactive Chat{Colors.END}")
-    print(f"Type 'quit' to exit, 'clear' to reset history")
-    print(f"Model: {args.model}")
-    print()
+    print(f"{Colors.BOLD}💬 Interactive Chat{Colors.END}")
+    print(f"{Colors.DIM}Type 'quit' to exit, 'clear' to reset, 'help' for commands{Colors.END}")
+    print(f"{Colors.DIM}Model: {args.model}{Colors.END}\n")
 
     try:
         llm_service = LLMService()
@@ -389,10 +190,10 @@ def chat_command(args):
             available = llm_service.get_available_models()
             if available:
                 model = available[0]
-                print(f"{Colors.YELLOW}⚠️  Using {model} (requested model not available){Colors.END}\n")
+                print(f"{Colors.YELLOW}⚠️  Using {model}{Colors.END}\n")
             else:
                 print(f"{Colors.RED}❌ No models available{Colors.END}")
-                return
+                return 1
 
         history = []
         system_msg = args.system or "You are a helpful AI assistant. Be conversational and helpful."
@@ -408,6 +209,13 @@ def chat_command(args):
                 if user_input.lower() == 'clear':
                     history = []
                     print(f"{Colors.YELLOW}✅ Chat history cleared{Colors.END}")
+                    continue
+
+                if user_input.lower() == 'help':
+                    print(f"{Colors.DIM}Commands:")
+                    print("  quit/exit/q - Exit chat")
+                    print("  clear - Clear history")
+                    print(f"  help - Show this help{Colors.END}")
                     continue
 
                 if not user_input:
@@ -443,14 +251,21 @@ def chat_command(args):
                 print(f"\n\n{Colors.BOLD}Goodbye! 👋{Colors.END}")
                 break
 
+        return 0
+
     except Exception as e:
         print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+        return 1
 
+
+# =============================================================================
+# EXPERTS COMMAND - Expert panel analysis
+# =============================================================================
 
 def experts_command(args):
-    """Handle the experts command - stream expert analysis."""
+    """Handle the experts command - run expert panel analysis."""
     print_banner()
-    print(f"{Colors.BOLD}🎭 NovaSystem Expert Panel{Colors.END}\n")
+    print(f"{Colors.BOLD}🎭 Expert Panel Analysis{Colors.END}\n")
 
     try:
         llm_service = LLMService()
@@ -464,7 +279,7 @@ def experts_command(args):
                 print(f"{Colors.YELLOW}⚠️  Using {model}{Colors.END}\n")
             else:
                 print(f"{Colors.RED}❌ No models available{Colors.END}")
-                return
+                return 1
 
         # Parse domains
         domains = [d.strip() for d in args.domains.split(",") if d.strip()]
@@ -484,7 +299,7 @@ def experts_command(args):
 
         accumulated_context = f"Problem: {args.problem}\n\n"
 
-        # Phase 1: DCE
+        # Phase 1: DCE Initial Analysis
         print(f"\n{Colors.CYAN}{Colors.BOLD}📋 Phase 1: DCE Initial Analysis{Colors.END}")
         print("-" * 40)
 
@@ -507,7 +322,7 @@ def experts_command(args):
             print(expert_response)
             accumulated_context += f"{expert.name}:\n{expert_response}\n\n"
 
-        # Phase 3: CAE
+        # Phase 3: CAE Critical Analysis
         print(f"\n{Colors.YELLOW}{Colors.BOLD}⚠️ Phase 3: CAE Critical Analysis{Colors.END}")
         print("-" * 40)
 
@@ -531,8 +346,340 @@ def experts_command(args):
         print("\n" + "="*60)
         print(f"{Colors.BOLD}✅ Expert Panel Complete!{Colors.END}\n")
 
+        return 0
+
     except Exception as e:
         print(f"{Colors.RED}❌ Error: {str(e)}{Colors.END}")
+        return 1
+
+
+# =============================================================================
+# SOLVE COMMAND - Full Nova Process
+# =============================================================================
+
+async def run_nova_process(problem: str, domains: List[str], max_iterations: int,
+                           model: str, output_format: str, verbose: bool) -> dict:
+    """Run the Nova Process."""
+    try:
+        memory_manager = MemoryManager()
+        llm_service = LLMService()
+
+        nova_process = NovaProcess(
+            domains=domains,
+            model=model,
+            memory_manager=memory_manager,
+            llm_service=llm_service
+        )
+
+        session_id = str(uuid.uuid4())
+
+        if verbose:
+            print(f"{Colors.DIM}Session: {session_id}")
+            print(f"Domains: {', '.join(domains)}")
+            print(f"Model: {model}")
+            print(f"Max iterations: {max_iterations}{Colors.END}")
+            print()
+
+        print(f"{Colors.BOLD}🚀 Starting Nova Process...{Colors.END}")
+        print(f"📋 Problem: {problem[:100]}{'...' if len(problem) > 100 else ''}")
+        print("\n" + "="*60)
+
+        result = await nova_process.solve_problem(
+            problem,
+            max_iterations=max_iterations,
+            stream=verbose,
+            session_id=session_id
+        )
+
+        # Handle streaming results
+        if hasattr(result, '__aiter__'):
+            final_result = None
+
+            async for update in result:
+                if isinstance(update, dict):
+                    if 'iteration' in update:
+                        print(f"\n{Colors.CYAN}🔄 Iteration {update['iteration']}{Colors.END}")
+                        print("-" * 40)
+
+                    if 'agent' in update and 'response' in update:
+                        agent_name = update['agent']
+                        response = update['response']
+                        print(f"\n{Colors.GREEN}🤖 {agent_name}:{Colors.END}")
+                        print(f"{response}\n")
+
+                    if 'final_synthesis' in update:
+                        print("\n" + "="*60)
+                        print(f"{Colors.BOLD}🎯 FINAL SYNTHESIS{Colors.END}")
+                        print("="*60)
+                        print(update['final_synthesis'])
+                        final_result = update
+
+            return final_result or {}
+        else:
+            return result
+
+    except Exception as e:
+        logger.error(f"Error in Nova Process: {str(e)}")
+        raise
+
+
+def solve_command(args):
+    """Handle the solve command - full Nova Process."""
+    print_banner()
+
+    domains = [d.strip() for d in args.domains.split(",") if d.strip()]
+
+    try:
+        result = asyncio.run(run_nova_process(
+            problem=args.problem,
+            domains=domains,
+            max_iterations=args.max_iterations,
+            model=args.model,
+            output_format=args.output,
+            verbose=args.verbose
+        ))
+
+        if args.output == "json":
+            print(json.dumps(result, indent=2))
+        else:
+            print(format_result(result))
+
+        return 0
+
+    except Exception as e:
+        print(f"{Colors.RED}Error: {str(e)}{Colors.END}")
+        return 1
+
+
+# =============================================================================
+# INTERACTIVE MODE
+# =============================================================================
+
+def interactive_command(args):
+    """Handle the interactive command."""
+    print_banner()
+    print(f"{Colors.BOLD}🧠 Interactive Mode{Colors.END}")
+    print(f"{Colors.DIM}Type 'quit' to exit, 'help' for commands{Colors.END}")
+    print()
+
+    memory_manager = MemoryManager()
+    llm_service = LLMService()
+
+    nova_process = NovaProcess(
+        domains=args.domains.split(",") if args.domains else ["General"],
+        model=args.model,
+        memory_manager=memory_manager,
+        llm_service=llm_service
+    )
+
+    while True:
+        try:
+            problem = input(f"{Colors.GREEN}nova>{Colors.END} ").strip()
+
+            if problem.lower() in ['quit', 'exit', 'q']:
+                print(f"{Colors.BOLD}Goodbye! 👋{Colors.END}")
+                break
+
+            if problem.lower() == 'help':
+                print(f"{Colors.DIM}Commands:")
+                print("  help - Show this help")
+                print("  quit/exit/q - Exit")
+                print("  status - Process status")
+                print(f"  history - Solution history{Colors.END}")
+                continue
+
+            if problem.lower() == 'status':
+                status = nova_process.get_status()
+                print(json.dumps(status, indent=2))
+                continue
+
+            if problem.lower() == 'history':
+                history = nova_process.get_solution_history()
+                print(json.dumps(history, indent=2))
+                continue
+
+            if not problem:
+                continue
+
+            print(f"\n{Colors.DIM}🤔 Thinking...{Colors.END}")
+            result = asyncio.run(nova_process.solve_problem(
+                problem,
+                max_iterations=args.max_iterations,
+                stream=False
+            ))
+
+            print(format_result(result))
+            print("\n" + "="*60 + "\n")
+
+        except KeyboardInterrupt:
+            print(f"\n{Colors.BOLD}Goodbye! 👋{Colors.END}")
+            break
+        except Exception as e:
+            print(f"{Colors.RED}Error: {str(e)}{Colors.END}")
+
+    return 0
+
+
+# =============================================================================
+# MODEL COMMANDS
+# =============================================================================
+
+def list_models_command(args):
+    """Handle the list-models command."""
+    print_mini_banner()
+
+    try:
+        llm_service = LLMService()
+        models = llm_service.get_available_models()
+
+        if not models:
+            print(f"{Colors.RED}❌ No models available{Colors.END}")
+            print(f"\n{Colors.DIM}To use models:")
+            print("1. Set GEMINI_API_KEY for Gemini models")
+            print("2. Set OPENAI_API_KEY for OpenAI models")
+            print("3. Set ANTHROPIC_API_KEY for Claude models")
+            print(f"4. Run 'ollama serve' for local models{Colors.END}")
+            return 1
+
+        print(f"{Colors.BOLD}🤖 Available Models ({len(models)}){Colors.END}")
+        print("=" * 50)
+
+        for i, model in enumerate(models, 1):
+            clean_name = model.replace("ollama:", "")
+            caps = llm_service.get_model_capabilities(model)
+
+            print(f"\n{i}. {Colors.CYAN}{clean_name}{Colors.END}")
+            print(f"   Type: {caps.get('type', 'unknown').upper()}")
+            print(f"   {Colors.DIM}{caps.get('description', 'No description')}{Colors.END}")
+
+            if args.detailed:
+                print(f"   Capabilities:")
+                print(f"     Reasoning: {caps.get('reasoning', 0)}/100")
+                print(f"     Coding: {caps.get('coding', 0)}/100")
+                print(f"     Speed: {caps.get('speed', 0)}/100")
+                print(f"     Context: {caps.get('context_length', 0):,} tokens")
+
+        print(f"\n{Colors.GREEN}💡 Default: {llm_service.get_default_model()}{Colors.END}")
+
+        return 0
+
+    except Exception as e:
+        print(f"{Colors.RED}Error: {str(e)}{Colors.END}")
+        return 1
+
+
+def model_info_command(args):
+    """Handle the model-info command."""
+    print_mini_banner()
+
+    try:
+        llm_service = LLMService()
+        model_name = args.model
+
+        if not model_name.startswith(("ollama:", "gpt", "claude", "gemini")):
+            model_name = f"ollama:{model_name}"
+
+        info = llm_service.get_model_info(model_name)
+        print(f"{Colors.BOLD}🔍 Model Information{Colors.END}")
+        print("=" * 50)
+        print(info)
+
+        return 0
+
+    except Exception as e:
+        print(f"{Colors.RED}Error: {str(e)}{Colors.END}")
+        return 1
+
+
+# =============================================================================
+# METRICS AND CACHE COMMANDS
+# =============================================================================
+
+def metrics_command(args):
+    """Display performance metrics."""
+    print_mini_banner()
+    print(f"{Colors.BOLD}📊 Performance Metrics{Colors.END}")
+    print("=" * 50)
+
+    metrics_collector = get_metrics_collector()
+
+    if args.session_id:
+        session_metrics = metrics_collector.get_session_summary(args.session_id)
+        if not session_metrics:
+            print(f"{Colors.YELLOW}No metrics found for session: {args.session_id}{Colors.END}")
+            return 1
+
+        print(f"Session: {session_metrics['session_id']}")
+        print(f"Total Time: {session_metrics['total_time']:.2f}s")
+        print(f"Tokens Generated: {session_metrics['total_tokens_generated']}")
+        print(f"Models Used: {', '.join(session_metrics['models_used'])}")
+    else:
+        summary = metrics_collector.get_performance_summary()
+
+        if 'message' in summary:
+            print(f"{Colors.DIM}{summary['message']}{Colors.END}")
+            return 0
+
+        print(f"Total Sessions: {summary['total_sessions']}")
+        print(f"Avg Total Time: {summary['average_total_time']:.2f}s")
+        print(f"Avg LLM Response: {summary['average_llm_response_time']:.2f}s")
+
+        print(f"\n{Colors.CYAN}Model Usage:{Colors.END}")
+        for model, count in summary['model_usage'].items():
+            print(f"  {model}: {count} sessions")
+
+    return 0
+
+
+def cache_command(args):
+    """Manage model cache."""
+    cache = get_model_cache()
+
+    if args.action == 'status':
+        print_mini_banner()
+        print(f"{Colors.BOLD}🗄️  Cache Status{Colors.END}")
+        print("=" * 50)
+
+        stats = cache.get_cache_stats()
+        print(f"Cache Size: {stats['cache_size']}/{stats['max_cache_size']}")
+        print(f"Memory: {stats['total_memory_mb']:.1f}MB / {stats['max_memory_mb']:.1f}MB")
+        print(f"Hit Rate: {stats['hit_rate_percent']:.1f}%")
+
+        if stats['cached_models']:
+            print(f"\n{Colors.CYAN}Cached Models:{Colors.END}")
+            for model in stats['cached_models']:
+                status = "✅" if model['is_loaded'] else "⏸️"
+                print(f"  {status} {model['model_name']} ({model['model_type']})")
+
+    elif args.action == 'clear':
+        cache.clear_cache()
+        print(f"{Colors.GREEN}✅ Cache cleared{Colors.END}")
+
+    return 0
+
+
+# =============================================================================
+# VERSION COMMAND
+# =============================================================================
+
+def version_command(args):
+    """Show version information."""
+    print(f"""
+{Colors.BOLD}NovaSystem v2.0{Colors.END}
+Multi-Agent Problem Solving Framework
+
+{Colors.DIM}Components:
+  • Core: DCE, CAE, Domain Experts
+  • LLM: Gemini, OpenAI, Anthropic, Ollama
+  • Services: Image, Vision, Document, Thinking, Tools
+  • Interfaces: CLI, Gradio UI, REST API{Colors.END}
+""")
+    return 0
+
+
+# =============================================================================
+# ARGUMENT PARSER
+# =============================================================================
 
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser."""
@@ -541,277 +688,131 @@ def create_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Quick question (streaming)
-  python -m novasystem ask "What is the best way to learn Python?"
+  # Quick question with streaming
+  python -m novasystem ask "What is machine learning?"
 
   # Interactive chat
-  python -m novasystem chat --model gemini-2.5-flash
+  python -m novasystem chat
 
   # Expert panel analysis
-  python -m novasystem experts "Design a scalable API" --domains "Backend,Security"
+  python -m novasystem experts "Design a REST API" --domains "Backend,Security"
 
   # Full Nova Process
-  python -m novasystem solve "How can we improve code reviews?" --domains "Engineering,Process"
+  python -m novasystem solve "How to scale our system?" --domains "Cloud,DevOps"
 
   # List available models
   python -m novasystem list-models --detailed
 
-  # Interactive mode
+  # Interactive problem-solving mode
   python -m novasystem interactive
         """
     )
 
-    # Global options
-    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
-    parser.add_argument('--version', action='version', version='NovaSystem 2.0.0')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Verbose output')
+    parser.add_argument('--version', action='store_true', help='Show version')
 
-    # Subcommands
-    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Ask command
+    ask_parser = subparsers.add_parser('ask', help='Quick question')
+    ask_parser.add_argument('question', help='Question to ask')
+    ask_parser.add_argument('--model', '-m', default='gemini-2.5-flash', help='Model')
+    ask_parser.add_argument('--system', '-s', help='System instruction')
+    ask_parser.add_argument('--stream', action='store_true', default=True)
+    ask_parser.add_argument('--no-stream', dest='stream', action='store_false')
+
+    # Chat command
+    chat_parser = subparsers.add_parser('chat', help='Interactive chat')
+    chat_parser.add_argument('--model', '-m', default='gemini-2.5-flash', help='Model')
+    chat_parser.add_argument('--system', '-s', help='System instruction')
+
+    # Experts command
+    experts_parser = subparsers.add_parser('experts', help='Expert panel')
+    experts_parser.add_argument('problem', help='Problem to analyze')
+    experts_parser.add_argument('--domains', '-d', default='Software,Design', help='Domains')
+    experts_parser.add_argument('--model', '-m', default='gemini-2.5-flash', help='Model')
 
     # Solve command
-    solve_parser = subparsers.add_parser('solve', help='Solve a problem using Nova Process')
-    solve_parser.add_argument('problem', help='Problem statement to solve')
-    solve_parser.add_argument('--domains', '-d', default='General,Technology,Business',
-                            help='Comma-separated list of expert domains (default: General,Technology,Business)')
-    solve_parser.add_argument('--max-iterations', '-i', type=int, default=3,
-                            help='Maximum number of iterations (default: 3)')
-    solve_parser.add_argument('--model', '-m', default='gpt-4o',
-                            help='AI model to use (default: gpt-4o)')
-    solve_parser.add_argument('--output', '-o', choices=['text', 'json'], default='text',
-                            help='Output format (default: text)')
-    solve_parser.add_argument('--verbose', '-v', action='store_true',
-                            help='Enable verbose output with streaming')
+    solve_parser = subparsers.add_parser('solve', help='Full Nova Process')
+    solve_parser.add_argument('problem', help='Problem to solve')
+    solve_parser.add_argument('--domains', '-d', default='General,Technology', help='Domains')
+    solve_parser.add_argument('--max-iterations', '-i', type=int, default=3, help='Max iterations')
+    solve_parser.add_argument('--model', '-m', default='gemini-2.5-flash', help='Model')
+    solve_parser.add_argument('--output', '-o', choices=['text', 'json'], default='text')
+    solve_parser.add_argument('--verbose', '-v', action='store_true')
 
     # Interactive command
-    interactive_parser = subparsers.add_parser('interactive', help='Start interactive mode')
-    interactive_parser.add_argument('--domains', '-d', default='General',
-                                  help='Comma-separated list of expert domains (default: General)')
-    interactive_parser.add_argument('--max-iterations', '-i', type=int, default=3,
-                                  help='Maximum number of iterations (default: 3)')
-    interactive_parser.add_argument('--model', '-m', default='gpt-4',
-                                  help='AI model to use (default: gpt-4)')
+    interactive_parser = subparsers.add_parser('interactive', help='Interactive mode')
+    interactive_parser.add_argument('--domains', '-d', default='General', help='Domains')
+    interactive_parser.add_argument('--max-iterations', '-i', type=int, default=3)
+    interactive_parser.add_argument('--model', '-m', default='gemini-2.5-flash', help='Model')
 
     # List models command
-    list_models_parser = subparsers.add_parser('list-models', help='List available models and their capabilities')
-    list_models_parser.add_argument('--detailed', '-d', action='store_true',
-                                   help='Show detailed capability scores')
+    list_parser = subparsers.add_parser('list-models', help='List models')
+    list_parser.add_argument('--detailed', '-d', action='store_true')
 
     # Model info command
-    model_info_parser = subparsers.add_parser('model-info', help='Get detailed information about a specific model')
-    model_info_parser.add_argument('model', help='Model name to get info for')
-
-    # Ask command - quick single question
-    ask_parser = subparsers.add_parser('ask', help='Quick single question (no full Nova Process)')
-    ask_parser.add_argument('question', help='Question to ask')
-    ask_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
-                           help='AI model to use (default: gemini-2.5-flash)')
-    ask_parser.add_argument('--system', '-s', help='Custom system instruction')
-    ask_parser.add_argument('--stream', action='store_true', default=True,
-                           help='Stream the response (default: True)')
-    ask_parser.add_argument('--no-stream', dest='stream', action='store_false',
-                           help='Disable streaming')
-
-    # Chat command - interactive streaming chat
-    chat_parser = subparsers.add_parser('chat', help='Interactive streaming chat')
-    chat_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
-                            help='AI model to use (default: gemini-2.5-flash)')
-    chat_parser.add_argument('--system', '-s', help='Custom system instruction')
-
-    # Experts command - expert panel analysis
-    experts_parser = subparsers.add_parser('experts', help='Run expert panel analysis')
-    experts_parser.add_argument('problem', help='Problem to analyze')
-    experts_parser.add_argument('--domains', '-d', default='Software Engineering,System Design',
-                               help='Comma-separated expert domains')
-    experts_parser.add_argument('--model', '-m', default='gemini-2.5-flash',
-                               help='AI model to use (default: gemini-2.5-flash)')
+    info_parser = subparsers.add_parser('model-info', help='Model info')
+    info_parser.add_argument('model', help='Model name')
 
     # Metrics command
-    metrics_parser = subparsers.add_parser('metrics', help='Display performance metrics')
-    metrics_parser.add_argument('--session-id', '-s', help='Show metrics for specific session ID')
-    metrics_parser.add_argument('--detailed', '-d', action='store_true', help='Show detailed metrics')
-    metrics_parser.add_argument('--system', action='store_true', help='Include system metrics')
+    metrics_parser = subparsers.add_parser('metrics', help='Performance metrics')
+    metrics_parser.add_argument('--session-id', '-s', help='Session ID')
+    metrics_parser.add_argument('--detailed', '-d', action='store_true')
 
     # Cache command
-    cache_parser = subparsers.add_parser('cache', help='Manage model cache')
-    cache_parser.add_argument('action', choices=['status', 'clear', 'preload', 'recommend'],
-                             help='Cache action to perform')
-    cache_parser.add_argument('--model', '-m', help='Model name (for preload action)')
-    cache_parser.add_argument('--model-type', '-t', choices=['ollama', 'openai'],
-                             default='ollama', help='Model type (for preload action)')
-    cache_parser.add_argument('--task-type', help='Task type for recommendations (reasoning, coding, analysis, etc.)')
+    cache_parser = subparsers.add_parser('cache', help='Cache management')
+    cache_parser.add_argument('action', choices=['status', 'clear'], help='Action')
 
     return parser
 
-def metrics_command(args):
-    """Display performance metrics."""
-    print("📊 NovaSystem Performance Metrics")
-    print("=" * 50)
 
-    metrics_collector = get_metrics_collector()
-
-    if args.session_id:
-        # Show specific session metrics
-        session_metrics = metrics_collector.get_session_summary(args.session_id)
-        if not session_metrics:
-            print(f"❌ No metrics found for session: {args.session_id}")
-            return
-
-        print(f"Session ID: {session_metrics['session_id']}")
-        print(f"Total Sessions: {session_metrics['total_sessions']}")
-        print(f"Total Time: {session_metrics['total_time']:.2f}s")
-        print(f"Average LLM Response Time: {session_metrics['average_llm_response_time']:.2f}s")
-        print(f"Total Tokens Generated: {session_metrics['total_tokens_generated']}")
-        print(f"Total Iterations: {session_metrics['total_iterations']}")
-        print(f"Models Used: {', '.join(session_metrics['models_used'])}")
-
-        if args.detailed and session_metrics['last_session']:
-            print("\n📋 Last Session Details:")
-            last_session = session_metrics['last_session']
-            print(f"  Total Time: {last_session['timing']['total_time']:.2f}s")
-            print(f"  LLM Response Time: {last_session['timing']['llm_response_time']:.2f}s")
-            print(f"  Peak Memory: {last_session['memory']['peak_memory_mb']:.2f}MB")
-            print(f"  Model: {last_session['model']['model_used']}")
-            print(f"  Tokens Generated: {last_session['model']['tokens_generated']}")
-            print(f"  Iterations: {last_session['process']['iterations_completed']}")
-
-    else:
-        # Show overall performance summary
-        summary = metrics_collector.get_performance_summary()
-
-        if 'message' in summary:
-            print(f"ℹ️  {summary['message']}")
-            return
-
-        print(f"Total Sessions: {summary['total_sessions']}")
-        print(f"Recent Sessions: {summary['recent_sessions']}")
-        print(f"Average Total Time: {summary['average_total_time']:.2f}s")
-        print(f"Average LLM Response Time: {summary['average_llm_response_time']:.2f}s")
-        print(f"Average Peak Memory: {summary['average_peak_memory_mb']:.2f}MB")
-
-        print("\n🤖 Model Usage:")
-        for model, count in summary['model_usage'].items():
-            print(f"  {model}: {count} sessions")
-
-        if args.system:
-            print("\n💻 System Metrics:")
-            system_metrics = summary['system_metrics']
-            if system_metrics['cpu_percent']:
-                avg_cpu = sum(system_metrics['cpu_percent']) / len(system_metrics['cpu_percent'])
-                print(f"  Average CPU: {avg_cpu:.1f}%")
-            if system_metrics['memory_percent']:
-                avg_memory = sum(system_metrics['memory_percent']) / len(system_metrics['memory_percent'])
-                print(f"  Average Memory: {avg_memory:.1f}%")
-
-    print()
-
-def cache_command(args):
-    """Manage model cache."""
-    cache = get_model_cache()
-
-    if args.action == 'status':
-        print("🗄️  Model Cache Status")
-        print("=" * 50)
-
-        stats = cache.get_cache_stats()
-        print(f"Cache Size: {stats['cache_size']}/{stats['max_cache_size']}")
-        print(f"Loaded Models: {stats['loaded_models']}")
-        print(f"Memory Usage: {stats['total_memory_mb']:.1f}MB / {stats['max_memory_mb']:.1f}MB")
-        print(f"Hit Rate: {stats['hit_rate_percent']:.1f}%")
-        print(f"Cache Hits: {stats['cache_hits']}")
-        print(f"Cache Misses: {stats['cache_misses']}")
-        print(f"Models Loaded: {stats['models_loaded']}")
-        print(f"Average Load Time: {stats['average_load_time']:.2f}s")
-
-        if stats['cached_models']:
-            print("\n📋 Cached Models:")
-            for model in stats['cached_models']:
-                status = "✅ Loaded" if model['is_loaded'] else "⏸️  Unloaded"
-                print(f"  {model['model_name']} ({model['model_type']}) - {status}")
-                print(f"    Last Used: {model['last_used']}")
-                print(f"    Access Count: {model['access_count']}")
-                print(f"    Memory: {model['memory_usage_mb']:.1f}MB")
-                print()
-
-    elif args.action == 'clear':
-        print("🗑️  Clearing model cache...")
-        cache.clear_cache()
-        print("✅ Cache cleared successfully")
-
-    elif args.action == 'preload':
-        if not args.model:
-            print("❌ Model name required for preload action")
-            return
-
-        print(f"🔄 Preloading model: {args.model}")
-        try:
-            success = asyncio.run(cache.preload_model(args.model, args.model_type or "ollama"))
-            if success:
-                print(f"✅ Model {args.model} preloaded successfully")
-            else:
-                print(f"❌ Failed to preload model {args.model}")
-        except Exception as e:
-            print(f"❌ Error preloading model: {e}")
-
-    elif args.action == 'recommend':
-        print("💡 Recommended Models")
-        print("=" * 50)
-
-        task_type = args.task_type or "general"
-        recommended = cache.get_recommended_models(task_type)
-
-        if recommended:
-            print(f"For {task_type} tasks:")
-            for i, model in enumerate(recommended, 1):
-                print(f"  {i}. {model}")
-        else:
-            print("No recommendations available yet. Run some tasks to build cache history.")
-
-    else:
-        print("❌ Unknown cache action. Use: status, clear, preload, or recommend")
+# =============================================================================
+# MAIN ENTRY POINT
+# =============================================================================
 
 def main(args: Optional[List[str]] = None) -> int:
     """Main entry point for the CLI."""
     parser = create_parser()
     parsed_args = parser.parse_args(args)
 
-    # Setup logging
     setup_logging(parsed_args.verbose)
+
+    if parsed_args.version:
+        return version_command(parsed_args)
 
     if not parsed_args.command:
         parser.print_help()
         return 0
 
+    commands = {
+        'ask': ask_command,
+        'chat': chat_command,
+        'experts': experts_command,
+        'solve': solve_command,
+        'interactive': interactive_command,
+        'list-models': list_models_command,
+        'model-info': model_info_command,
+        'metrics': metrics_command,
+        'cache': cache_command,
+    }
+
     try:
-        if parsed_args.command == 'solve':
-            solve_command(parsed_args)
-        elif parsed_args.command == 'interactive':
-            interactive_command(parsed_args)
-        elif parsed_args.command == 'list-models':
-            list_models_command(parsed_args)
-        elif parsed_args.command == 'model-info':
-            model_info_command(parsed_args)
-        elif parsed_args.command == 'ask':
-            ask_command(parsed_args)
-        elif parsed_args.command == 'chat':
-            chat_command(parsed_args)
-        elif parsed_args.command == 'experts':
-            experts_command(parsed_args)
-        elif parsed_args.command == 'metrics':
-            metrics_command(parsed_args)
-        elif parsed_args.command == 'cache':
-            cache_command(parsed_args)
+        handler = commands.get(parsed_args.command)
+        if handler:
+            return handler(parsed_args)
         else:
             parser.print_help()
             return 1
 
     except KeyboardInterrupt:
-        print("\nOperation cancelled by user.")
+        print(f"\n{Colors.DIM}Cancelled.{Colors.END}")
         return 1
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        logger.error(f"Error: {str(e)}")
+        print(f"{Colors.RED}Error: {str(e)}{Colors.END}")
         return 1
 
-    return 0
 
 if __name__ == '__main__':
     sys.exit(main())
