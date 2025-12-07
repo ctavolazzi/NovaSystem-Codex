@@ -24,8 +24,8 @@ from .events import (
     PolicyViolation,
     PolicyOverride,
 )
-from .state_machine import RunState, RunStateMachine
-from .models import Run, CommandLog, Documentation
+from .state_machine import RunStateMachine
+from .models import Run, CommandLog, Documentation, RunStatus
 
 __all__ = [
     # Event Bus
@@ -48,8 +48,8 @@ __all__ = [
     "PolicyViolation",
     "PolicyOverride",
     # State Machine
-    "RunState",
     "RunStateMachine",
+    "RunStatus",
     # Models
     "Run",
     "CommandLog",
