@@ -4,27 +4,110 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "novasystem"
-version = "0.1.1"
-description = "NovaSystem - A system for managing GitHub repositories, Docker, and documentation"
+version = "0.3.0"
+description = "NovaSystem - Unified Multi-Agent Problem-Solving Framework with CLI-first API"
 readme = "README.md"
 authors = [
     {name = "NovaSystem Team"}
 ]
 requires-python = ">=3.8"
+license = {text = "GPL-3.0"}
+keywords = ["ai", "multi-agent", "problem-solving", "cli", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
 dependencies = [
+    # Core
+    "pydantic>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "tqdm>=4.65.0",
+    "requests>=2.31.0",
+    "httpx>=0.25.0",
+
+    # LLM Providers
+    "anthropic>=0.18.0",
+    "openai>=1.0.0",
+    "ollama>=0.1.0",
+
+    # CLI & Terminal
+    "rich>=13.0.0",
+    "typer>=0.9.0",
+
+    # API (optional but included)
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "websockets>=11.0.0",
+
+    # UI (optional but included)
+    "gradio>=4.0.0",
+    "flask>=2.3.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.6",
+
+    # Database
+    "sqlalchemy>=2.0.0",
+    "alembic>=1.12.0",
+
+    # Tools (Docker, Git)
+    "docker>=6.0.0",
+    "gitpython>=3.1.0",
+
+    # Testing
     "pytest>=7.0.0",
-    "gitpython",
-    "docker",
-    "tqdm",
-    "requests",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0.0",
+    "isort>=5.12.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
 ]
 
 [project.scripts]
 novasystem = "novasystem.cli:main"
+nova = "novasystem.cli:main"
+novasystem-web = "novasystem.ui.web:main"
+novasystem-gradio = "novasystem.ui.gradio:main"
+
+[project.urls]
+Homepage = "https://github.com/ctavolazzi/NovaSystem"
+Documentation = "https://github.com/ctavolazzi/NovaSystem#readme"
+Repository = "https://github.com/ctavolazzi/NovaSystem"
+Issues = "https://github.com/ctavolazzi/NovaSystem/issues"
 
 [tool.setuptools]
 packages = ["novasystem"]
 
+[tool.setuptools.package-data]
+novasystem = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+asyncio_mode = "auto"
+
+[tool.black]
+line-length = 88
+target-version = ['py38']
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
