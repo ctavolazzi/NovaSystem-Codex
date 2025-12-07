@@ -37,7 +37,7 @@ class TestCLIStartup:
         )
         assert result.returncode == 0
         # Should contain version number pattern
-        assert "." in result.stdout  # Version like "2.0.0"
+        assert "." in result.stdout  # Version like "0.3.1"
 
     def test_cli_has_ask_command(self):
         """Test that 'ask' command is available."""

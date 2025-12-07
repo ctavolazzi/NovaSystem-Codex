@@ -150,8 +150,8 @@ class SystemValidator:
             print_success("CLI help command executed successfully")
             self.tests_passed += 1
 
-            # Check for expected commands in output (v2.0 CLI commands)
-            # The CLI was redesigned in v2.0 to focus on problem-solving
+            # Check for expected commands in output (v0.3.1 CLI commands)
+            # The CLI was redesigned to focus on problem-solving
             expected_commands = ['ask', 'chat', 'solve', 'status']
 
             for cmd in expected_commands:

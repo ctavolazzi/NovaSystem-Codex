@@ -57,7 +57,7 @@ load_dotenv()
 # =============================================================================
 
 APP_NAME = "novasystem"
-APP_VERSION = "2.0.0"
+APP_VERSION = "0.3.1"
 CONFIG_DIR = Path.home() / ".novasystem"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 HISTORY_FILE = CONFIG_DIR / "history.json"
@@ -198,7 +198,7 @@ def print_banner():
 ║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║                        ║
 ║   ╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝                        ║
 ║                                                                ║
-║   [green]Multi-Agent Problem Solving System[/green]                v2.0  ║
+║   [green]Multi-Agent Problem Solving System[/green]              v0.3.1  ║
 ╚══════════════════════════════════════════════════════════════╝[/cyan]
 """
     console.print(banner)

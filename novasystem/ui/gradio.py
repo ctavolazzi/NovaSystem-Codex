@@ -694,7 +694,7 @@ Performance Metrics:
         with gr.Tab("⚙️ System Info"):
             gr.Markdown("### 🔧 System Information")
             gr.Markdown(f"""
-            - **Version**: NovaSystem v2.0
+            - **Version**: NovaSystem v0.3.1
             - **Interface**: Advanced Gradio Interface
             - **Features**: Multi-agent AI, Session Management, Performance Tracking
             - **Supported Models**: OpenAI, Anthropic, Ollama
