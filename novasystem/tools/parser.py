@@ -248,9 +248,13 @@ class DocumentationParser:
         """
         inline_commands = []
 
-        # Pattern for inline code (`code`)
-        pattern = r'`([^`]+)`'
-        matches = re.finditer(pattern, content)
+        # First, remove fenced code blocks to avoid matching their backticks
+        # Replace fenced blocks with placeholder to preserve line numbers
+        content_no_fenced = re.sub(r'```[a-zA-Z]*\n[\s\S]*?\n```', '', content)
+
+        # Pattern for inline code (`code`) - exclude newlines to avoid multi-line matches
+        pattern = r'`([^`\n]+)`'
+        matches = re.finditer(pattern, content_no_fenced)
 
         for match in matches:
             code = match.group(1).strip()

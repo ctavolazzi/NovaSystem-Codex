@@ -84,10 +84,10 @@ class DockerExecutor:
     def __init__(
         self,
         image_name: str = "novasystem-base:latest",
-        timeout: int = 300,
+        timeout: int = 600,
         memory_limit: str = "1g",
         cpu_limit: float = 1.0,
-        network_mode: str = "none",
+        network_mode: str = "bridge",
         test_mode: bool = False,
     ):
         """
@@ -95,10 +95,10 @@ class DockerExecutor:
 
         Args:
             image_name: Docker image to use for containers.
-            timeout: Timeout for command execution (in seconds).
+            timeout: Timeout for command execution (in seconds). Default: 600 (10 minutes).
             memory_limit: Memory limit for containers.
             cpu_limit: CPU limit for containers.
-            network_mode: Network mode for containers (none, bridge, host).
+            network_mode: Network mode for containers (bridge, none, host). Default: bridge (required for pip/npm installs).
             test_mode: Run in test mode (no actual Docker commands).
         """
         self.image_name = image_name
@@ -337,14 +337,17 @@ CMD ["/bin/bash"]
             )
 
         # Execute the command
+        # Note: docker-py's exec_run() doesn't support timeout parameter directly.
+        # Commands run without timeout; use container resource limits to prevent runaway processes.
         start_time = time.time()
-        timeout_value = timeout or self.timeout
         try:
-            exec_result = container.exec_run(command_str, tty=True, demux=True, timeout=timeout_value)
+            # Run command without tty for cleaner output handling
+            exec_result = container.exec_run(command_str, tty=False, demux=True)
             execution_time = time.time() - start_time
 
-            stdout = exec_result.output[0] or b""
-            stderr = exec_result.output[1] or b""
+            # Handle output - demux=True returns (stdout, stderr) tuple
+            stdout = exec_result.output[0] if exec_result.output[0] else b""
+            stderr = exec_result.output[1] if exec_result.output[1] else b""
 
             # Decode output
             stdout_str = stdout.decode("utf-8", errors="replace")
@@ -373,26 +376,15 @@ CMD ["/bin/bash"]
             )
         except Exception as e:
             execution_time = time.time() - start_time
-            if "timeout" in str(e).lower():
-                logger.warning(f"Command execution timed out after {timeout_value} seconds: {command_str}")
-                return CommandResult(
-                    command=command_str,
-                    exit_code=-1,
-                    output="",
-                    error=f"Command execution timed out after {timeout_value} seconds",
-                    execution_time=execution_time,
-                    status="timeout"
-                )
-            else:
-                logger.error(f"Error executing command: {str(e)}")
-                return CommandResult(
-                    command=command_str,
-                    exit_code=-1,
-                    output="",
-                    error=str(e),
-                    execution_time=execution_time,
-                    status="error"
-                )
+            logger.error(f"Error executing command: {str(e)}")
+            return CommandResult(
+                command=command_str,
+                exit_code=-1,
+                output="",
+                error=str(e),
+                execution_time=execution_time,
+                status="error"
+            )
 
     def run_commands(self, repo_dir: str, commands: List[Union[str, Command]]) -> List[CommandResult]:
         """

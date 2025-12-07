@@ -1,0 +1,24 @@
+{
+  "pages": {
+    "/workflow/page": [
+      "static/chunks/b9f81_next_dist_28d0fb0f._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_src_app_favicon_ico_mjs_fad5347a._.js",
+      "static/chunks/[root-of-the-server]__2cda11d1._.css",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_src_app_layout_tsx_85caa71c._.js",
+      "static/chunks/b9f81_next_dist_client_components_builtin_global-error_59e77e3e.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_src_67972e70._.js",
+      "static/chunks/b9f81_9a7bf2b5._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_src_components_workflow_bed988a8._.css",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_src_app_workflow_page_tsx_59e77e3e._.js",
+      "static/chunks/[turbopack]_browser_dev_hmr-client_hmr-client_ts_6d78f6b3._.js",
+      "static/chunks/b9f81_next_dist_compiled_react-dom_f9c18274._.js",
+      "static/chunks/b9f81_next_dist_compiled_next-devtools_index_b4f34f4f.js",
+      "static/chunks/b9f81_next_dist_compiled_193a1c7d._.js",
+      "static/chunks/b9f81_next_dist_client_09db55bc._.js",
+      "static/chunks/b9f81_next_dist_8e7d35b9._.js",
+      "static/chunks/b9f81_@swc_helpers_cjs_41036951._.js",
+      "static/chunks/NovaSystem-Streamlined_novasystem_modern_ui_a0ff3932._.js",
+      "static/chunks/turbopack-NovaSystem-Streamlined_novasystem_modern_ui_8411637e._.js"
+    ]
+  }
+}
