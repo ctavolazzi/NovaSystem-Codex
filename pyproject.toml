@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "novasystem"
-version = "0.3.0"
+version = "0.3.3"
 description = "NovaSystem - Unified Multi-Agent Problem-Solving Framework with CLI-first API"
 readme = "README.md"
 authors = [
@@ -65,6 +65,9 @@ dependencies = [
     # Testing
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+
+    # Image Processing (for ASCII art)
+    "pillow>=10.0.0",
 ]
 
 [project.optional-dependencies]
