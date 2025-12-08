@@ -16,7 +16,8 @@ import json
 from .repository import RepositoryHandler
 from .parser import DocumentationParser, Command
 from .docker import DockerExecutor, CommandResult
-from .database import DatabaseManager
+# Use legacy SQLite-backed manager for compatibility with existing tests
+from .legacy_database import DatabaseManager
 
 logger = logging.getLogger(__name__)
 

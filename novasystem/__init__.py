@@ -34,6 +34,9 @@ def __getattr__(name):
     elif name == "DomainExpert":
         from .core.agents import DomainExpert
         return DomainExpert
+    elif name == "DocumentationParser":
+        from .parser import DocumentationParser
+        return DocumentationParser
     elif name == "create_app":
         from .api.rest import create_app
         return create_app
@@ -53,6 +56,9 @@ def __getattr__(name):
     elif name == "RepositoryHandler":
         from .tools.repository import RepositoryHandler
         return RepositoryHandler
+    elif name == "DatabaseManager":
+        from .database import DatabaseManager
+        return DatabaseManager
     # Legacy alias
     elif name == "RepositoryManager":
         from .tools.repository import RepositoryHandler
@@ -71,7 +77,9 @@ __all__ = [
     "WebInterface",
     "GradioInterface",
     # Tools
+    "DocumentationParser",
     "DecisionMatrix",
     "DockerExecutor",
     "RepositoryHandler",
+    "DatabaseManager",
 ]
