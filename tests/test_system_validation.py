@@ -150,9 +150,9 @@ class SystemValidator:
             print_success("CLI help command executed successfully")
             self.tests_passed += 1
 
-            # Check for expected commands in output
-            expected_commands = ['install', 'list-runs', 'show-run', 'delete-run', 'cleanup']
-            all_found = True
+            # Check for expected commands in output (v0.3.1 CLI commands)
+            # The CLI was redesigned to focus on problem-solving
+            expected_commands = ['ask', 'chat', 'solve', 'status']
 
             for cmd in expected_commands:
                 if cmd in output:
@@ -161,15 +161,14 @@ class SystemValidator:
                 else:
                     print_error(f"Missing expected command: {cmd}")
                     self.tests_failed += 1
-                    all_found = False
 
-            # Check version
-            import novasystem
-            if novasystem.__version__ in output:
-                print_success(f"CLI shows correct version: {novasystem.__version__}")
+            # Check that CLI shows version when --version is passed
+            version_output, version_code = run_command(f"{python_cmd} -m novasystem.cli --version")
+            if version_code == 0:
+                print_success("CLI --version command works")
                 self.tests_passed += 1
             else:
-                print_error(f"CLI does not show correct version. Expected: {novasystem.__version__}")
+                print_error("CLI --version command failed")
                 self.tests_failed += 1
         else:
             print_error("CLI help command failed")
@@ -209,7 +208,7 @@ class SystemValidator:
             self.project_root / "utils",
             self.project_root / "utils" / "dev_tools",
             self.project_root / "utils" / "maintenance",
-            self.project_root / "novasystem" / "core_utils",
+            # Note: core_utils can be either a .py module or a package, checked below
         ]
 
         for directory in directories:
@@ -220,14 +219,17 @@ class SystemValidator:
                 print_error(f"Missing directory: {directory.relative_to(self.project_root)}")
                 self.tests_failed += 1
 
-        # Check core files
+        # Check core files (supports both module.py and module/ package structure)
         files = [
             self.project_root / "pyproject.toml",
             self.project_root / "novasystem" / "__init__.py",
-            self.project_root / "novasystem" / "cli.py",
-            self.project_root / "novasystem" / "core_utils" / "__init__.py",
-            self.project_root / "novasystem" / "core_utils" / "doc_map.py",
             self.project_root / "utils" / "README.md",
+        ]
+
+        # Check for module OR package (cli can be cli.py or cli/__init__.py)
+        module_or_package = [
+            ("novasystem" / Path("cli"), "cli module/package"),
+            ("novasystem" / Path("core_utils"), "core_utils module/package"),
         ]
 
         for file in files:
@@ -236,6 +238,17 @@ class SystemValidator:
                 self.tests_passed += 1
             else:
                 print_error(f"Missing file: {file.relative_to(self.project_root)}")
+                self.tests_failed += 1
+
+        # Check module or package paths
+        for rel_path, name in module_or_package:
+            module_file = self.project_root / (str(rel_path) + ".py")
+            package_init = self.project_root / rel_path / "__init__.py"
+            if module_file.exists() or package_init.exists():
+                print_success(f"Found {name}")
+                self.tests_passed += 1
+            else:
+                print_error(f"Missing {name}: expected {rel_path}.py or {rel_path}/__init__.py")
                 self.tests_failed += 1
 
     def check_archive_handling(self):

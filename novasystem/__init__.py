@@ -16,7 +16,7 @@ Use explicit imports when needed:
     from novasystem.tools import DecisionMatrix, DockerExecutor
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.2"
 __author__ = "NovaSystem Team"
 
 # Lazy loading - only import when accessed
@@ -56,8 +56,11 @@ def __getattr__(name):
     elif name == "RepositoryHandler":
         from .tools.repository import RepositoryHandler
         return RepositoryHandler
+    elif name == "DocumentationParser":
+        from .tools.parser import DocumentationParser
+        return DocumentationParser
     elif name == "DatabaseManager":
-        from .database import DatabaseManager
+        from .tools.legacy_database import DatabaseManager
         return DatabaseManager
     # Legacy alias
     elif name == "RepositoryManager":

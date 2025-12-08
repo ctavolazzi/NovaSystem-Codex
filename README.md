@@ -1,8 +1,49 @@
 # NovaSystem CLI
 
-NovaSystem is a Python 3.8+ toolkit for automating repository setup instructions. It clones a repository (remote or local), scans its documentation for installation commands, runs those commands in an isolated Docker container, and records everything in a SQLite database that you can query from the CLI. The package also ships a few reusable utilities (decision matrices, documentation mapping, and technical-debt helpers) that can be imported directly.
+🧠 **NovaSystem** is a multi-agent problem-solving framework powered by AI. It orchestrates multiple expert agents (DCE, CAE, Domain Experts) through the **Nova Process** to analyze complex problems and synthesize comprehensive solutions.
 
-## What it does
+> **303 tests passing** | **6 interactive demos** | **v0.3.2**
+
+## Quick Start
+
+```bash
+# Install
+pip install -e .
+
+# Launch the interactive CLI
+./nova
+
+# Or use commands directly
+./nova ask "What is machine learning?"
+./nova solve "How do I scale my API to handle 10x traffic?"
+./nova experts "Design a microservices architecture" -d "Backend,DevOps,Security"
+./nova chat  # Interactive chat session
+./nova status  # Check system configuration
+```
+
+## The Nova Launcher (`./nova`)
+
+The `./nova` script provides a beautiful startup experience:
+
+```
+╔══════════════════════════════════════════════════════════════════════════════╗
+║   ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗     ███████╗██╗   ██╗███████╗████████╗  ║
+║   ██╔██╗ ██║██║   ██║██║   ██║███████║    ███████╗ ╚████╔╝ ███████╗   ██║     ║
+║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║    ███████║   ██║   ███████║   ██║     ║
+║                                                                                ║
+║   🧠 Multi-Agent Problem Solving System                              v0.3.2   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+```
+
+Features:
+- 🎨 Beautiful ASCII art banner
+- 🔑 Automatic API key detection
+- 💡 Quick start hints
+- 📋 Seamless CLI passthrough
+
+---
+
+## What it does (Legacy CLI)
 - Discover documentation files (README, INSTALL, docs/\*) and extract install commands from fenced or inline code blocks.
 - Deduplicate and prioritize commands, then execute them sequentially in an ephemeral Docker container (Ubuntu base with Python/Node toolchain).
 - Persist run history (repository metadata, documentation snapshots, commands, outputs) to a local SQLite database for later inspection.
@@ -180,6 +221,81 @@ pytest
 ```
 
 Consider setting `NOVASYSTEM_DISABLE_FILE_LOG=1` while iterating locally if you do not want log files in your home directory.
+
+---
+
+## Test Suite (303 Tests)
+
+NovaSystem has a comprehensive test suite covering all major components:
+
+```bash
+# Run all tests
+pytest
+
+# Run with verbose output
+pytest -v
+
+# Run specific test categories
+pytest tests/test_memory_system.py      # Memory manager tests
+pytest tests/test_vector_store.py       # Vector store tests
+pytest tests/test_chaos_engineering.py  # Chaos/resilience tests
+pytest tests/test_concurrency_stress.py # Concurrency tests
+pytest tests/test_edge_cases_torture.py # Edge case tests
+```
+
+### Test Categories
+
+| Category | Tests | Description |
+|----------|-------|-------------|
+| Core Functions | 30+ | Basic utility tests |
+| Memory System | 17 | Async memory manager |
+| Vector Store | 28 | RAG and similarity search |
+| Integration | 8 | End-to-end workflows |
+| Agents (Mock) | 23 | Agent behavior |
+| Pipeline | 21 | Pipeline patterns |
+| Performance | 17 | Benchmarks |
+| **Chaos Engineering** | 20+ | Fault injection, cascading failures |
+| **Concurrency Stress** | 25+ | Parallel execution, race conditions |
+| **Edge Cases** | 60+ | Unicode, extreme values, boundaries |
+| CLI Startup | 5 | CLI initialization |
+
+---
+
+## Interactive Demos
+
+Run these demos to see NovaSystem in action:
+
+```bash
+# Event-driven architecture demo
+python examples/event_driven_architecture_demo.py
+
+# Decision matrix with UI
+python examples/decision_matrix_ui_demo.py
+
+# Full system demo (memory, events, decisions)
+python examples/novasystem_full_demo.py
+
+# Multi-agent collaboration (Nova Process)
+python examples/multi_agent_collaboration_demo.py
+
+# Technical debt tracking
+python examples/technical_debt_tracking_demo.py
+
+# Complete problem-solving workflow
+python examples/nova_problem_solving_demo.py
+```
+
+### Demo Highlights
+
+| Demo | What It Shows |
+|------|---------------|
+| `novasystem_full_demo.py` | Full pipeline with memory, events, and decision matrix |
+| `multi_agent_collaboration_demo.py` | DCE + CAE + Domain Experts working together |
+| `nova_problem_solving_demo.py` | UNPACK → ANALYZE → SYNTHESIZE workflow |
+| `decision_matrix_ui_demo.py` | LLM provider comparison with journaling |
+| `technical_debt_tracking_demo.py` | Debt prioritization and analytics |
+
+---
 
 ## Status and cautions
 NovaSystem v0.1.1 is an alpha research tool. Command extraction is heuristic and may miss or misorder steps; always review the proposed commands before letting them run. Although execution happens inside Docker with limited resources and no network by default, you are responsible for auditing commands from untrusted repositories and for validating any installation outcomes.

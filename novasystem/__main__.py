@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-NovaSystem CLI Entry Point.
+NovaSystem Entry Point.
 
 Allows running NovaSystem as a module:
-    python -m novasystem solve "Your problem here"
-    python -m novasystem interactive
-    python -m novasystem list-models
+    python -m novasystem                    # Launch interactive mode
+    python -m novasystem interactive        # Launch interactive mode (explicit)
+    python -m novasystem solve "problem"    # Use CLI
+    python -m novasystem --help             # Show CLI help
 """
 
 # ============================================================================
@@ -38,7 +39,30 @@ os.environ.setdefault("GRADIO_ANALYTICS_ENABLED", "False")
 # ============================================================================
 
 import sys
-from .cli import main
+from pathlib import Path
+
+
+def main():
+    """Main entry point - launches interactive mode by default."""
+
+    # No args or 'interactive' = launch interactive mode
+    if len(sys.argv) == 1 or (len(sys.argv) > 1 and sys.argv[1].lower() == "interactive"):
+        try:
+            from novasystem.interactive import main as interactive_main
+            interactive_main()
+            return 0
+        except ImportError:
+            print("Interactive mode not available. Falling back to CLI.")
+            print("Run: python -m novasystem --help")
+            return 1
+        except KeyboardInterrupt:
+            print("\n👋 Goodbye!")
+            return 0
+
+    # Otherwise, use CLI
+    from .cli import main as cli_main
+    return cli_main()
+
 
 if __name__ == "__main__":
     sys.exit(main())
