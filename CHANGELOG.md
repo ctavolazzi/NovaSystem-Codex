@@ -5,6 +5,47 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.3] - 2025-12-07
+
+### ASCII Animation & CLI Enhancement Release
+
+#### Added
+- **ASCII Animation System** (`nova-mvp/backend/core/ascii_animation.py`):
+  - `image_to_ascii()` - Convert images to colorized ASCII art with ANSI colors
+  - `generate_breathing_frames()` - Generate subtle motion frames for animation
+  - `ASCIIAnimationPlayer` - Terminal animation player with non-blocking keypress detection
+  - `TypewriterMessageBox` - Animated message box with typewriter + backspace effect
+  - `play_sleeping_wizard()` - One-liner to run the sleeping wizard animation
+  - 40 funny loading messages ("Reticulating splines...", "Consulting the ancient tomes...", etc.)
+
+- **PixelLab API Integration** (`nova-mvp/backend/core/pixellab.py`):
+  - `generate_wizard_animation()` - Generate pixel art wizard images via PixelLab API
+  - Async HTTP client with proper error handling
+  - Frame output to configurable directory
+
+- **CLI Commands**:
+  - `nova sleep` - Display sleeping wizard ASCII animation
+    - `--image/-i` - Custom image path
+    - `--width/-w` - ASCII width (default: 50)
+    - `--fps/-f` - Animation speed (default: 1.5)
+    - `--message/-m` - Custom message
+  - `nova wizard list` - List available wizard images in repo
+  - `nova wizard generate` - Generate new wizard images via PixelLab API
+    - `--prompt/-p` - Custom generation prompt
+    - `--frames/-n` - Number of frames
+    - `--output/-o` - Output directory
+
+#### Changed
+- Moved `nova-mvp/` from `archive/` to repository root as canonical location
+- Added `pillow>=10.0.0` dependency for image processing
+- Added `nova-mvp/backend/venv/` to `.gitignore`
+
+#### Fixed
+- Non-interactive terminal fallback for `ASCIIAnimationPlayer` (graceful degradation when `termios` unavailable)
+- Robust wizard image auto-detection with multiple search paths
+
+---
+
 ## [v0.3.0] - 2025-12-07
 
 ### Major Consolidation Release
