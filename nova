@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""
+🧠 NovaSystem Startup Script
+============================
+Launch the NovaSystem CLI with style!
+
+Usage:
+    ./nova              # Interactive mode
+    ./nova ask "..."    # Quick question
+    ./nova solve "..."  # Full Nova Process
+    ./nova status       # Check system status
+"""
+
+import os
+import sys
+from pathlib import Path
+
+# Ensure the package is importable
+script_dir = Path(__file__).parent.absolute()
+if str(script_dir) not in sys.path:
+    sys.path.insert(0, str(script_dir))
+
+# Suppress noisy loggers
+import logging
+logging.basicConfig(level=logging.WARNING)
+for noisy in ["PIL", "httpcore", "httpx", "gradio", "urllib3", "asyncio", "fsspec"]:
+    logging.getLogger(noisy).setLevel(logging.ERROR)
+
+
+def print_startup_banner():
+    """Print the NovaSystem startup banner."""
+    banner = """
+\033[96m╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                                ║
+║   ███╗   ██╗ ██████╗ ██╗   ██╗ █████╗     ███████╗██╗   ██╗███████╗████████╗  ║
+║   ████╗  ██║██╔═══██╗██║   ██║██╔══██╗    ██╔════╝╚██╗ ██╔╝██╔════╝╚══██╔══╝  ║
+║   ██╔██╗ ██║██║   ██║██║   ██║███████║    ███████╗ ╚████╔╝ ███████╗   ██║     ║
+║   ██║╚██╗██║██║   ██║╚██╗ ██╔╝██╔══██║    ╚════██║  ╚██╔╝  ╚════██║   ██║     ║
+║   ██║ ╚████║╚██████╔╝ ╚████╔╝ ██║  ██║    ███████║   ██║   ███████║   ██║     ║
+║   ╚═╝  ╚═══╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝    ╚══════╝   ╚═╝   ╚══════╝   ╚═╝     ║
+║                                                                                ║
+║\033[0m   \033[92m🧠 Multi-Agent Problem Solving System\033[0m                          \033[93mv0.3.2\033[96m   ║
+║                                                                                ║
+╠════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                ║
+║\033[0m   \033[97mCommands:\033[0m                                                                  \033[96m║
+║\033[0m     • \033[96mnova interactive\033[0m         Launch interactive terminal (screensaver!)    \033[96m║
+║\033[0m     • \033[96mnova ask "question"\033[0m      Quick AI response                             \033[96m║
+║\033[0m     • \033[96mnova chat\033[0m                Interactive chat session                      \033[96m║
+║\033[0m     • \033[96mnova solve "problem"\033[0m     Full Nova Process analysis                    \033[96m║
+║\033[0m     • \033[96mnova experts "topic"\033[0m     Multi-expert panel discussion                 \033[96m║
+║\033[0m     • \033[96mnova status\033[0m              Check system configuration                    \033[96m║
+║                                                                                ║
+║\033[0m   \033[93m💡 Tip: Use --help with any command for more options\033[0m                       \033[96m║
+║                                                                                ║
+╚══════════════════════════════════════════════════════════════════════════════╝\033[0m
+"""
+    print(banner)
+
+
+def check_environment():
+    """Check if the environment is properly configured."""
+    issues = []
+
+    # Check for API keys
+    api_keys = {
+        "ANTHROPIC_API_KEY": "Claude models",
+        "OPENAI_API_KEY": "OpenAI models",
+        "GOOGLE_API_KEY": "Gemini models",
+        "GEMINI_API_KEY": "Gemini models (alt)",
+    }
+
+    found_any = False
+    for key, desc in api_keys.items():
+        if os.getenv(key):
+            found_any = True
+            break
+
+    if not found_any:
+        issues.append("⚠️  No API keys found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY")
+
+    return issues
+
+
+def main():
+    """Main entry point for the NovaSystem startup script."""
+    # Load environment variables
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except ImportError:
+        pass  # dotenv not required
+
+    # No args = launch interactive mode by default
+    if len(sys.argv) == 1:
+        try:
+            from novasystem.interactive import main as interactive_main
+            interactive_main()
+            return 0
+        except ImportError as e:
+            # Fallback to banner if interactive not available
+            print_startup_banner()
+            print("\033[93m⚠️  Interactive mode not available. Run 'nova --help' for commands.\033[0m\n")
+            return 0
+        except KeyboardInterrupt:
+            print("\n\033[90m👋 Goodbye!\033[0m")
+            return 0
+
+    # Check for explicit interactive mode
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "interactive":
+        try:
+            from novasystem.interactive import main as interactive_main
+            interactive_main()
+            return 0
+        except ImportError as e:
+            print(f"\033[91m❌ Error: Could not import interactive mode: {e}\033[0m")
+            return 1
+
+    # Import and run the CLI
+    try:
+        from novasystem.cli.main import main as cli_main
+        cli_main()
+    except ImportError as e:
+        print(f"\033[91m❌ Error: Could not import NovaSystem CLI: {e}\033[0m")
+        print("\033[93mMake sure NovaSystem is installed: pip install -e .\033[0m")
+        return 1
+    except KeyboardInterrupt:
+        print("\n\033[90m👋 Goodbye!\033[0m")
+        return 0
+    except Exception as e:
+        print(f"\033[91m❌ Error: {e}\033[0m")
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
