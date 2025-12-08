@@ -5,6 +5,63 @@ All notable changes to the Nova System will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.3.4] - 2025-12-07
+
+### "Clean Sleepy Wizard" - Complete Consolidation Release
+
+#### Major Changes
+- **Unified Package Structure**: All functionality consolidated into single `novasystem/` package
+- **Removed Duplicate Implementations**: Archived `nova-mvp/`, `NovaSystem-Streamlined/`, and `dev/` to `archive/`
+- **Single Source of Truth**: One CLI, one package, one version
+
+#### Added
+- **ASCII Animation System** (`novasystem/core/ascii_animation.py`):
+  - `play_sleeping_wizard()` - Display animated sleeping wizard
+  - `image_to_ascii()` - Convert images to colorized ASCII art
+  - `generate_breathing_frames()` - Create subtle motion frames
+  - `ASCIIAnimationPlayer` - Terminal animation player with keypress detection
+  - `TypewriterMessageBox` - 40 funny loading messages with typewriter effect
+
+- **PixelLab API Integration** (`novasystem/core/pixellab.py`):
+  - `generate_wizard_animation()` - Generate pixel art wizard images via API
+
+- **CLI Commands** (added to `novasystem/cli/main.py`):
+  - `novasystem sleep` - Display sleeping wizard ASCII animation
+    - `--image/-i` - Custom image path
+    - `--width/-w` - ASCII width (default: 50)
+    - `--fps/-f` - Animation speed (default: 1.5)
+    - `--message/-m` - Custom message
+  - `novasystem wizard generate` - Generate wizard images via PixelLab API
+    - `--prompt/-p` - Custom generation prompt
+    - `--frames/-n` - Number of frames
+    - `--output/-o` - Output directory
+  - `novasystem wizard list` - List available wizard images
+
+#### Changed
+- **Package Structure**: Everything now in `novasystem/` - no more `nova-mvp/` or separate implementations
+- **CLI**: Unified Typer-based CLI with all features (ask, chat, solve, experts, sleep, wizard, etc.)
+- **Imports**: Updated all imports to use `novasystem.core` namespace
+- **Image Search**: Improved wizard image auto-detection with multiple search paths
+
+#### Archived
+- `archive/nova-mvp-root-YYYYMMDD/` - Original nova-mvp implementation
+- `archive/NovaSystem-Streamlined-root-YYYYMMDD/` - Original streamlined implementation
+- `archive/dev-root-YYYYMMDD/` - Experimental dev code
+
+#### Migration Notes
+If you were using `nova-mvp/cli/nova.py`:
+```bash
+# Old
+python nova-mvp/cli/nova.py sleep
+
+# New
+novasystem sleep
+```
+
+All functionality is now available through the unified `novasystem` CLI.
+
+---
+
 ## [v0.3.3] - 2025-12-07
 
 ### ASCII Animation & CLI Enhancement Release
