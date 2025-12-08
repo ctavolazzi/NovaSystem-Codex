@@ -21,6 +21,51 @@ pip install -e .
 ./nova status  # Check system configuration
 ```
 
+---
+
+## 🎮 Interactive Demo (No API Keys Required)
+
+Try the interactive demo to explore NovaSystem's capabilities:
+
+```bash
+# Run the demo
+python demo.py
+```
+
+The demo showcases:
+- **Decision Matrix** - Multi-criteria decision making with weighted scoring
+- **Technical Debt Tracker** - Track and manage technical debt
+- **Documentation Parser** - Extract commands from markdown docs
+- **CLI Commands** - Available command-line options
+- **Interactive Terminal** - ASCII art and animations preview
+- **API Configuration** - Check your provider setup
+
+### Demo Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ModuleNotFoundError: No module named 'novasystem'` | Run `pip install -e .` from the project root |
+| `ImportError: cannot import name 'make_decision'` | Ensure you're in the project root directory |
+| Colors not showing | Your terminal may not support ANSI colors. Try a different terminal |
+| `Permission denied` | Run `chmod +x demo.py` to make it executable |
+
+### Running with API Keys
+
+For the full AI-powered experience, set up API keys:
+
+```bash
+# Option 1: Environment variables
+export ANTHROPIC_API_KEY='your-key'  # For Claude
+export GOOGLE_API_KEY='your-key'     # For Gemini (free tier available)
+export OPENAI_API_KEY='your-key'     # For GPT-4
+
+# Option 2: Create a .env file
+cp .env.example .env
+# Then edit .env with your keys
+```
+
+---
+
 ## The Nova Launcher (`./nova`)
 
 The `./nova` script provides a beautiful startup experience:
