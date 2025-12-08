@@ -1034,6 +1034,148 @@ def history_clear():
 
 
 # =============================================================================
+# WIZARD COMMANDS
+# =============================================================================
+
+@app.command("sleep")
+def sleep_command(
+    image: str = typer.Option(None, "--image", "-i", help="Path to wizard image (auto-detected if not specified)"),
+    width: int = typer.Option(50, "--width", "-w", help="ASCII width in characters"),
+    fps: float = typer.Option(1.5, "--fps", "-f", help="Animation speed"),
+    message: str = typer.Option("💤 Wizard sleeping... Press any key to wake", "--message", "-m", help="Message to display"),
+):
+    """
+    🧙 Display sleeping wizard ASCII animation.
+
+    Shows an animated sleeping wizard with typewriter messages.
+    Press any key to wake the wizard and exit.
+
+    Example:
+        novasystem sleep
+        novasystem sleep --width 60 --fps 2.0
+    """
+    try:
+        from ..core import play_sleeping_wizard, ASCII_AVAILABLE
+
+        if not ASCII_AVAILABLE:
+            console.print("[error]❌ ASCII animation not available (Pillow not installed)[/]")
+            raise typer.Exit(1)
+
+        console.print("[cyan]🧙 Sleeping Wizard Animation[/]")
+        console.print("[dim]Press any key to wake the wizard...[/]\n")
+
+        interrupted = play_sleeping_wizard(
+            image_path=image,
+            width=width,
+            fps=fps,
+            message=message
+        )
+
+        if interrupted:
+            console.print("\n[green]✨ The wizard awakens![/]")
+
+    except FileNotFoundError as e:
+        console.print(f"[error]❌ Error: {e}[/]")
+        console.print("[dim]Generate a wizard with: novasystem wizard generate[/]")
+        raise typer.Exit(1)
+    except Exception as e:
+        console.print(f"[error]❌ Error: {e}[/]")
+        raise typer.Exit(1)
+
+
+wizard_app = typer.Typer(help="🎨 Wizard animation management")
+app.add_typer(wizard_app, name="wizard")
+
+
+@wizard_app.command("generate")
+def wizard_generate(
+    prompt: str = typer.Option(None, "--prompt", "-p", help="Custom prompt for generation"),
+    frames: int = typer.Option(4, "--frames", "-n", help="Number of frames"),
+    output: str = typer.Option("wizard_frames", "--output", "-o", help="Output directory"),
+):
+    """
+    🎨 Generate wizard animation frames using PixelLab API.
+
+    Requires PIXELLAB_API_KEY environment variable.
+
+    Example:
+        novasystem wizard generate
+        novasystem wizard generate --prompt "sleeping dragon" --frames 8
+    """
+    try:
+        from ..core import generate_wizard_animation, PIXELLAB_AVAILABLE
+        import os
+
+        if not PIXELLAB_AVAILABLE:
+            console.print("[error]❌ PixelLab integration not available (httpx not installed)[/]")
+            raise typer.Exit(1)
+
+        api_key = os.getenv("PIXELLAB_API_KEY")
+        if not api_key:
+            console.print("[error]❌ PIXELLAB_API_KEY not set[/]")
+            console.print("[dim]Get your API key at https://pixellab.ai[/]")
+            console.print("[dim]Then: export PIXELLAB_API_KEY=your_key[/]")
+            raise typer.Exit(1)
+
+        console.print("[cyan]🎨 Generating Wizard with PixelLab API[/]")
+        console.print(f"[dim]Prompt: {prompt or 'sleeping wizard (default)'}[/]")
+        console.print(f"[dim]Frames: {frames}[/]")
+        console.print(f"[dim]Output: {output}[/]\n")
+
+        result = asyncio.run(generate_wizard_animation(
+            num_frames=frames,
+            output_dir=output,
+            prompt=prompt
+        ))
+
+        if result.success:
+            console.print(f"[green]✓ Generated {result.total_frames} frames[/]")
+            for frame in result.frames:
+                console.print(f"  [dim]→ {output}/{frame.filename}[/]")
+            console.print(f"\n[cyan]View with: novasystem sleep --image {output}/frame_00.png[/]")
+        else:
+            console.print(f"[error]❌ Error: {result.error}[/]")
+            raise typer.Exit(1)
+
+    except Exception as e:
+        console.print(f"[error]❌ Error: {e}[/]")
+        raise typer.Exit(1)
+
+
+@wizard_app.command("list")
+def wizard_list():
+    """
+    🖼️  List available wizard images.
+
+    Searches for wizard images in common locations.
+    """
+    from pathlib import Path
+
+    console.print("\n[cyan]🖼️  Available Wizard Images[/]\n")
+
+    search_dirs = [
+        Path.cwd(),
+        Path(__file__).parent.parent.parent.parent,  # repo root
+        Path.home() / "wizard_frames",
+    ]
+
+    found = []
+    for d in search_dirs:
+        if d.exists():
+            for p in d.glob("*wizard*.png"):
+                found.append(p)
+            for p in d.glob("**/frame_*.png"):
+                found.append(p)
+
+    if not found:
+        console.print("[warning]No wizard images found.[/]")
+        console.print("[dim]Generate with: novasystem wizard generate[/]")
+    else:
+        for p in found[:20]:
+            console.print(f"  [dim]→[/] {p}")
+
+
+# =============================================================================
 # ENTRY POINT
 # =============================================================================
 

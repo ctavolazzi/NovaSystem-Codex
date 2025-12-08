@@ -1,7 +1,7 @@
 # CLAUDE.md - AI Assistant Guide for NovaSystem
 
 **Last Updated:** 2025-12-07
-**Version:** 0.3.0
+**Version:** 0.3.4
 
 This document provides comprehensive guidance for AI assistants (like Claude, ChatGPT, etc.) working with the NovaSystem codebase. It explains the project structure, development workflows, coding conventions, and key architectural patterns.
 
@@ -34,7 +34,7 @@ This document provides comprehensive guidance for AI assistants (like Claude, Ch
 - **License:** GPL-3.0
 - **Language:** Python 3.8+
 - **Architecture:** CLI-first multi-agent orchestration with parallel processing
-- **Latest Version:** v0.3.3 (as of Dec 2025)
+- **Latest Version:** v0.3.4 (as of Dec 2025)
 
 ### The Nova Process
 
@@ -584,6 +584,7 @@ When working with this codebase:
 
 | Version | Date | Key Changes |
 |---------|------|-------------|
+| 0.3.4 | 2025-12-07 | "Clean Sleepy Wizard" - Complete consolidation into single `novasystem/` package |
 | 0.3.3 | 2025-12-07 | ASCII animation system, PixelLab API, `nova sleep` and `nova wizard` CLI commands |
 | 0.3.0 | 2025-12-07 | Major consolidation: merged 4 implementations, includes all previous features |
 | 0.2.x | 2025-12-06 | (nova-mvp) Long-term memory, financial ledger, traffic control |
