@@ -1,28 +1,35 @@
 """
-NovaSystem CLI Tools
+NovaSystem CLI package.
+
+Exports:
+- `main` (Typer-powered primary CLI)
+- `session_cli` (session-aware variant)
+- `show_run` (lightweight helper used by legacy tests)
+- `legacy_main` (alias to the Typer entry for python -m novasystem.cli)
 """
 
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+from typing import List, Optional
+
+from ..nova import Nova
 from .main import main
 from .session_cli import main as session_cli
 
-# Backwards compatibility: expose Nova class from tools
-from ..nova import Nova
+logger = logging.getLogger(__name__)
 
 
-def show_run(args):
-    """
-    Display run details including documentation.
-
-    Backwards compatibility shim for older CLI tests.
-
-    Args:
-        args: Namespace with run_id, verbose, output attributes
-
-    Returns:
-        int: Exit code (0 for success)
-    """
-    nova = Nova()
-    details = nova.get_run_details(args.run_id)
+def show_run(args: argparse.Namespace) -> int:
+    """Display run details including documentation (legacy helper used in tests)."""
+    try:
+        nova = Nova()
+        details = nova.get_run_details(args.run_id)
+    except Exception as exc:  # noqa: BLE001
+        print(f"Error: {exc}")
+        return 1
 
     if details is None:
         print(f"Run {args.run_id} not found")
@@ -45,10 +52,15 @@ def show_run(args):
         print(f"\nDocumentation Files ({len(docs)}):")
         for doc in docs:
             print(f"  - {doc.get('file_path', 'N/A')}")
-            if args.verbose:
+            if getattr(args, "verbose", False):
                 print(f"    Content: {doc.get('content', '')[:100]}...")
 
     return 0
 
 
-__all__ = ['main', 'session_cli', 'Nova', 'show_run']
+def legacy_main(args: Optional[List[str]] = None) -> int:
+    """Alias to the Typer CLI so `python -m novasystem.cli` works."""
+    return main(args)
+
+
+__all__ = ["main", "session_cli", "Nova", "show_run", "legacy_main"]

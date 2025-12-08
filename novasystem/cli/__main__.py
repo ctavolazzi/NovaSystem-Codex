@@ -1,6 +1,6 @@
 """Module execution entrypoint for `python -m novasystem.cli`."""
 
-from . import legacy_main
+from .main import main as typer_main
 
 if __name__ == "__main__":
-    raise SystemExit(legacy_main())
+    raise SystemExit(typer_main())
