@@ -238,3 +238,10 @@ nova-mvp/backend/venv/
 
 # Test outputs
 wizard_ascii*.txt
+
+# Build artifacts
+.next/
+**/.next/
+
+# Archives (may contain sensitive data)
+archive/
