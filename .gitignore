@@ -245,3 +245,6 @@ wizard_ascii*.txt
 
 # Archives (may contain sensitive data)
 archive/
+
+# Codacy SARIF output
+results.sarif

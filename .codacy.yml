@@ -1,20 +1,24 @@
-# Codacy configuration
-# Exclude paths that contain binary files or build artifacts
-# that cause MalformedInputException during security scans
+# Codacy Configuration
+# Fixes: ESLint "No configuration found" error and binary file encoding issues
 
+---
+engines:
+  # Disable ESLint - no .eslintrc config in this repo
+  eslint:
+    enabled: false
+
+# Exclude binary files and generated outputs that cause encoding errors
 exclude_paths:
-  - "archive/**"
-  - "**/.next/**"
-  - "**/node_modules/**"
-  - "**/venv/**"
-  - "**/.venv/**"
-  - "**/*.woff"
-  - "**/*.woff2"
-  - "**/*.ico"
-  - "**/*.map"
   - "**/*.png"
   - "**/*.jpg"
   - "**/*.jpeg"
   - "**/*.gif"
-  - "**/*.ttf"
-  - "**/*.eot"
+  - "**/*.webp"
+  - "**/*.ico"
+  - "**/*.pdf"
+  - "**/*.zip"
+  - "**/*.tar"
+  - "**/*.gz"
+  - "results.sarif"
+  - "test_outputs/**"
+  - "**/pixellab-*.png"
