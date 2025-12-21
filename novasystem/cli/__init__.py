@@ -59,8 +59,14 @@ def show_run(args: argparse.Namespace) -> int:
 
 
 def legacy_main(args: Optional[List[str]] = None) -> int:
-    """Alias to the Typer CLI so `python -m novasystem.cli` works."""
-    return main(args)
+    """Alias to the Typer CLI so `python -m novasystem.cli` works.
+    
+    Note: The `args` parameter is accepted for API compatibility but not used.
+    The Typer app reads from sys.argv directly.
+    """
+    # main() takes no arguments - it calls the Typer app directly
+    # Args are ignored; Typer reads sys.argv
+    return main()
 
 
 __all__ = ["main", "session_cli", "Nova", "show_run", "legacy_main"]
