@@ -1,0 +1,20 @@
+# Codacy configuration
+# Exclude paths that contain binary files or build artifacts
+# that cause MalformedInputException during security scans
+
+exclude_paths:
+  - "archive/**"
+  - "**/.next/**"
+  - "**/node_modules/**"
+  - "**/venv/**"
+  - "**/.venv/**"
+  - "**/*.woff"
+  - "**/*.woff2"
+  - "**/*.ico"
+  - "**/*.map"
+  - "**/*.png"
+  - "**/*.jpg"
+  - "**/*.jpeg"
+  - "**/*.gif"
+  - "**/*.ttf"
+  - "**/*.eot"
