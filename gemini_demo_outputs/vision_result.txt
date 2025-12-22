@@ -1,0 +1,19 @@
+Here's a description of the image:
+
+**Scene Description:**
+The image displays a simple diagram consisting of three distinct geometric shapes on a very light, almost white background. Each shape contains text. In the upper left is a large rectangle with a light blue fill and a dark blue border, containing the text "NovaSystem Vision Demo". To its right, in the upper right quadrant of the image, is another large rectangle with a light green fill and a dark green border, with the text "Gemini counts shapes" inside. Below the blue rectangle, in the lower left, is a circle with a light orange/peach fill and a darker orange border, containing the text "orange circle-ish". The overall impression is a conceptual or illustrative graphic.
+
+**Dominant Colors:**
+*   **Light Blue / Off-white:** The background color.
+*   **Light Blue:** The fill color of the top-left rectangle.
+*   **Dark Blue:** The border color of the top-left rectangle.
+*   **Light Green:** The fill color of the top-right rectangle.
+*   **Dark Green:** The border color of the top-right rectangle.
+*   **Light Orange / Peach:** The fill color of the circle.
+*   **Dark Orange / Brown:** The border color of the circle.
+*   **Dark Grey / Black:** The color of the text within the shapes.
+
+**Geometric Shapes:**
+There are **3** geometric shapes:
+*   2 rectangles
+*   1 circle
