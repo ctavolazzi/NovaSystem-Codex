@@ -60,7 +60,7 @@ def show_run(args: argparse.Namespace) -> int:
 
 def legacy_main(args: Optional[List[str]] = None) -> int:
     """Alias to the Typer CLI so `python -m novasystem.cli` works.
-    
+
     Note: The `args` parameter is accepted for API compatibility but not used.
     The Typer app reads from sys.argv directly.
     """
