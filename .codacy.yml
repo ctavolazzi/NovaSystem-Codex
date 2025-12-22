@@ -9,16 +9,31 @@ engines:
 
 # Exclude binary files and generated outputs that cause encoding errors
 exclude_paths:
+  # Binary image formats
   - "**/*.png"
   - "**/*.jpg"
   - "**/*.jpeg"
   - "**/*.gif"
   - "**/*.webp"
   - "**/*.ico"
+  # Font files (cause MalformedInputException)
+  - "**/*.woff"
+  - "**/*.woff2"
+  - "**/*.ttf"
+  - "**/*.otf"
+  - "**/*.eot"
+  # Archive formats
   - "**/*.pdf"
   - "**/*.zip"
   - "**/*.tar"
   - "**/*.gz"
+  # Generated/build outputs
   - "results.sarif"
   - "test_outputs/**"
   - "**/pixellab-*.png"
+  # Archive directory (contains node_modules, .next, etc.)
+  - "archive/**"
+  # Node modules (if any)
+  - "**/node_modules/**"
+  # Next.js build artifacts
+  - "**/.next/**"
