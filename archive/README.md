@@ -11,6 +11,7 @@ This directory contains archived implementations that were consolidated into the
 | `nova-mvp/` | v0.1.0 | FastAPI backend with agent orchestration |
 | `dev-experimental/` | N/A | Experimental versions (NS-bytesize, NS-core, etc.) |
 | `streamlined-backup-20250928/` | N/A | Historical backup |
+| `novasystem-v0.3.4/` | v0.3.4 | Unified package snapshot before agentic framework rebuild (2026-03-27) |
 
 ## Why Archived?
 
